@@ -1,31 +1,63 @@
 name: smoke
 on:
   push:
+    # 只改文档的提交不影响渲染，不必跑浏览器（lint 仍会检查文档）
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE*']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE*']
   workflow_dispatch:
     inputs:
       update:
         description: 重新生成 linux 基准图（结果作为 artifact 上传，下载后提交到 tests/smoke/baseline/linux/）
         type: boolean
         default: false
+# 同一分支连推几次时，只跑最新的那次
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # 正常 1–2 分钟跑完；默认上限是 6 小时，卡住时会一直占着
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: plugin/engine/package-lock.json
       - name: 安装 ffmpeg 与中文字体
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
-      - name: 安装渲染依赖
+        timeout-minutes: 5
         run: |
-          cd plugin/engine
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30'
+          sudo apt-get $APT update
+          sudo apt-get $APT install -y --no-install-recommends ffmpeg fonts-noto-cjk
+      - name: 安装 npm 依赖
+        working-directory: plugin/engine
+        run: npm ci --no-audit --no-fund
+      - name: 缓存 Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          # playwright 已锁定版本，package-lock 变了才会换浏览器
+          key: playwright-${{ runner.os }}-${{ hashFiles('plugin/engine/package-lock.json') }}
+      - name: 安装 Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 8
+        working-directory: plugin/engine
+        run: npx playwright install --with-deps chromium
+      - name: 安装 Chromium 系统依赖
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 5
+        working-directory: plugin/engine
+        run: npx playwright install-deps chromium
       - name: 单元与集成测试
+        timeout-minutes: 5
         run: node --test tests/unit/*.test.mjs tests/integration/*.test.mjs
       - name: 冒烟测试（确定性 + 基准图比对）
+        timeout-minutes: 5
         run: node tests/smoke/run.mjs ${{ inputs.update && '--update' || '' }}
       - name: 上传 linux 基准图
         if: ${{ inputs.update }}

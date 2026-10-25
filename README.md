@@ -1,14 +1,49 @@
 # wukong-animation · 代码七十二变
 
-> 72 种动画风格，每种一个 skill。Claude 写代码，一帧一帧"画"出短片 —— 不用任何视频生成模型。
+> 讲一个故事，Claude 帮你拍成一支动画短片。
+> 每一帧画面都由代码"画"出来，不用任何 AI 视频生成模型。
 
 <!-- progress -->
 **已修成 1 / 72 变**
 <!-- /progress -->
 
+## 它能帮你做什么
+
+你只需要用一句话说出想拍什么，比如"一个关于秋天离别的水墨短片，20 秒"。
+Claude 会像一位导演一样，陪你从构思一路做到成片：
+
+- **出方案**：根据你的故事推荐几套画风，你挑一套；
+- **写脚本、画分镜**：先给你看文字脚本和分镜，你满意了再往下做；
+- **配声音**：可以用你自己录的旁白，也可以用 AI 配音，再配上音乐；
+- **出成片**：输出 MP4 视频（也可以导出 GIF）。
+
+每到关键环节，Claude 都会**停下来请你过目**，你说"可以"才继续；不满意就直接说哪里要改。
+
+## 开始之前，你需要准备
+
+1. **Claude Code**：本工具是 Claude Code 的插件，需要先安装并能正常使用 Claude Code。
+2. **Node.js 20 或更高版本**：[nodejs.org](https://nodejs.org/) 下载安装即可。
+3. **ffmpeg**（用于生成视频和处理声音），在终端里运行对应命令安装：
+
+| 系统 | 安装命令 |
+|---|---|
+| macOS | `brew install ffmpeg` |
+| Windows | `winget install ffmpeg` |
+| Ubuntu | `sudo apt install ffmpeg` |
+
+下面几样不装也能用，装了体验更好：
+
+| 工具 | 有什么用 | 安装方式 |
+|---|---|---|
+| git | 每次你确认一个环节，都会自动存一个版本，改坏了可以随时退回 | [git-scm.com](https://git-scm.com/) |
+| fonttools | 让中文字体文件更小，渲染更快 | `pip install fonttools brotli` |
+| edge-tts 或 kokoro | 没有自己录音时，用 AI 生成旁白 | `pip install edge-tts` |
+
+> 不确定装好了没有？装完插件后运行 `/wukong-animation:setup`，它会帮你逐项检查，并告诉你还缺什么、怎么装。
+
 ## 安装
 
-在 Claude Code 里：
+打开 Claude Code，依次输入下面三行（每行回车一次）：
 
 ```
 /plugin marketplace add wukongnotnull/wukong-animation
@@ -16,44 +51,50 @@
 /wukong-animation:setup
 ```
 
-`setup` 会把 Chromium 和 npm 依赖装到 `~/.wukong-animation/deps/`（插件升级不会丢）。另外需要：
+- 第 1 行：添加插件来源；
+- 第 2 行：安装插件；
+- 第 3 行：下载渲染需要的浏览器内核和依赖包（放在 `~/.wukong-animation/` 里，以后升级插件不用重新下载）。
 
-| 依赖 | 必需 | 用途 |
-|---|---|---|
-| Node ≥ 20 | ✓ | 引擎 |
-| ffmpeg | ✓ | 编码、混音 |
-| git | 推荐 | 每个审片节点自动定版存档，随时回滚 |
-| `pip install fonttools brotli` | 推荐 | 中文字体子集化 |
+第一次运行 `setup` 需要下载一些文件，请耐心等它完成。
 
-字体按需下载：先试 GitHub，再试 jsDelivr。两处都连不上时，设置 `WKA_FONT_MIRROR` 指向一个与 [google/fonts](https://github.com/google/fonts) 同结构的镜像根地址，会最先尝试它。
-| edge-tts / kokoro | 可选 | AI 配音（VO） |
+## 拍你的第一支片
 
-## 用法
+在 Claude Code 里输入：
 
 ```
 /wukong-animation:film 一个关于秋天离别的水墨短片，20 秒
 ```
 
-导演（`director` skill）会带你走完 12 道工序，在 8 个审片节点停下来等你签批：
+后面的话换成你自己的故事就行。没想好也可以只输入 `/wukong-animation:film`，Claude 会先问你想拍什么。
 
-| # | 工序 | 审片节点 |
+### 整个过程是什么样的
+
+Claude 会带你走一遍完整的制作流程，在下面 8 个节点停下来等你确认：
+
+| 节点 | 你会看到什么 | 你要做什么 |
 |---|---|---|
-| 1 | 制作环境 · 工程初始化 · 恢复在制项目 | |
-| 2 | 制作简报 | |
-| 3 | 美术定调 | ① 美术定调 |
-| 4 | 文学脚本撰写 | ② 文学脚本 |
-| 5 | 分镜脚本 | ③ 分镜 |
-| 6 | VO 素材来源 | ④ VO 素材来源 |
-| 7 | 声轨制作 | ⑤ 声轨审听 |
-| 8 | 风格帧与动态分镜 | ⑥ 风格帧与动态分镜 |
-| 9 | 镜头制作 | |
-| 10 | 小样渲染与技术质检（量化检测 + 目视审片） | ⑦ 小样 |
-| 11 | 终版渲染与终混 | |
-| 12 | 终检与交付 | ⑧ 终审 |
+| ① 美术定调 | 几套画风方案 | 选一套 |
+| ② 文学脚本 | 故事脚本 | 看内容对不对味 |
+| ③ 分镜 | 每个镜头拍什么、多长 | 看节奏和镜头安排 |
+| ④ 旁白来源 | 询问用你的录音还是 AI 配音 | 选一种；用自己的录音就把文件交给 Claude |
+| ⑤ 声轨 | 旁白 + 配乐的试听 | 听一听 |
+| ⑥ 风格帧与动态分镜 | 每个镜头的关键画面，以及一段粗略的预览视频 | 看画面和声画是否对得上 |
+| ⑦ 小样 | 低清版完整短片 | 看整体效果 |
+| ⑧ 终审 | 高清成片 | 确认交付 |
 
-其他命令：`/wukong-animation:styles`（看 72 变）、`/wukong-animation:setup`。
+在任何一个节点，你都可以直接说出修改意见，比如"第二个镜头再慢一点""山的颜色淡一些"，Claude 会改好再给你看。
 
-## 72 变
+### 成片在哪里
+
+所有作品都存在你当前所在目录下的 `films/<片名>/` 文件夹里，成片是其中的 `.mp4` 文件。
+
+### 做到一半关掉了怎么办
+
+没关系。下次在**同一个目录**里再输入 `/wukong-animation:film`，Claude 会发现在制的片子，问你是接着做还是新开一支。
+
+## 72 种风格
+
+目前已经可以使用的是**加粗**的风格，其余正在陆续制作中。
 
 <!-- gallery -->
 | 分类 | 风格（加粗 = 已可用） |
@@ -68,30 +109,34 @@
 | 信息叙事 | 数据可视化 · 产品发布 · 科普讲解 · 地图路线 · 时间线 · 白板讲解 · 发布会 Keynote · 纪录片字幕 · 竖屏短视频 |
 <!-- /gallery -->
 
-## 它是怎么工作的
+想看每种风格适合拍什么，输入 `/wukong-animation:styles`；也可以带上关键词让它推荐，比如 `/wukong-animation:styles 古诗`。
 
-```
-plugin/
-├── skills/
-│   ├── director/        总导演：12 步流程（所有风格共用）
-│   ├── new-style/       自定义风格向导
-│   └── ink-wash/ …      每种风格一个 skill：STYLE.md 美学 · TECH.md 技术 · style.json 声明 · scripts 积木
-├── commands/            /wukong-animation:film · styles · setup
-└── engine/              渲染引擎
-    ├── core/            注册表 · 解析 · 任务 · 缓存 · 字体 · QA · 进度
-    ├── runtime/         页面运行时：帧时钟 · 种子随机 · 噪声 · 缓动 · 时间轴
-    ├── pipelines/       插槽① 出片管线：browser（可用）· manim · remotion（规划中）
-    ├── kits/            插槽② 工具包：canvas2d · webgl（可用）· pixel · three · svg-gsap · d3 · film-post（规划中）
-    └── exporters/       插槽③ 导出：mp4 · gif · png-seq
-```
+库里没有你想要的风格？直接跟 Claude 说"帮我新建一个风格"，它会引导你做一个属于自己的风格，以后可以反复使用。
 
-- **风格只管"画成什么样"**，制作管线只在 director 里，72 个风格共用一套。
-- **插槽式扩展**：新增一条管线 / 一个工具包 / 一种导出格式 = 新建一个目录，引擎自动注册，核心代码不用改。
-- **确定性**：镜头的 `render(ctx, t, s)` 是 t 的纯函数，随机数全部带种子 —— 同一份源码永远渲染出同一部片，可以按镜头缓存、并行、只重渲改动的那一镜。
-- **声画同步**：声音先行，VO 先录制或合成，实测入出点写成"声音同步点"，画面按同步点对位。
-- **量化质检（QC）**：`wka qc` 逐帧量留白、点缀色、帧差、硬切，阈值写在每个风格的 `style.json` 里。
+## 常用命令
 
-详见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；制作流程见 [docs/workflow/v1.0.0.md](docs/workflow/v1.0.0.md)（当前 v1.0.0）。想贡献新风格，看 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)。
+| 命令 | 作用 |
+|---|---|
+| `/wukong-animation:film [故事]` | 开拍一支新片，或继续在制的片子 |
+| `/wukong-animation:styles [关键词]` | 查看所有风格，或按关键词推荐 |
+| `/wukong-animation:setup` | 安装 / 检查运行环境 |
+
+## 常见问题
+
+**需要会写代码吗？**
+不需要。代码由 Claude 来写，你只负责讲故事和提意见。
+
+**会用到 AI 视频生成吗？**
+不会。所有画面都是代码一帧一帧绘制的，所以同一份工程每次渲染出来的结果完全一样，改一个镜头也只需要重新渲染那一个镜头。
+
+**字体下载失败怎么办？**
+字体会自动从 GitHub 或 jsDelivr 下载。如果两个都连不上，可以设置环境变量 `WKA_FONT_MIRROR`，指向一个与 [google/fonts](https://github.com/google/fonts) 目录结构相同的镜像地址。
+
+**想要竖屏视频？**
+在开拍时告诉 Claude "做成竖屏（9:16）"即可。
+
+**做出来的片子版权归谁？**
+归你。
 
 ## 许可
 
@@ -99,6 +144,10 @@ plugin/
 - 示范片、风格帧：CC BY 4.0（见 `LICENSE-MEDIA`）
 - 你用 wukong-animation 做的片子归你所有
 
----
+## 开发者与贡献者
 
-**English** — wukong-animation is a Claude Code plugin with a library of animation styles (72 planned, 1 shipped: Chinese ink wash). Claude directs a short film from your story and renders every frame with code — Canvas 2D, WebGL and ffmpeg — no video model involved. Install with `/plugin marketplace add wukongnotnull/wukong-animation`, then run `/wukong-animation:setup` and `/wukong-animation:film <your story>`.
+想了解实现原理或参与贡献：
+
+- 架构说明：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- 完整制作流程（12 道工序）：[docs/workflow/v1.0.0.md](docs/workflow/v1.0.0.md)
+- 贡献新风格：[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)

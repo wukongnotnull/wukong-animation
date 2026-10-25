@@ -1,0 +1,9 @@
+{
+  "name": "d3",
+  "version": "0.0.1",
+  "description": "D3：比例尺、地图投影、数据驱动转场，时间完全由 t 驱动。依赖 d3。",
+  "entry": "index.js",
+  "status": "planned",
+  "kits": {},
+  "libs": ["d3"]
+}

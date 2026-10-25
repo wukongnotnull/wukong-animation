@@ -1,0 +1,9 @@
+{
+  "name": "three",
+  "version": "0.0.1",
+  "description": "Three.js 场景模板：正交 / 等距相机、卡通材质、低多边形与体素工具。依赖 three。",
+  "entry": "index.js",
+  "status": "planned",
+  "kits": {},
+  "libs": ["three"]
+}

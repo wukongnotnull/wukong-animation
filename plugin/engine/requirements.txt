@@ -1,0 +1,4 @@
+# 可选依赖：只有用到对应功能时才需要安装（wka setup 会按需提示）
+fonttools>=4.40     # 字体子集化（中文字体体积大，强烈建议）
+brotli>=1.0         # 输出 woff2 子集
+# manim>=0.18       # manim 管线（planned）

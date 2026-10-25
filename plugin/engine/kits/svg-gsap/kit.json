@@ -1,0 +1,9 @@
+{
+  "name": "svg-gsap",
+  "version": "0.0.1",
+  "description": "SVG + GSAP：可 seek 的时间轴、文字拆分动画、矢量排版。依赖 gsap。",
+  "entry": "index.js",
+  "status": "planned",
+  "kits": {},
+  "libs": ["gsap"]
+}

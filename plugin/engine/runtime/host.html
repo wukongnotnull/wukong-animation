@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- 宿主页模板：管线把 {{...}} 替换掉后写入 .cache/work/host.html -->
+<style>
+{{FONT_CSS}}
+html,body{margin:0;padding:0;background:#000;overflow:hidden}
+canvas{display:block}
+</style>
+<script>window.__WK_CONFIG = {{CONFIG}};</script>
+</head>
+<body>
+<canvas id="c" width="{{W}}" height="{{H}}"></canvas>
+<!-- 运行时、工具包、风格脚本、片内公共脚本由管线按顺序注入 -->
+{{SCRIPTS}}
+</body>
+</html>

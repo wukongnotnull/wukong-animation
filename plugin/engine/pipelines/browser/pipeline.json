@@ -1,0 +1,8 @@
+{
+  "name": "browser",
+  "version": "0.1.0",
+  "description": "无头 Chromium 打开宿主页，逐帧调用镜头的 render(ctx, t, s)，截帧后交给 ffmpeg 编码。覆盖 Canvas 2D / WebGL / Three.js / SVG / D3 类风格。",
+  "entry": "index.mjs",
+  "status": "stable",
+  "requires": ["ffmpeg", "playwright", "chromium"]
+}

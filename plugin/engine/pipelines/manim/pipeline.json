@@ -1,0 +1,9 @@
+{
+  "name": "manim",
+  "version": "0.0.1",
+  "description": "调用 Manim（Python）渲染数学 / 科普类镜头，直接输出视频片段。",
+  "entry": "index.mjs",
+  "status": "planned",
+  "requires": ["python3", "manim", "ffmpeg"],
+  "optional": true
+}

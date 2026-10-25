@@ -1,0 +1,9 @@
+{
+  "name": "canvas2d",
+  "version": "0.1.0",
+  "description": "Canvas 2D 手绘类基础件：纸张、离屏缓存、带粗细与飞白的毛笔笔触、晕染面、雾带、竖排题字、印章。",
+  "entry": "index.js",
+  "status": "stable",
+  "kits": {},
+  "libs": []
+}

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wukong-animation/style.schema.json",
+  "title": "wukong-animation style.json",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "category",
+    "order",
+    "engine",
+    "pipeline",
+    "kits",
+    "fps",
+    "keywords"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string"
+    },
+    "name_en": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "dongfang",
+        "shouhui",
+        "pingmian",
+        "katong",
+        "youxi",
+        "dianying",
+        "caizhi",
+        "xinxi",
+        "custom"
+      ]
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 999
+    },
+    "engine": {
+      "type": "string",
+      "pattern": "^(>=|\\^|~)?\\d+\\.\\d+\\.\\d+$"
+    },
+    "pipeline": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "kits": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^(>=|\\^|~)?\\d+\\.\\d+(\\.\\d+)?$"
+      }
+    },
+    "libs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scripts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "family"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "fallback": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "fps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120
+    },
+    "aspects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:5",
+          "2.39:1"
+        ]
+      }
+    },
+    "post": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "qc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "whitespace_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "paper": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "paper_tol": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "accent_tol": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "accent_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "diff_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "cuts_max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skip_start": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

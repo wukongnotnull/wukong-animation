@@ -1,0 +1,8 @@
+{
+  "name": "mp4",
+  "version": "0.1.0",
+  "description": "H.264 + AAC 的 MP4，yuv420p、faststart，各平台通用。",
+  "entry": "index.mjs",
+  "ext": "mp4",
+  "status": "stable"
+}

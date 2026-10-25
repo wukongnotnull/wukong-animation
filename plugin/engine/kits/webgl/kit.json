@@ -1,0 +1,9 @@
+{
+  "name": "webgl",
+  "version": "0.1.0",
+  "description": "WebGL 全屏 shader 宿主：编译缓存、全屏 quad、uniform 传参、内置 GLSL 噪声片段；结果是一张可 drawImage 到 2D 画布的离屏 canvas。",
+  "entry": "index.js",
+  "status": "stable",
+  "kits": {},
+  "libs": []
+}

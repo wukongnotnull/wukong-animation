@@ -1,0 +1,19 @@
+{
+  "$schema": "../../engine/schemas/style.schema.json",
+  "id": "__ID__",
+  "name": "__NAME__",
+  "name_en": "",
+  "category": "__CATEGORY__",
+  "order": __ORDER__,
+  "engine": ">=0.1.0",
+  "pipeline": "browser",
+  "kits": { "canvas2d": "^0.1" },
+  "libs": [],
+  "scripts": ["scripts/style.js"],
+  "fonts": [],
+  "fps": 30,
+  "aspects": ["16:9", "9:16"],
+  "post": [],
+  "keywords": ["__NAME__"],
+  "qa": { "diff_max": 30, "cuts_max": 4 }
+}

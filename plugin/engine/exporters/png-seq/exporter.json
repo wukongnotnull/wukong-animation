@@ -1,0 +1,8 @@
+{
+  "name": "png-seq",
+  "version": "0.1.0",
+  "description": "PNG 序列帧（输出到 <name>-frames/ 目录），便于导入剪辑软件或做后期。",
+  "entry": "index.mjs",
+  "ext": "frames",
+  "status": "stable"
+}

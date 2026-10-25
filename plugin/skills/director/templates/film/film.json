@@ -1,0 +1,17 @@
+{
+  "title": "未命名",
+  "style": "ink-wash",
+  "size": [1920, 1080],
+  "fps": 30,
+  "seed": 72,
+  "scripts": [],
+  "shots": [
+    { "id": "s01", "file": "shots/s01.js", "duration": 4, "note": "开场" }
+  ],
+  "audio": {
+    "build": "audio/build.mjs",
+    "voiceover": [],
+    "tracks": []
+  },
+  "export": { "formats": ["mp4"], "name": "out" }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wukong-animation/kit.schema.json",
+  "title": "wukong-animation kit.json",
+  "type": "object",
+  "required": ["name", "version", "description", "entry", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "description": { "type": "string" },
+    "entry": { "type": "string" },
+    "status": { "type": "string", "enum": ["stable", "experimental", "planned"] },
+    "kits": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "libs": { "type": "array", "items": { "type": "string" } }
+  }
+}

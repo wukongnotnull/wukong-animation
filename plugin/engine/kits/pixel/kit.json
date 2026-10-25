@@ -1,0 +1,9 @@
+{
+  "name": "pixel",
+  "version": "0.0.1",
+  "description": "像素类：低分辨率缓冲、限色调色板、最近邻放大、抖动（dithering）。",
+  "entry": "index.js",
+  "status": "planned",
+  "kits": {},
+  "libs": []
+}

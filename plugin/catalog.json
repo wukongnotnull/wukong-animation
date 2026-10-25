@@ -1,0 +1,934 @@
+{
+  "_generated": "由 tools/build-catalog.mjs 生成，请勿手改",
+  "progress": {
+    "done": 1,
+    "total": 72
+  },
+  "categories": {
+    "dongfang": "东方神韵",
+    "shouhui": "手绘绘画",
+    "pingmian": "平面排版",
+    "katong": "卡通漫画",
+    "youxi": "游戏数字",
+    "dianying": "电影年代",
+    "caizhi": "材质 3D",
+    "xinxi": "信息叙事"
+  },
+  "styles": [
+    {
+      "id": "ink-wash",
+      "order": 1,
+      "name": "水墨写意",
+      "name_en": "Chinese Ink Wash",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "available",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "webgl"
+      ],
+      "keywords": [
+        "水墨",
+        "国风",
+        "山水",
+        "写意",
+        "留白",
+        "题字",
+        "印章",
+        "诗意",
+        "ink",
+        "chinese painting"
+      ],
+      "best_for": [
+        "诗意短片",
+        "品牌片头",
+        "人文叙事",
+        "节气 / 节日",
+        "慢节奏画外音"
+      ],
+      "skill": "skills/ink-wash",
+      "examples": [
+        "skills/ink-wash/examples/hanjiang"
+      ],
+      "still": null
+    },
+    {
+      "id": "gongbi",
+      "order": 2,
+      "name": "工笔重彩",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "dunhuang",
+      "order": 3,
+      "name": "敦煌壁画",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "webgl"
+      ]
+    },
+    {
+      "id": "shadow-puppet",
+      "order": 4,
+      "name": "皮影戏",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "rig2d"
+      ]
+    },
+    {
+      "id": "paper-cut",
+      "order": 5,
+      "name": "剪纸",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "nianhua",
+      "order": 6,
+      "name": "木版年画",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "blue-white",
+      "order": 7,
+      "name": "青花瓷",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "webgl"
+      ]
+    },
+    {
+      "id": "zoumadeng",
+      "order": 8,
+      "name": "走马灯",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "calligraphy",
+      "order": 9,
+      "name": "书法笔势",
+      "category": "dongfang",
+      "categoryName": "东方神韵",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "glyph"
+      ]
+    },
+    {
+      "id": "pencil-sketch",
+      "order": 10,
+      "name": "铅笔速写",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "watercolor",
+      "order": 11,
+      "name": "水彩晕染",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl",
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "impasto",
+      "order": 12,
+      "name": "油画厚涂",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "crayon",
+      "order": 13,
+      "name": "蜡笔童趣",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "chalkboard",
+      "order": 14,
+      "name": "粉笔黑板",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "charcoal",
+      "order": 15,
+      "name": "炭笔素描",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "pointillism",
+      "order": 16,
+      "name": "点彩派",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "ukiyo-e",
+      "order": 17,
+      "name": "浮世绘",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "palette"
+      ]
+    },
+    {
+      "id": "screen-print",
+      "order": 18,
+      "name": "丝网版画",
+      "category": "shouhui",
+      "categoryName": "手绘绘画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "film-post"
+      ]
+    },
+    {
+      "id": "swiss",
+      "order": 19,
+      "name": "瑞士国际主义",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "bauhaus",
+      "order": 20,
+      "name": "包豪斯几何",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "kinetic-type",
+      "order": 21,
+      "name": "动态字体",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap",
+        "glyph"
+      ]
+    },
+    {
+      "id": "constructivism",
+      "order": 22,
+      "name": "构成主义海报",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "memphis",
+      "order": 23,
+      "name": "孟菲斯",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap",
+        "morph"
+      ]
+    },
+    {
+      "id": "minimal-line",
+      "order": 24,
+      "name": "极简线条",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "collage",
+      "order": 25,
+      "name": "拼贴",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "magazine",
+      "order": 26,
+      "name": "杂志版式",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "neon-sign",
+      "order": 27,
+      "name": "霓虹招牌",
+      "category": "pingmian",
+      "categoryName": "平面排版",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl",
+        "film-post"
+      ]
+    },
+    {
+      "id": "cel",
+      "order": 28,
+      "name": "赛璐璐动画",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "chibi",
+      "order": 29,
+      "name": "Q 版萌系",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "rig2d"
+      ]
+    },
+    {
+      "id": "rubber-hose",
+      "order": 30,
+      "name": "橡皮管卡通",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "rig2d"
+      ]
+    },
+    {
+      "id": "comic-panels",
+      "order": 31,
+      "name": "漫画分镜",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "lianhuanhua",
+      "order": 32,
+      "name": "小人书连环画",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "sticker",
+      "order": 33,
+      "name": "表情包贴纸",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "stick-figure",
+      "order": 34,
+      "name": "火柴人",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "rig2d"
+      ]
+    },
+    {
+      "id": "claymation",
+      "order": 35,
+      "name": "黏土定格",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "paper-puppet",
+      "order": 36,
+      "name": "纸偶动画",
+      "category": "katong",
+      "categoryName": "卡通漫画",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "rig2d"
+      ]
+    },
+    {
+      "id": "8bit",
+      "order": 37,
+      "name": "8-bit 像素",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "pixel"
+      ]
+    },
+    {
+      "id": "16bit-rpg",
+      "order": 38,
+      "name": "16-bit RPG",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "pixel"
+      ]
+    },
+    {
+      "id": "isometric",
+      "order": 39,
+      "name": "等距视角",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "low-poly",
+      "order": 40,
+      "name": "低多边形",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "voxel",
+      "order": 41,
+      "name": "体素",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "cyber-hud",
+      "order": 42,
+      "name": "赛博朋克 HUD",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap",
+        "webgl"
+      ]
+    },
+    {
+      "id": "arcade-crt",
+      "order": 43,
+      "name": "复古街机 CRT",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "pixel",
+        "film-post"
+      ]
+    },
+    {
+      "id": "ascii-rain",
+      "order": 44,
+      "name": "ASCII 代码雨",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "vaporwave",
+      "order": 45,
+      "name": "蒸汽波",
+      "category": "youxi",
+      "categoryName": "游戏数字",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl",
+        "film-post"
+      ]
+    },
+    {
+      "id": "silent-film",
+      "order": 46,
+      "name": "黑白默片",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "film-post"
+      ]
+    },
+    {
+      "id": "film-70s",
+      "order": 47,
+      "name": "70 年代胶片",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "film-post"
+      ]
+    },
+    {
+      "id": "noir",
+      "order": 48,
+      "name": "黑色电影",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three",
+        "film-post"
+      ]
+    },
+    {
+      "id": "hk-neon",
+      "order": 49,
+      "name": "90 年代港片霓虹",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three",
+        "film-post"
+      ]
+    },
+    {
+      "id": "western",
+      "order": 50,
+      "name": "西部宽银幕",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "film-post"
+      ]
+    },
+    {
+      "id": "newsreel",
+      "order": 51,
+      "name": "老新闻片",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "film-post"
+      ]
+    },
+    {
+      "id": "wuxia",
+      "order": 52,
+      "name": "武侠片",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d",
+        "webgl",
+        "film-post"
+      ]
+    },
+    {
+      "id": "scifi-title",
+      "order": 53,
+      "name": "科幻片头",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three",
+        "film-post"
+      ]
+    },
+    {
+      "id": "road-movie",
+      "order": 54,
+      "name": "公路片",
+      "category": "dianying",
+      "categoryName": "电影年代",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three",
+        "film-post"
+      ]
+    },
+    {
+      "id": "glass",
+      "order": 55,
+      "name": "玻璃折射",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "liquid-metal",
+      "order": 56,
+      "name": "液态金属",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "felt",
+      "order": 57,
+      "name": "毛毡",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "origami",
+      "order": 58,
+      "name": "折纸",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three"
+      ]
+    },
+    {
+      "id": "particles",
+      "order": 59,
+      "name": "粒子",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl",
+        "particles"
+      ]
+    },
+    {
+      "id": "fluid",
+      "order": 60,
+      "name": "流体",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "raymarch",
+      "order": 61,
+      "name": "光线行进抽象",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "crystal",
+      "order": 62,
+      "name": "晶体宝石",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "webgl"
+      ]
+    },
+    {
+      "id": "bricks",
+      "order": 63,
+      "name": "积木",
+      "category": "caizhi",
+      "categoryName": "材质 3D",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "three",
+        "physics"
+      ]
+    },
+    {
+      "id": "data-viz",
+      "order": 64,
+      "name": "数据可视化",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "d3",
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "product-launch",
+      "order": 65,
+      "name": "产品发布",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap",
+        "beat"
+      ]
+    },
+    {
+      "id": "explainer",
+      "order": 66,
+      "name": "科普讲解",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "manim",
+      "kits": []
+    },
+    {
+      "id": "map-route",
+      "order": 67,
+      "name": "地图路线",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "d3",
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "timeline",
+      "order": 68,
+      "name": "时间线",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "d3",
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "whiteboard",
+      "order": 69,
+      "name": "白板讲解",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "canvas2d"
+      ]
+    },
+    {
+      "id": "keynote",
+      "order": 70,
+      "name": "发布会 Keynote",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "browser",
+      "kits": [
+        "svg-gsap"
+      ]
+    },
+    {
+      "id": "doc-subtitle",
+      "order": 71,
+      "name": "纪录片字幕",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "remotion",
+      "kits": []
+    },
+    {
+      "id": "vertical-short",
+      "order": 72,
+      "name": "竖屏短视频",
+      "category": "xinxi",
+      "categoryName": "信息叙事",
+      "status": "planned",
+      "pipeline": "remotion",
+      "kits": []
+    }
+  ]
+}

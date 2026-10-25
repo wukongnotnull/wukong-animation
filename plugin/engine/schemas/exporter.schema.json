@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wukong-animation/exporter.schema.json",
+  "title": "wukong-animation exporter.json",
+  "type": "object",
+  "required": ["name", "version", "description", "entry", "ext", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "description": { "type": "string" },
+    "entry": { "type": "string" },
+    "ext": { "type": "string" },
+    "status": { "type": "string", "enum": ["stable", "experimental", "planned"] }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "title": "寒江",
+  "style": "ink-wash",
+  "size": [1920, 1080],
+  "fps": 30,
+  "seed": 72,
+  "scripts": ["shots/common.js"],
+  "shots": [
+    { "id": "s01", "file": "shots/s01.js", "duration": 4, "note": "远山淡入，近岸墨石晕开" },
+    { "id": "s02", "file": "shots/s02.js", "duration": 4, "note": "水纹写出，一叶小舟" },
+    { "id": "s03", "file": "shots/s03.js", "duration": 4, "note": "题字，落印" }
+  ],
+  "audio": {
+    "build": "audio/build.mjs",
+    "voiceover": [],
+    "tracks": []
+  },
+  "export": { "formats": ["mp4"], "name": "hanjiang" }
+}

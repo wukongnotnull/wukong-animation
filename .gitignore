@@ -1,0 +1,10 @@
+node_modules/
+films/
+frames/
+.cache/
+*.mp4
+*.mov
+*.webm
+!docs/gallery/*.gif
+.DS_Store
+tests/smoke/out/

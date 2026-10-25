@@ -1,0 +1,8 @@
+{
+  "name": "gif",
+  "version": "0.1.0",
+  "description": "调色板优化的 GIF（宽 640、12fps），适合 README 和社交平台预览。",
+  "entry": "index.mjs",
+  "ext": "gif",
+  "status": "stable"
+}

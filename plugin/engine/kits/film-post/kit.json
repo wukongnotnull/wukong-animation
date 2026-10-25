@@ -1,0 +1,9 @@
+{
+  "name": "film-post",
+  "version": "0.0.1",
+  "description": "通用后期：胶片颗粒、LUT 调色、遮幅、暗角、CRT 扫描线、bloom。",
+  "entry": "index.js",
+  "status": "planned",
+  "kits": {},
+  "libs": []
+}

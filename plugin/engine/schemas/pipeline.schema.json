@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wukong-animation/pipeline.schema.json",
+  "title": "wukong-animation pipeline.json",
+  "type": "object",
+  "required": ["name", "version", "description", "entry", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "description": { "type": "string" },
+    "entry": { "type": "string" },
+    "status": { "type": "string", "enum": ["stable", "experimental", "planned"] },
+    "requires": { "type": "array", "items": { "type": "string" } },
+    "optional": { "type": "boolean" }
+  }
+}

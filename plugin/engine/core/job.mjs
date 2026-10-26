@@ -79,7 +79,7 @@ function shotHash(job, shot) {
     { file: shot.path },
     { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id },
     job.fonts.css,
-    // 只算本镜（及公共脚本）用到的 cue：改一句 VO 不会让无关镜头重渲
+    // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
   ]);
 }

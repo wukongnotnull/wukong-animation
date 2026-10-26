@@ -1,4 +1,4 @@
-// AI 配音（TTS）：按顺序尝试已安装的引擎，全部不可用时返回 null（片子照样能出，只是没有 VO）。
+// AI 配音（TTS）：按顺序尝试已安装的引擎，全部不可用时返回 null（片子照样能出，只是没有 AI 人声）。
 // 生成后用 ffprobe 量出每句真实时长 —— director 用它回填分镜时长（"先定声音，再定画面"）。
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -35,7 +35,7 @@ export function voFileName(engine, voice, text) {
 }
 
 /**
- * 合成 AI 配音（VO），按句缓存。
+ * 合成 AI 配音，按句缓存。
  * 联网引擎（edge-tts）每次合成的时长会有细微出入；不缓存的话声音同步点会跟着变，
  * 进而让所有镜头的缓存失效。所以只有文本或音色改了的句子才重新合成。
  * @param {{text:string, at:number, voice?:string}[]} lines

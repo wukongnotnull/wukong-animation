@@ -11,7 +11,7 @@
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy]   静帧 + 接触表
 //   wka animatic <片目录> [--proxy]   动态分镜：关键帧按镜头时长排成粗片并配上声轨
 //   wka render <片目录> [--proxy] [--only s01,s03] [--force]   渲染（--proxy 为小样）
-//   wka soundtrack <片目录>           声轨制作：配乐 + VO，写入声音同步点
+//   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点
 //   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif]   终版渲染与终混
 import fs from 'node:fs';
 import path from 'node:path';
@@ -144,7 +144,7 @@ function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
 }
 
 async function cmdFinal(filmDir, o) {
-  // 先混音：VO 会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
+  // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
   const audio = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
   const { video } = await render(filmDir, o);
   const formats = o.formats ? String(o.formats).split(',') : null;

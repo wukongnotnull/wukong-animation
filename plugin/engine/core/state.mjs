@@ -10,7 +10,7 @@ export const PRODUCTION_STEPS = {
   3: '美术定调',
   4: '文学脚本撰写',
   5: '分镜脚本',
-  6: 'VO 素材来源',
+  6: '人声素材来源',
   7: '声轨制作',
   8: '风格帧与动态分镜',
   9: '镜头制作',
@@ -19,7 +19,7 @@ export const PRODUCTION_STEPS = {
   12: '终检与交付',
 };
 /** 审片节点所在的工序 */
-export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④VO 素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 12: '⑧终审' };
+export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 12: '⑧终审' };
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 

@@ -28,7 +28,7 @@ function fakeEngine({ failOn = null } = {}) {
 const quiet = () => {};
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'wka-vo-'));
 
-test('reuses VO lines whose text and voice have not changed', () => {
+test('reuses voice lines whose text and voice have not changed', () => {
   const dir = tmp();
   const lines = [{ text: '孤舟蓑笠翁', at: 0 }, { text: '独钓寒江雪', at: 2 }];
   const e1 = fakeEngine();

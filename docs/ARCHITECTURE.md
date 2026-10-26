@@ -23,7 +23,7 @@ wukong-animation/                          # GitHub 仓库
 ├── templates/style-skill/         # 新风格模板
 ├── tools/                         # 维护脚本（不分发）
 ├── tests/smoke/                   # 冒烟测试 + 基准图（按平台分目录）
-├── tests/unit/ tests/integration/ # node --test：cue 解析、VO 缓存、渲染失败清理
+├── tests/unit/ tests/integration/ # node --test：cue 解析、AI 配音缓存、渲染失败清理
 ├── docs/                          # 画廊、本文件、贡献指南
 └── .github/workflows/             # lint · smoke
 ```

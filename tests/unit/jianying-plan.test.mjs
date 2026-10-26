@@ -28,16 +28,30 @@ test('lays shots end to end in microseconds, named by shot id', () => {
   ]);
 });
 
-test('puts every voice file on a single 人声 track', () => {
+test('puts non-overlapping voices on a single 人声 track, each as long as its audio', () => {
   const p = buildDraftPlan(timeline({
     tracks: [
-      { role: 'voice', file: '/a/vo1.wav', start: 0.5, gain: 2 },
-      { role: 'voice', file: '/a/vo2.wav', start: 3, gain: 2 },
+      { role: 'voice', file: '/a/vo1.wav', start: 0.5, duration: 1.2, gain: 2 },
+      { role: 'voice', file: '/a/vo2.wav', start: 3, duration: 1, gain: 2 },
     ],
   }));
   assert.equal(p.audioTracks.length, 1);
   assert.equal(p.audioTracks[0].name, '人声');
-  assert.deepEqual(p.audioTracks[0].segments.map((s) => [s.file, s.start]), [['/a/vo1.wav', 500_000], ['/a/vo2.wav', 3_000_000]]);
+  assert.deepEqual(p.audioTracks[0].segments.map((s) => [s.file, s.start, s.maxDuration]), [['/a/vo1.wav', 500_000, 1_200_000], ['/a/vo2.wav', 3_000_000, 1_000_000]]);
+});
+
+test('moves an overlapping voice to a second 人声 track and reuses the first when free', () => {
+  const p = buildDraftPlan(timeline({
+    tracks: [
+      { role: 'voice', file: '/a/vo1.wav', start: 0, duration: 2, gain: 2 },
+      { role: 'voice', file: '/a/vo2.wav', start: 1.5, duration: 1, gain: 2 },
+      { role: 'voice', file: '/a/vo3.wav', start: 2, duration: 1, gain: 2 },
+    ],
+  }));
+  assert.deepEqual(p.audioTracks.map((t) => [t.name, t.segments.map((s) => s.file)]), [
+    ['人声', ['/a/vo1.wav', '/a/vo3.wav']],
+    ['人声 2', ['/a/vo2.wav']],
+  ]);
 });
 
 test('gives each build and user track its own track named after the file', () => {
@@ -119,8 +133,21 @@ test('makes one subtitle per voice with its timing and estimate flag', () => {
       { text: '第二句', at: 3, duration: 1, estimated: true },
     ],
   }));
-  assert.deepEqual(p.subtitles, [
-    { text: '第一句', start: 500_000, duration: 1_200_000, estimated: false },
-    { text: '第二句', start: 3_000_000, duration: 1_000_000, estimated: true },
-  ]);
+  assert.deepEqual(p.subtitleTracks, [{
+    name: '字幕',
+    segments: [
+      { text: '第一句', start: 500_000, duration: 1_200_000, estimated: false },
+      { text: '第二句', start: 3_000_000, duration: 1_000_000, estimated: true },
+    ],
+  }]);
+});
+
+test('moves an overlapping subtitle to a second 字幕 track', () => {
+  const p = buildDraftPlan(timeline({
+    voices: [
+      { text: '甲', at: 0, duration: 2 },
+      { text: '乙', at: 1, duration: 1 },
+    ],
+  }));
+  assert.deepEqual(p.subtitleTracks.map((t) => [t.name, t.segments.map((s) => s.text)]), [['字幕', ['甲']], ['字幕 2', ['乙']]]);
 });

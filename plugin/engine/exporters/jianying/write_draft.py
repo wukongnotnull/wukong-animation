@@ -29,7 +29,7 @@ def add(script: draft.ScriptFile, segment: object, track: str | None, what: str)
         script.add_segment(segment, track)
     except SegmentOverlap:
         start = segment.target_timerange.start / 1e6
-        raise SystemExit(f"{what}在 {start:.2f}s 处与前一段重叠，同一条轨上放不下；请调整 film.json 里人声的 at") from None
+        raise SystemExit(f"{what}在 {start:.2f}s 处与同一条轨上的前一段重叠") from None
 
 
 def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
@@ -56,10 +56,10 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
             segment = draft.AudioSegment(material, Timerange(s["start"], duration), source_timerange=Timerange(s["sourceStart"], duration), volume=s["volume"])
             add(script, segment, t["name"], f"音轨「{t['name']}」")
 
-    if plan["subtitles"]:
-        script.append_track(TrackSpec(TrackType.text))
-        for s in plan["subtitles"]:
-            add(script, draft.TextSegment(s["text"], Timerange(s["start"], s["duration"])), None, f"字幕「{s['text']}」")
+    for t in plan["subtitleTracks"]:
+        script.append_track(TrackSpec(TrackType.text, t["name"]))
+        for s in t["segments"]:
+            add(script, draft.TextSegment(s["text"], Timerange(s["start"], s["duration"])), t["name"], f"字幕「{s['text']}」")
 
 
 def main() -> None:

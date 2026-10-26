@@ -43,7 +43,7 @@ export async function encodeOutput({ out, proxy, timeline }) {
   const r = spawnSync('python3', [path.join(HERE, 'write_draft.py'), planFile, root], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`写剪映草稿失败：\n${(r.stderr || r.error?.message || '').trim()}`);
 
-  const estimated = plan.subtitles.filter((s) => s.estimated).map((s) => `「${s.text}」`);
+  const estimated = plan.subtitleTracks.flatMap((t) => t.segments).filter((s) => s.estimated).map((s) => `「${s.text}」`);
   if (estimated.length) console.log(`  ! 以下字幕没有人声音频，时长为估算值：${estimated.join('、')}`);
   console.log('  · 草稿未做响度标准化和结尾淡出，请在剪映里用「响度统一」和淡出处理');
   console.log('  · 剪映里看不到新草稿时，重启剪映');

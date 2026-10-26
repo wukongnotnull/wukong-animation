@@ -58,7 +58,7 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
             pipeline.renderShots(job, todo)   ← browser：Chromium 逐帧 seek → JPEG → ffmpeg
                                 │
                                 ▼
-               concat ──► mix(audio/build.mjs + TTS + tracks) ──► exporter(mp4/gif/…)
+               concat ──► mix(audio/build.mjs + TTS + tracks) ──► exporter(mp4/gif/jianying/…)
 ```
 
 镜头哈希包含：引擎版本、管线与工具包版本、运行时 / 工具包 / 风格脚本 / 公共脚本 / 镜头文件的内容、尺寸、帧率、种子、字体、本镜用到的声音同步点（按 `s.cueIn('名')` 字面量静态识别，识别不了就算全部）。任何一项变了，这一镜才会重渲。
@@ -69,7 +69,7 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 |---|---|---|---|
 | 管线 | `engine/pipelines/<名>/` | `pipeline.json` | `check()` · `renderShots(job, todo, {onDone})` · `renderStills(job, points, outDir)` |
 | 工具包 | `engine/kits/<名>/` | `kit.json` | 页面脚本，挂到 `wk.<名>`；JSDoc 生成 README |
-| 导出器 | `engine/exporters/<名>/` | `exporter.json` | `encodeOutput({video, audio, out, fps, proxy})` |
+| 导出器 | `engine/exporters/<名>/` | `exporter.json` | `encodeOutput({video, audio, out, fps, proxy, timeline})`，可返回实际产物路径 |
 
 `core/registry.mjs` 启动时扫描三个目录（跳过 `_` 开头），校验清单后注册。
 `status: planned` 的插槽会被列出，但 resolver 拒绝使用。

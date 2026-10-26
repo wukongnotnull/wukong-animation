@@ -54,6 +54,7 @@ async function cmdCheck() {
     ['ffmpeg', hasFfmpeg(), '必需：编码与混音'],
     ['git', hasGit(), '推荐：项目版本管理'],
     ['python3 + fonttools', spawnSync('python3', ['-c', 'import fontTools'], { stdio: 'ignore' }).status === 0, '推荐：中文字体子集化'],
+    ['pyJianYingDraft', spawnSync('python3', ['-c', 'import pyJianYingDraft'], { stdio: 'ignore' }).status === 0, '可选：导出剪映草稿（pip install pyJianYingDraft==0.3.1）'],
   ];
   for (const [n, ok, why] of tools) log(`  ${ok ? '✓' : '✗'} ${n.padEnd(20)} ${why}`);
   if (!tools[0][1]) bad++;

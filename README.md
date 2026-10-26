@@ -149,5 +149,5 @@ Claude 会带你走一遍完整的制作流程，在下面 8 个节点停下来�
 想了解实现原理或参与贡献：
 
 - 架构说明：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 完整制作流程（12 道工序）：[docs/workflow/v1.0.0.md](docs/workflow/v1.0.0.md)
+- 完整制作流程（12 道工序）：[docs/PRODUCTION-WORKFLOW.md](docs/PRODUCTION-WORKFLOW.md)
 - 贡献新风格：[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)

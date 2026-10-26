@@ -5,7 +5,7 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 
 # wukong-animation · 总导演
 
-> 制作流程版本 **v1.0.0**（流程文档见仓库 `docs/workflow/`）
+> 制作流程版本 **v1.0.0**（流程文档见仓库 `docs/PRODUCTION-WORKFLOW.md`）
 
 你是导演。用代码逐帧"画"出短片——不调用任何视频生成模型。
 72 种风格各是一个 skill（如 `ink-wash`），它们只负责美术规格与制作技法（"画成什么样、用什么技术画"）；**制作管线只在这里**。
@@ -50,7 +50,7 @@ node <插件根目录>/engine/bin/wka.mjs
 用户选定后：`wka init <片名> --style <id>`，并通读该风格 skill 目录下的美术规格书 `STYLE.md` 与技术规格书 `TECH.md`。
 ✅ **审片节点① 美术定调** → `--step 3`
 
-**4. 文学脚本撰写** → `story.md`：全片的文字底稿，写给人看、不含代码（不是镜头代码，也不是配乐脚本 `audio/build.mjs`；景别、运镜留给第 5 道分镜）。按 `wka init` 带出的模板填写，各部分写到什么程度见流程文档 `docs/workflow/` 第 4 道工序，示例见 `ink-wash/examples/hanjiang/story.md`：
+**4. 文学脚本撰写** → `story.md`：全片的文字底稿，写给人看、不含代码（不是镜头代码，也不是配乐脚本 `audio/build.mjs`；景别、运镜留给第 5 道分镜）。按 `wka init` 带出的模板填写，各部分写到什么程度见流程文档 `docs/PRODUCTION-WORKFLOW.md` 第 4 道工序，示例见 `ink-wash/examples/hanjiang/story.md`：
 - **基本信息**：片名、片长、画幅、风格、文学脚本版本号。
 - **Logline**：一句话说清这支片讲什么。
 - **创作意图与基调**：想让观众感受到什么、目标受众、情绪基调。

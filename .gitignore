@@ -8,3 +8,4 @@ frames/
 !docs/gallery/*.gif
 .DS_Store
 tests/smoke/out/
+__pycache__/

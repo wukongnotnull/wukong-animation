@@ -152,7 +152,7 @@ async function cmdFinal(filmDir, o) {
   // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
   const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices };
   const outs = await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats, log });
-  log(`\n完成 ✓  ${outs.map((x) => path.relative(process.cwd(), x)).join('  ')}`);
+  log(`\n完成 ✓  ${outs.map((x) => (x.startsWith(process.cwd() + path.sep) ? path.relative(process.cwd(), x) : x)).join('  ')}`);
 }
 
 async function main() {

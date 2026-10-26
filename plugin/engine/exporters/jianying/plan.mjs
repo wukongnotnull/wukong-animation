@@ -5,6 +5,12 @@ const US = 1e6;
 const VOICE_TRACK = '人声';
 const SUBTITLE_TRACK = '字幕';
 
+// 剪映用不了任意字体文件：常见书法字体换成剪映字库里免费、最接近的（pyJianYingDraft FontType 的名字）；没有对应的不设字体
+const JIANYING_FONTS = { 'Ma Shan Zheng': '古风小楷' };
+// 以下两个换算在剪映 11.6 里对着烧录字幕校过：字号 5.2 ≈ 画高 5%；描边 40 ≈ 字号 12% 的烧录描边
+const SIZE_PER_HEIGHT = 5.2 / 0.05;
+const BORDER_PER_STROKE = 40 / 0.12;
+
 const us = (sec) => Math.round(sec * US);
 const linearVolume = (db = 0) => (db ? 10 ** (db / 20) : 1);
 
@@ -72,9 +78,44 @@ function subtitleTracks(voices, srt) {
   return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(SUBTITLE_TRACK, i), segments }));
 }
 
+const round = (x, digits = 4) => +x.toFixed(digits);
+
+/** CSS 颜色（#RGB / #RRGGBB / #RRGGBBAA / rgb() / rgba()）→ { color: [r,g,b]（0–1）, alpha }。 */
+function parseColor(css) {
+  const s = String(css).trim();
+  let rgba;
+  const hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (hex) {
+    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+    rgba = [0, 2, 4, 6].map((i) => (i < h.length ? parseInt(h.slice(i, i + 2), 16) : 255));
+    rgba[3] /= 255;
+  } else {
+    const fn = s.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+    if (!fn) throw new Error(`读不懂字幕颜色「${css}」：style.json 的 subtitles 请用 #RRGGBB 或 rgba(r,g,b,a)`);
+    rgba = [+fn[1], +fn[2], +fn[3], fn[4] === undefined ? 1 : +fn[4]];
+  }
+  return { color: rgba.slice(0, 3).map((c) => round(c / 255)), alpha: round(rgba[3], 3) };
+}
+
 /**
- * @param {object} timeline { title, size:[W,H], fps, duration, shots, tracks, voices, subtitles? }
- * @returns {object} { name, width, height, fps, video, audioTracks, subtitleTracks }
+ * 字幕样式（subtitle-layer.mjs subtitleStyle() 补齐缺省值后的 style.json subtitles 块）→ 剪映文字参数。
+ * size、bottom 是画高的比例；transformY 是字幕中心的纵向位移，单位半个画高，向下为负。
+ */
+function jianyingSubtitleStyle(s) {
+  if (!s) return null;
+  const stroke = parseColor(s.stroke.color);
+  return {
+    font: JIANYING_FONTS[s.font.family] || null,
+    size: round(s.size * SIZE_PER_HEIGHT, 2),
+    ...parseColor(s.color),
+    border: { ...stroke, width: round(Math.min(100, s.stroke.width * BORDER_PER_STROKE), 2) },
+    transformY: round(-(1 - s.bottom - s.size / 2 - 0.5) * 2),
+  };
+}
+
+/**
+ * @param {object} timeline { title, size:[W,H], fps, duration, shots, tracks, voices, subtitles?, subtitleStyle? }
+ * @returns {object} { name, width, height, fps, video, audioTracks, subtitleTracks, subtitleStyle }
  */
 export function buildDraftPlan(timeline) {
   const [width, height] = timeline.size;
@@ -86,5 +127,6 @@ export function buildDraftPlan(timeline) {
     video: timeline.shots.map((s) => ({ name: s.id, file: s.file, start: us(s.start), duration: us(s.duration) })),
     audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
     subtitleTracks: subtitleTracks(timeline.voices || [], timeline.subtitles),
+    subtitleStyle: jianyingSubtitleStyle(timeline.subtitleStyle),
   };
 }

@@ -23,7 +23,7 @@ import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES } from '../core/state.mjs';
+import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 
 const argv = process.argv.slice(2);
@@ -173,7 +173,7 @@ async function main() {
     case 'signoff': {
       if (!pos[0] || !pos[1]) fail('用法：wka signoff <片目录> "<审片结论>" [--step N]');
       const step = opt('step') ? Number(opt('step')) : null;
-      if (step && !PRODUCTION_STEPS[step]) fail('--step 取 1–12');
+      if (step && !PRODUCTION_STEPS[step]) fail(`--step 取 1–${LAST_STEP}`);
       recordProgress(pos[0], { step, note: pos[1] });
       const sha = commitSnapshot(pos[0], pos[1], { log });
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
@@ -185,7 +185,7 @@ async function main() {
       if (!list.length) return log('还没有片子。用 wka init <片名> --style <id> 开始。');
       for (const f of list) {
         log(`${f.name}  《${f.title}》 ${f.style}`);
-        log(`  进度 ${f.step}/12${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
+        log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
       }
       return;

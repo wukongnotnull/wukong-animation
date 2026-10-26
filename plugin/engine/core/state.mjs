@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** 12 道工序（与 skills/director/SKILL.md 一致） */
+/** 13 道工序（与 skills/director/SKILL.md 一致） */
 export const PRODUCTION_STEPS = {
   1: '制作环境、工程初始化、恢复在制项目',
   2: '制作简报确认',
@@ -17,9 +17,12 @@ export const PRODUCTION_STEPS = {
   10: '小样渲染与技术质检',
   11: '终版渲染与终混',
   12: '终检与交付',
+  13: '剪映草稿交付',
 };
+/** 最后一道工序；签批到这里即全部完成 */
+export const LAST_STEP = Math.max(...Object.keys(PRODUCTION_STEPS).map(Number));
 /** 审片节点所在的工序 */
-export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 12: '⑧终审' };
+export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 12: '⑧终审', 13: '⑨剪映草稿' };
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 
@@ -53,7 +56,7 @@ export function listProductions(projectDir = '.') {
       const film = JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8'));
       const st = readProgress(dir);
       const last = st.history[st.history.length - 1];
-      const next = st.step >= 12 ? null : st.step + 1;
+      const next = st.step >= LAST_STEP ? null : st.step + 1;
       return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated };
     });
 }

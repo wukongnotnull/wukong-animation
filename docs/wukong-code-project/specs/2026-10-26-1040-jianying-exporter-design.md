@@ -70,6 +70,7 @@ timeline = { title, size: [W, H], fps, duration, shots: segments, tracks, voices
   - `role: build` / `track` 每个文件一条轨，轨名取文件名；
   - 每段音量 = `10^(gain/20)`（gain 为 dB，缺省 0 → 1.0）；
   - 起点为 `start`，段长裁到片尾（`start` 超过片长的段丢弃）；实际素材时长由 Python 端再与素材长度取较小值。
+  - 只放有声音的片段（[#5](https://github.com/wukongnotnull/wukong-animation/issues/5)）：非人声音轨先用 ffmpeg `silencedetect` 找静音（低于 -50 dB、持续 ≥ 1 秒），每个有声区间前后各留 0.1 秒、相接的合并，一个区间一段；各段引用同一素材的不同区间（`source_timerange`），素材只复制一份。整段静音的音轨不放。人声本来一句一个文件，不检测。成片混音不受影响。
 - 字幕：每条 voice 一段，`start = at`，`duration = duration`，文字原样，默认样式；`estimated` 的条目在计划里保留标记供日志输出。
 - 画布：`size`、`fps` 显式写入。
 

@@ -43,12 +43,18 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
         duration = min(v["duration"], material.duration)
         add(script, draft.VideoSegment(material, Timerange(v["start"], duration)), None, f"镜头 {v['name']} ")
 
+    materials = {}  # 同一文件切成多段时只复制、登记一次素材
     for t in plan["audioTracks"]:
         script.append_track(TrackSpec(TrackType.audio, t["name"]))
         for s in t["segments"]:
-            material = draft.AudioMaterial(unique_copy(s["file"], mdir, os.path.basename(s["file"]), taken))
-            duration = min(s["maxDuration"], material.duration)
-            add(script, draft.AudioSegment(material, Timerange(s["start"], duration), volume=s["volume"]), t["name"], f"音轨「{t['name']}」")
+            material = materials.get(s["file"])
+            if material is None:
+                material = materials[s["file"]] = draft.AudioMaterial(unique_copy(s["file"], mdir, os.path.basename(s["file"]), taken))
+            duration = min(s["maxDuration"], material.duration - s["sourceStart"])
+            if duration <= 0:
+                continue
+            segment = draft.AudioSegment(material, Timerange(s["start"], duration), source_timerange=Timerange(s["sourceStart"], duration), volume=s["volume"])
+            add(script, segment, t["name"], f"音轨「{t['name']}」")
 
     if plan["subtitles"]:
         script.append_track(TrackSpec(TrackType.text))

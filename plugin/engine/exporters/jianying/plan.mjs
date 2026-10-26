@@ -15,20 +15,31 @@ function uniqueName(name, taken) {
   return out;
 }
 
-function audioSegment(t, end) {
-  const start = us(t.start || 0);
-  return { file: t.file, start, maxDuration: end - start, volume: linearVolume(t.gain) };
+/**
+ * 一条音轨在草稿里的片段：有 ranges（有声音的区间，秒，相对文件开头）就每个区间一段，
+ * 都引用同一个文件；没有就整段。段长裁到片尾，起点在片尾之后的段丢弃。
+ */
+function audioSegments(t, end) {
+  const offset = t.start || 0;
+  const ranges = t.ranges || [{ start: 0, end: Infinity }];
+  return ranges
+    .map((r) => {
+      const start = us(offset + r.start);
+      const length = r.end === Infinity ? Infinity : us(r.end - r.start);
+      return { file: t.file, start, sourceStart: us(r.start), maxDuration: Math.min(length, end - start), volume: linearVolume(t.gain) };
+    })
+    .filter((s) => s.start < end);
 }
 
 function audioTracks(tracks, duration) {
   const end = us(duration);
-  const inFilm = tracks.filter((t) => us(t.start || 0) < end);
-  const voices = inFilm.filter((t) => t.role === 'voice');
+  const placed = tracks.map((t) => ({ ...t, segments: audioSegments(t, end) })).filter((t) => t.segments.length);
+  const voices = placed.filter((t) => t.role === 'voice');
   const taken = new Set();
   const out = [];
-  if (voices.length) out.push({ name: uniqueName(VOICE_TRACK, taken), segments: voices.map((t) => audioSegment(t, end)) });
-  for (const t of inFilm.filter((x) => x.role !== 'voice')) {
-    out.push({ name: uniqueName(path.basename(t.file), taken), segments: [audioSegment(t, end)] });
+  if (voices.length) out.push({ name: uniqueName(VOICE_TRACK, taken), segments: voices.flatMap((t) => t.segments) });
+  for (const t of placed.filter((x) => x.role !== 'voice')) {
+    out.push({ name: uniqueName(path.basename(t.file), taken), segments: t.segments });
   }
   return out;
 }

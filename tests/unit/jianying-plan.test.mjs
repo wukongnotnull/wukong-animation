@@ -83,6 +83,31 @@ test('caps audio at the end of the film and drops segments starting after it', (
   assert.equal(p.audioTracks[0].segments[0].maxDuration, 3_500_000);
 });
 
+test('splits a track into one segment per sound range, pointing into the same file', () => {
+  const p = buildDraftPlan(timeline({
+    tracks: [{ role: 'build', file: '/g/sfx.wav', start: 0, gain: 0, ranges: [{ start: 0.4, end: 1.1 }, { start: 3, end: 3.5 }] }],
+  }));
+  assert.deepEqual(p.audioTracks[0].segments.map(({ file, start, sourceStart, maxDuration }) => ({ file, start, sourceStart, maxDuration })), [
+    { file: '/g/sfx.wav', start: 400_000, sourceStart: 400_000, maxDuration: 700_000 },
+    { file: '/g/sfx.wav', start: 3_000_000, sourceStart: 3_000_000, maxDuration: 500_000 },
+  ]);
+});
+
+test('offsets sound ranges by the track start and caps them at the film end', () => {
+  const p = buildDraftPlan(timeline({
+    tracks: [{ role: 'track', file: '/f/a.wav', start: 1, gain: 0, ranges: [{ start: 0, end: 1 }, { start: 3.5, end: 6 }, { start: 4.5, end: 5 }] }],
+  }));
+  assert.deepEqual(p.audioTracks[0].segments.map(({ start, sourceStart, maxDuration }) => [start, sourceStart, maxDuration]), [
+    [1_000_000, 0, 1_000_000],
+    [4_500_000, 3_500_000, 500_000],
+  ]);
+});
+
+test('drops a track whose file has no sound at all', () => {
+  const p = buildDraftPlan(timeline({ tracks: [{ role: 'build', file: '/g/empty.wav', start: 0, gain: 0, ranges: [] }] }));
+  assert.deepEqual(p.audioTracks, []);
+});
+
 test('has no audio tracks when there is no audio', () => {
   assert.deepEqual(buildDraftPlan(timeline()).audioTracks, []);
 });

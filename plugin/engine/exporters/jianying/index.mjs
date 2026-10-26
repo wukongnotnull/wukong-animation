@@ -6,6 +6,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildDraftPlan } from './plan.mjs';
+import { detectSoundRanges } from './silence.mjs';
+import { probeDuration } from '../../core/ffmpeg.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PY_DEP = 'pyJianYingDraft==0.3.1';
@@ -28,7 +30,9 @@ export async function encodeOutput({ out, proxy, timeline }) {
   if (proxy) throw new Error('剪映草稿用于后期接着剪，不能用预览（--proxy）素材导出，请去掉 --proxy');
   if (!timeline) throw new Error('jianying 导出器需要时间线，请用 wka final 导出');
   const root = draftsRoot();
-  const plan = buildDraftPlan(timeline);
+  // 人声本来就是一句一个文件；其余音轨只放有声音的片段
+  const tracks = timeline.tracks.map((t) => (t.role === 'voice' ? t : { ...t, ranges: detectSoundRanges(t.file, probeDuration(t.file)) }));
+  const plan = buildDraftPlan({ ...timeline, tracks });
   const draftDir = path.join(root, plan.name);
   if (fs.existsSync(draftDir)) throw new Error(`剪映草稿「${plan.name}」已存在：${draftDir}\n  为免覆盖你在剪映里的改动，请先在剪映里删除或改名后再导出`);
   checkPython();

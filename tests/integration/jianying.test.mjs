@@ -17,12 +17,17 @@ const opts = { skip: !ready ? 'browser 管线依赖未安装（运行 wka setup�
 const SHOT = "wk.shot({ render(ctx, t, s) { ctx.fillStyle = '#F2EDE3'; ctx.fillRect(0, 0, s.W, s.H); } });\n";
 const BUILD = `export default async function ({ synth, duration, outDir }) {
   const buf = synth.buffer(duration);
+  synth.knock(buf, { at: 0.3 });
   return [{ file: synth.writeWav(buf, outDir + '/score.wav'), start: 0, gain: 0 }];
 }\n`;
 
 const tone = (file, sec) => spawnSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', String(sec), '-ac', '2', file]);
+/** 0.3s 有声 + 1.4s 静音 + 0.3s 有声。 */
+const gapped = (file) =>
+  spawnSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-ac', '2',
+    '-af', "volume='if(between(t,0.3,1.7),0,1)':eval=frame", '-t', '2', file]);
 
-/** 两镜各 1 秒；配乐脚本 1 条、自供录音人声 2 条、用户音轨 1 条（-6dB）。 */
+/** 两镜各 1 秒；配乐脚本 1 条（一声"笃"）、自供录音人声 2 条、用户音轨 2 条（bgm -6dB、中间静音的 gap）。 */
 function makeFilm() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-jy-'));
   fs.mkdirSync(path.join(dir, 'shots'));
@@ -32,6 +37,7 @@ function makeFilm() {
   tone(path.join(dir, 'audio', 'vo1.wav'), 0.5);
   tone(path.join(dir, 'audio', 'vo2.wav'), 0.4);
   tone(path.join(dir, 'audio', 'bgm.wav'), 3);
+  gapped(path.join(dir, 'audio', 'gap.wav'));
   const film = {
     title: 'jy-it', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1,
     shots: ['s01', 's02'].map((id) => ({ id, file: `shots/${id}.js`, duration: 1 })),
@@ -42,7 +48,7 @@ function makeFilm() {
         { text: '第一句', at: 0.2, file: 'audio/vo1.wav' },
         { text: '第二句', at: 1.3, file: 'audio/vo2.wav' },
       ],
-      tracks: [{ file: 'audio/bgm.wav', gain: -6 }],
+      tracks: [{ file: 'audio/bgm.wav', gain: -6 }, { file: 'audio/gap.wav' }],
     },
   };
   fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
@@ -75,11 +81,17 @@ test('exports an editable 剪映 draft split by shot, audio source and subtitle'
   ]);
 
   const audio = byType(draft, 'audio');
-  assert.deepEqual(audio.map((t) => t.name), ['人声', 'score.wav', 'bgm.wav']);
+  assert.deepEqual(audio.map((t) => t.name), ['人声', 'score.wav', 'bgm.wav', 'gap.wav']);
   assert.deepEqual(audio[0].segments.map((s) => s.target_timerange.start), [200_000, 1_300_000]);
   const bgm = audio[2].segments[0];
   assert.equal(bgm.target_timerange.duration, 2_000_000, 'bgm is capped at the end of the film');
   assert.ok(Math.abs(bgm.volume - 0.501187) < 1e-4, `bgm volume ${bgm.volume}`);
+
+  const gap = audio[3].segments;
+  assert.equal(gap.length, 2, 'silence in the middle splits the track into two segments');
+  assert.deepEqual(gap.map((s) => s.target_timerange.start === s.source_timerange.start), [true, true]);
+  assert.ok(gap[1].target_timerange.start > 1_500_000 && gap[1].target_timerange.start < 1_700_000, `second part starts at ${gap[1].target_timerange.start}`);
+  assert.equal(draft.materials.audios.filter((m) => m.path.endsWith('gap.wav')).length, 1, 'both parts share one material');
 
   const [text] = byType(draft, 'text');
   assert.equal(text.segments.length, 2);

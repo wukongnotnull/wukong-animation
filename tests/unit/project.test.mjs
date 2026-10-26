@@ -24,3 +24,13 @@ test('a current block is left as it is', () => {
   const once = upsertIgnoreBlock('dist/\n');
   assert.equal(upsertIgnoreBlock(once), once);
 });
+
+test('a block whose end marker was deleted is left alone, so lines after it are not lost', () => {
+  const broken = `${BEGIN}\nfilms/*/.cache/\nmine\n`;
+  assert.equal(upsertIgnoreBlock(broken), broken);
+});
+
+test('CRLF line endings after the block leave no stray carriage return', () => {
+  const out = upsertIgnoreBlock(`${BEGIN}\r\nold\r\n${END}\r\nb\r\n`);
+  assert.ok(out.endsWith(`${END}\nb\r\n`));
+});

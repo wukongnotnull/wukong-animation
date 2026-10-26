@@ -25,9 +25,11 @@ const BLOCK_END = '# <<< wukong-animation <<<';
 /** 把 .gitignore 里的 wukong-animation 段落写成当前版本：没有就追加，旧版就整段替换，段落外的内容不动。 */
 export function upsertIgnoreBlock(text) {
   const begin = text.indexOf(BLOCK_BEGIN);
-  const end = text.indexOf(BLOCK_END, begin);
-  if (begin >= 0 && end >= 0) {
-    const after = text.slice(end + BLOCK_END.length).replace(/^\n/, '');
+  if (begin >= 0) {
+    const end = text.indexOf(BLOCK_END, begin);
+    // 结束标记被删掉了：分不清段落到哪为止，不动它，免得删掉用户自己写的规则
+    if (end < 0) return text;
+    const after = text.slice(end + BLOCK_END.length).replace(/^\r?\n/, '');
     return text.slice(0, begin) + IGNORE_BLOCK + after;
   }
   return (text && !text.endsWith('\n') ? text + '\n' : text) + (text ? '\n' : '') + IGNORE_BLOCK;

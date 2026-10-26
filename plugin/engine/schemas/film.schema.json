@@ -80,7 +80,7 @@
         "build": {
           "type": "string"
         },
-        "voiceover": {
+        "voices": {
           "type": "array",
           "items": {
             "type": "object",
@@ -99,9 +99,9 @@
                   "vo",
                   "dialogue",
                   "os",
-                  "sync"
+                  "live"
                 ],
-                "description": "人声类型：vo 画外音（默认，含旁白、内心独白）/ dialogue 出镜对白 / os 画外但在场景里 / sync 同期声（现场原声、采访，必须挂接 file）"
+                "description": "人声类型：vo 画外音（默认，含旁白、内心独白）/ dialogue 出镜对白 / os 画外但在场景里 / live 同期声（现场原声、采访，必须挂接 file）"
               },
               "speaker": {
                 "type": "string",
@@ -120,7 +120,7 @@
               },
               "file": {
                 "type": "string",
-                "description": "用户自供的 VO 录音（相对片目录），vo_source 为 user 时必填"
+                "description": "人声录音（相对片目录）。voice_source 为 user 或 kind 为 live 时必填"
               }
             }
           }
@@ -147,14 +147,14 @@
             }
           }
         },
-        "vo_source": {
+        "voice_source": {
           "type": "string",
           "enum": [
             "user",
             "ai",
             "none"
           ],
-          "description": "VO 素材来源：user = 用户自供录音；ai = AI 配音（TTS）；none = 无 VO。第 6 道工序审片节点④由用户签批"
+          "description": "人声素材来源：user = 用户自供录音；ai = AI 配音（TTS）；none = 无人声。第 6 道工序审片节点④由用户签批。旧名 vo_source 仍可用"
         }
       }
     },

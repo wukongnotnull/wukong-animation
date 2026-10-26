@@ -58,8 +58,8 @@
   "cues": { "亭现": [6.2, 6.6] },
   "audio": {
     "build": "audio/build.mjs",
-    "vo_source": "user",
-    "voiceover": [{ "text": "雾散时，山就醒了。", "at": 4.5, "cue": "第一句", "file": "audio/voice/01.wav" }],
+    "voice_source": "user",
+    "voices": [{ "text": "雾散时，山就醒了。", "at": 4.5, "cue": "第一句", "file": "audio/voice/01.wav" }],
     "tracks": []
   },
   "export": { "formats": ["mp4"], "name": "chenwu" }
@@ -73,10 +73,10 @@
 | `shots[].duration` | 秒。第 7 道工序按 VO 实测时长回填 |
 | `cues` | 声音同步点 `名: [入点, 出点]`（全片时间，秒）。VO 同步点由 `wka soundtrack` 自动写入，音效同步点手写 |
 | `audio.build` | 配乐脚本，导出 `default async ({synth, duration, outDir, shots, cues}) => [{file, start, gain}]` |
-| `audio.vo_source` | VO 素材来源（第 6 道工序，审片节点④）：`user` 用户自供录音 / `ai` AI 配音 / `none` 无 VO |
-| `audio.voiceover` | 人声文案（泛指所有人声，不只画外音）；`user` 时每条用 `file` 挂接录音；`ai` 且没装 TTS 时按每秒 3.6 字预估同步点 |
-| `voiceover[].kind` | 人声类型，对应分镜「人声」栏的标记：`vo` 画外音（默认，含旁白、内心独白）/ `dialogue` 对白 / `os` 画外但在场景里 / `sync` 同期声。`sync` 是现场原声，AI 配不出来，必须挂接 `file`；`vo_source` 为 `ai` 时，其余条目照常 AI 配音 |
-| `voiceover[].speaker` | 说话的人或声音来源，对应标记括号里的内容，如 `对白（老者）` 写 `"speaker": "老者"` |
+| `audio.voice_source` | 人声素材来源（第 6 道工序，审片节点④）：`user` 用户自供录音 / `ai` AI 配音 / `none` 无人声 |
+| `audio.voices` | 人声文案，画外音、对白、同期声都写在这里；`user` 时每条用 `file` 挂接录音；`ai` 且没装 TTS 时按每秒 3.6 字预估同步点 |
+| `voices[].kind` | 人声类型，对应分镜「人声」栏的标记：`vo` 画外音（默认，含旁白、内心独白）/ `dialogue` 对白 / `os` 画外但在场景里 / `live` 同期声。`live` 是现场原声，AI 配不出来，必须挂接 `file`；`voice_source` 为 `ai` 时，其余条目照常 AI 配音 |
+| `voices[].speaker` | 说话的人或声音来源，对应标记括号里的内容，如 `对白（老者）` 写 `"speaker": "老者"` |
 | `export.formats` | 已注册的导出器：`mp4` / `gif` / `png-seq` |
 
-完整字段见 `engine/schemas/film.schema.json`。
+完整字段见 `engine/schemas/film.schema.json`。旧字段名 `voiceover` / `vo_source` 仍能读取，`wka soundtrack` 会提示改成新名；新旧两个名字同时出现会报错。

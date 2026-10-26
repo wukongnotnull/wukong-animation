@@ -9,6 +9,7 @@ import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
 import { run, hasDrawtext, drawLabel } from './ffmpeg.mjs';
 import { pickCues } from './cues.mjs';
+import { migrateFilm } from './compat.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
 
@@ -16,7 +17,7 @@ export function loadFilm(filmDir) {
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);
-  const film = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const { film, renamed: legacyFields } = migrateFilm(JSON.parse(fs.readFileSync(file, 'utf8')));
   const errs = validate('film', film, 'film.json');
   if (errs.length) throw new Error('film.json 校验失败:\n  ' + errs.join('\n  '));
 
@@ -37,7 +38,7 @@ export function loadFilm(filmDir) {
 
   const styleScripts = (style.scripts || []).map((p) => path.join(style.dir, p));
   const filmScripts = (film.scripts || []).map((p) => path.join(filmDir, p));
-  return { film, filmDir, style, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
+  return { film, filmDir, legacyFields, style, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
 }
 
 /** 构建传给管线的任务描述。 */

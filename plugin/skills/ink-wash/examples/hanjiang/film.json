@@ -12,7 +12,7 @@
   ],
   "audio": {
     "build": "audio/build.mjs",
-    "voiceover": [],
+    "voices": [],
     "tracks": []
   },
   "export": { "formats": ["mp4"], "name": "hanjiang" }

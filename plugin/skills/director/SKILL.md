@@ -81,14 +81,14 @@ node <插件根目录>/engine/bin/wka.mjs
 
 | 情况 | 执行方式 |
 |---|---|
-| 用户自供录音 | 请用户把录制好的 VO（wav / mp3 / m4a，可按条分轨，也可整段单轨）放入素材目录 `films/<片>/audio/voice/`；在 `audio.voiceover[].file` 里逐条挂接，`"vo_source": "user"` |
-| AI 配音 | 调用已安装的 TTS 引擎（edge-tts / kokoro）合成；`wka check` 显示没有 TTS 时先告诉用户，可安装后再合成，或暂按字数预估时长、继续推进画面；`"vo_source": "ai"` |
-| 文学脚本写"无 VO" | 请用户确认"本片不用 VO"，确认后记 `"vo_source": "none"`；用户改主意要加 VO 时，退回第 4 道补写 VO 文案 |
+| 用户自供录音 | 请用户把录制好的 VO（wav / mp3 / m4a，可按条分轨，也可整段单轨）放入素材目录 `films/<片>/audio/voice/`；在 `audio.voices[].file` 里逐条挂接，`"voice_source": "user"` |
+| AI 配音 | 调用已安装的 TTS 引擎（edge-tts / kokoro）合成；`wka check` 显示没有 TTS 时先告诉用户，可安装后再合成，或暂按字数预估时长、继续推进画面；`"voice_source": "ai"` |
+| 文学脚本写"无 VO" | 请用户确认"本片不用 VO"，确认后记 `"voice_source": "none"`；用户改主意要加 VO 时，退回第 4 道补写 VO 文案 |
 
 ✅ **审片节点④ VO 素材来源** → `--step 6`
 
 **7. 声轨制作（声音先行：先定声轨，再做画面）**
-- 人声写进 `film.json` 的 `audio.voiceover`，每条给一个同步点名（如 `"cue": "第二句"`）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `sync`）和 `speaker`；同期声（`sync`）必须挂接录音 `file`，即使 `vo_source` 是 `ai`。
+- 人声写进 `film.json` 的 `audio.voices`，每条给一个同步点名（如 `"cue": "第二句"`）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
 - 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。
 - `wka soundtrack`：接入用户录音或合成 AI 配音，把每条 VO 的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。
 - 把混好的声轨 `films/<片>/.cache/mix.wav` 发给用户审听，请用户确认 VO 效果、配乐、音效和整体节奏。有意见就改 `audio/build.mjs` 或 VO 后重新 `wka soundtrack`，再提交审听。

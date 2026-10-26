@@ -187,7 +187,7 @@ async function cmdSubtitles(filmDir, { force, preview }) {
   const out = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}-proxy-subtitled.mp4`);
   const { W, H } = outputSize(ctx.film, true);
   await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.filmDir, '.cache', 'work'), proxy: true, audio: fs.existsSync(mix) ? mix : null, log });
-  log(`字幕预览：${path.relative(process.cwd(), out)}`);
+  log(`字幕预览：${out.startsWith(process.cwd() + path.sep) ? path.relative(process.cwd(), out) : out}`);
 }
 
 async function cmdFinal(filmDir, o) {

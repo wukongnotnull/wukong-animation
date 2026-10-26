@@ -97,12 +97,36 @@ test('exports an editable 剪映 draft split by shot, audio source and subtitle'
   assert.equal(text.segments.length, 2);
   assert.equal(text.segments[0].target_timerange.start, 200_000);
   assert.ok(draft.materials.texts.some((t) => t.content.includes('第二句')));
+  // ink-wash 的字幕样式：古风小楷、墨色字、宣纸描边、底边距 10%
+  const [textStyle] = JSON.parse(draft.materials.texts[0].content).styles;
+  assert.equal(textStyle.font.id, '7216598671016596029', '古风小楷');
+  assert.deepEqual(textStyle.fill.content.solid.color.map((c) => Math.round(c * 255)), [0x2b, 0x2b, 0x2b]);
+  assert.equal(textStyle.strokes.length, 1);
+  assert.equal(text.segments[0].clip.transform.y, -0.75);
 
   const paths = [...draft.materials.videos, ...draft.materials.audios].map((m) => m.path);
   for (const p of paths) assert.ok(p.startsWith(path.join(draftDir, 'materials') + path.sep), `outside draft: ${p}`);
   assert.ok(paths.some((p) => path.basename(p) === 's01.mp4'));
 
   assert.match(r.stdout, /响度/);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(drafts, { recursive: true, force: true });
+});
+
+test('gives every exported draft its own id so 剪映 does not reuse a cached timeline', opts, () => {
+  const dir = makeFilm();
+  const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+  assert.equal(wka(drafts, 'final', dir, '--formats', 'jianying').status, 0);
+  fs.renameSync(path.join(drafts, 'jy-it'), path.join(drafts, 'jy-first'));
+  assert.equal(wka(drafts, 'final', dir, '--formats', 'jianying').status, 0);
+  const read = (name, file) => JSON.parse(fs.readFileSync(path.join(drafts, name, file), 'utf8'));
+  const [a, b] = ['jy-first', 'jy-it'].map((n) => read(n, 'draft_info.json').id);
+  assert.notEqual(a, b);
+  assert.notEqual(a, '91E08AC5-22FB-47e2-9AA0-7DC300FAEA2B');
+  assert.equal(read('jy-it', 'draft_content.json').id, b);
+  const meta = read('jy-it', 'draft_meta_info.json');
+  assert.notEqual(meta.draft_id, read('jy-first', 'draft_meta_info.json').draft_id);
+  assert.deepEqual([meta.draft_name, meta.draft_fold_path, meta.draft_root_path], ['jy-it', path.join(drafts, 'jy-it'), drafts]);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });

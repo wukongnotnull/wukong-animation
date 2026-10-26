@@ -142,8 +142,9 @@ test('film.json subtitles.style overrides the style subtitle look', opts, () => 
     return px;
   };
   const plain = burnt({ mode: 'burn' });
-  const dark = burnt({ mode: 'burn', style: { color: '#000000', stroke: { width: 0 } } });
-  assert.ok(maxDiff(plain, dark) > 100);
+  // ink-wash 的字幕是墨色字，覆盖成白字才看得出差别
+  const white = burnt({ mode: 'burn', style: { color: '#FFFFFF' } });
+  assert.ok(maxDiff(plain, white) > 100);
 });
 
 test('soundtrack and proxy leave playable review copies in review/', opts, () => {

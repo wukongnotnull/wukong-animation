@@ -60,5 +60,22 @@
     "diff_max": 18,
     "cuts_max": 2,
     "skip_start": 0.5
+  },
+  "subtitles": {
+    "font": {
+      "family": "Ma Shan Zheng",
+      "fallback": [
+        "STKaiti",
+        "Kaiti SC",
+        "serif"
+      ]
+    },
+    "size": 0.05,
+    "color": "#2B2B2B",
+    "stroke": {
+      "color": "rgba(242,237,227,0.9)",
+      "width": 0.12
+    },
+    "bottom": 0.1
   }
 }

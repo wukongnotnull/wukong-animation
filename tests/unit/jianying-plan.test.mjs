@@ -168,3 +168,38 @@ test('takes subtitles from the srt when the timeline carries them, ignoring the 
     ],
   }]);
 });
+
+const inkSubs = {
+  font: { family: 'Ma Shan Zheng', fallback: ['STKaiti'] },
+  size: 0.05,
+  color: '#2B2B2B',
+  stroke: { color: 'rgba(242,237,227,0.9)', width: 0.12 },
+  bottom: 0.1,
+};
+
+test('has no subtitle style when the timeline carries none', () => {
+  assert.equal(buildDraftPlan(timeline()).subtitleStyle, null);
+});
+
+test('converts the style subtitle block into 剪映 size, colours, stroke and position', () => {
+  const s = buildDraftPlan(timeline({ subtitleStyle: inkSubs })).subtitleStyle;
+  assert.equal(s.font, '古风小楷');
+  assert.equal(s.size, 5.2);
+  assert.deepEqual(s.color.map((c) => Math.round(c * 255)), [0x2b, 0x2b, 0x2b]);
+  assert.equal(s.alpha, 1);
+  assert.deepEqual(s.border.color.map((c) => Math.round(c * 255)), [242, 237, 227]);
+  assert.equal(s.border.alpha, 0.9);
+  assert.equal(s.border.width, 40);
+  assert.equal(s.transformY, -0.75);
+});
+
+test('leaves the font unset when 剪映 has no counterpart for it', () => {
+  const s = buildDraftPlan(timeline({ subtitleStyle: { ...inkSubs, font: { family: 'Noto Sans SC' }, color: '#fff', stroke: { color: '#00000080', width: 0.08 } } })).subtitleStyle;
+  assert.equal(s.font, null);
+  assert.deepEqual(s.color, [1, 1, 1]);
+  assert.deepEqual([s.border.color, s.border.alpha], [[0, 0, 0], 0.502]);
+});
+
+test('rejects a subtitle colour it cannot read', () => {
+  assert.throws(() => buildDraftPlan(timeline({ subtitleStyle: { ...inkSubs, color: 'ink' } })), /字幕颜色/);
+});

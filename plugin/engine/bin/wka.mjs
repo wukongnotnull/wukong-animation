@@ -27,7 +27,7 @@ import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../core/subtitles.mjs';
-import { burnSubtitles } from '../core/subtitle-layer.mjs';
+import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
@@ -215,7 +215,7 @@ async function cmdFinal(filmDir, o) {
   }
   if (drafts.length) {
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
-    const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, ...(subs ? { subtitles: subs } : {}) };
+    const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
     outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, log })));
   }
   if (names.srt !== null && !o.proxy) {

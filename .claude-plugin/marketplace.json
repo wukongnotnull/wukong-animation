@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "代码七十二变：用代码拍短片的风格库",
-    "version": "0.5.1"
+    "version": "0.5.2"
   },
   "plugins": [
     {
       "name": "wukong-animation",
       "source": "./plugin",
       "description": "72 种动画风格，每种一个 skill；Claude 写代码逐帧渲染短片，不用视频模型。",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "category": "creative",
       "keywords": ["video", "animation", "canvas", "webgl", "creative-coding", "ink-wash"]
     }

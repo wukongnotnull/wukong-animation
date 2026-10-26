@@ -183,6 +183,35 @@
         },
         "minItems": 2
       }
+    },
+    "subtitles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "description": "字幕（第 11 道工序）：以片目录里的 srt 为准，由 wka subtitles 从人声生成。没有这个字段即不出字幕",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "srt",
+            "burn",
+            "both"
+          ],
+          "description": "none 不出字幕 / srt 只外挂 / burn 只烧录 / both 两者"
+        },
+        "file": {
+          "type": "string",
+          "description": "字幕文件，相对片目录，缺省 subtitles.srt"
+        },
+        "max_chars": {
+          "type": "integer",
+          "minimum": 4,
+          "description": "每条字幕最多几个字（标点不计），缺省横屏 18、竖屏 12、方形 14"
+        }
+      }
     }
   }
 }

@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** 13 道工序（与 skills/director/SKILL.md 一致） */
+/** 14 道工序（与 skills/director/SKILL.md 一致） */
 export const PRODUCTION_STEPS = {
   1: '制作环境、工程初始化、恢复在制项目',
   2: '制作简报确认',
@@ -15,36 +15,67 @@ export const PRODUCTION_STEPS = {
   8: '风格帧与动态分镜',
   9: '镜头制作',
   10: '小样渲染与技术质检',
-  11: '终版渲染与终混',
-  12: '终检与交付',
-  13: '剪映草稿交付',
+  11: '字幕制作',
+  12: '终版渲染与终混',
+  13: '终检与交付',
+  14: '剪映草稿交付',
 };
 /** 最后一道工序；签批到这里即全部完成 */
 export const LAST_STEP = Math.max(...Object.keys(PRODUCTION_STEPS).map(Number));
 /** 审片节点所在的工序 */
-export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 12: '⑧终审', 13: '⑨剪映草稿' };
+export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 11: '⑧字幕', 13: '⑨终审', 14: '⑩剪映草稿' };
+
+/** 进度文件的流程版本：1 = v0.4.0 及以前（没有字幕工序），2 = 第 11 道起为字幕制作 */
+const FLOW = 2;
+/** flow 1 里第 11 道起的工序，在 flow 2 里都往后挪一位 */
+const FLOW1_SHIFT_FROM = 11;
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 
-export function readProgress(filmDir) {
+/**
+ * 把旧流程的工序编号换成新编号。纯函数，不改入参。
+ * @returns {{state: object, migrated: boolean}}
+ */
+export function migrateProgress(st) {
+  if (st.flow === FLOW) return { state: st, migrated: false };
+  const shift = (step) => (step >= FLOW1_SHIFT_FROM ? step + 1 : step);
+  const history = (st.history || []).map((h) => {
+    const step = shift(h.step);
+    return { ...h, step, label: PRODUCTION_STEPS[step] || '', gate: REVIEW_GATES[step] || null };
+  });
+  return { state: { ...st, flow: FLOW, step: shift(st.step || 0), history }, migrated: true };
+}
+
+function writeState(filmDir, st) {
   const f = fileOf(filmDir);
-  if (!fs.existsSync(f)) return { step: 0, history: [] };
-  return JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(st, null, 2) + '\n');
+}
+
+/** 读进度；旧流程的进度会换算成新编号并写回，导演直接读文件时看到的也是新编号。 */
+function loadProgress(filmDir) {
+  const f = fileOf(filmDir);
+  if (!fs.existsSync(f)) return { state: { flow: FLOW, step: 0, history: [] }, migrated: false };
+  const r = migrateProgress(JSON.parse(fs.readFileSync(f, 'utf8')));
+  if (r.migrated) writeState(filmDir, r.state);
+  return r;
+}
+
+export function readProgress(filmDir) {
+  return loadProgress(filmDir).state;
 }
 
 /** 记录推进到第 step 步；note 写这一步的结论（例如用户签批了哪套视觉方案、提了什么返修意见）。 */
 export function recordProgress(filmDir, { step, note = '', sha = null }) {
-  const st = readProgress(filmDir);
-  const f = fileOf(filmDir);
-  fs.mkdirSync(path.dirname(f), { recursive: true });
+  const st = { ...readProgress(filmDir) };
   if (step) st.step = Math.max(st.step || 0, Number(step));
-  st.history.push({ step: step ? Number(step) : st.step, label: PRODUCTION_STEPS[step] || '', gate: REVIEW_GATES[step] || null, note, sha, at: new Date().toISOString() });
+  st.history = [...st.history, { step: step ? Number(step) : st.step, label: PRODUCTION_STEPS[step] || '', gate: REVIEW_GATES[step] || null, note, sha, at: new Date().toISOString() }];
   st.updated = new Date().toISOString();
-  fs.writeFileSync(f, JSON.stringify(st, null, 2) + '\n');
+  writeState(filmDir, st);
   return st;
 }
 
-/** 扫描项目里的所有片子，返回每支的进度。 */
+/** 扫描项目里的所有片子，返回每支的进度；migrated 表示这次读取时换算过旧编号。 */
 export function listProductions(projectDir = '.') {
   const films = path.resolve(projectDir, 'films');
   if (!fs.existsSync(films)) return [];
@@ -54,9 +85,9 @@ export function listProductions(projectDir = '.') {
     .map((d) => {
       const dir = path.join(films, d.name);
       const film = JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8'));
-      const st = readProgress(dir);
+      const { state: st, migrated } = loadProgress(dir);
       const last = st.history[st.history.length - 1];
       const next = st.step >= LAST_STEP ? null : st.step + 1;
-      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated };
+      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated, migrated };
     });
 }

@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- 字幕层宿主页模板：subtitle-layer.mjs 把 {{...}} 替换掉后写入 .cache/work/subtitle.html，逐条截成透明 PNG。
+     不放在 runtime/：那里的文件都算进镜头哈希 -->
+<style>
+{{FONT_CSS}}
+html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+#frame{position:relative;overflow:hidden}
+#line{position:absolute;left:0;right:0;text-align:center;line-height:1.3;white-space:pre;paint-order:stroke fill}
+#line span{display:inline-block}
+</style>
+<script>window.__SUB = {{CONFIG}};</script>
+</head>
+<body>
+<div id="frame"><div id="line"><span id="text"></span></div></div>
+<script>
+(() => {
+  const c = window.__SUB;
+  const frame = document.getElementById('frame');
+  const line = document.getElementById('line');
+  const text = document.getElementById('text');
+  Object.assign(frame.style, { width: c.W + 'px', height: c.H + 'px' });
+  Object.assign(line.style, { bottom: c.bottom + 'px', fontFamily: c.family, color: c.color });
+  /** 摆好一条字幕；整行放不下就缩小字号，返回实际字号。 */
+  window.setSubtitle = async (s) => {
+    let size = c.size;
+    text.textContent = s;
+    for (;;) {
+      line.style.fontSize = size + 'px';
+      line.style.webkitTextStroke = `${size * c.strokeWidth * 2}px ${c.strokeColor}`;
+      await document.fonts.load(`${size}px ${c.family}`, s).catch(() => {});
+      await document.fonts.ready;
+      if (text.offsetWidth <= c.maxWidth || size <= 8) return size;
+      size -= 1;
+    }
+  };
+})();
+</script>
+</body>
+</html>

@@ -17,6 +17,8 @@ export const KNOWN_FONTS = {
   'Long Cang': 'ofl/longcang/LongCang-Regular.ttf',
   'Liu Jian Mao Cao': 'ofl/liujianmaocao/LiuJianMaoCao-Regular.ttf',
   'ZCOOL XiaoWei': 'ofl/zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf',
+  // 字幕缺省字体；文件名里的方括号要转义，否则 curl 会当成通配符
+  'Noto Sans SC': 'ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf',
 };
 
 /**

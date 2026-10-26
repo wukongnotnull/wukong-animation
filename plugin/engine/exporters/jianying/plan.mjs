@@ -61,14 +61,19 @@ function audioTracks(tracks, duration) {
   return out;
 }
 
-/** 字幕与人声一一对应；重叠的分到「字幕 2」…，规则同人声。 */
-function subtitleTracks(voices) {
-  const subs = voices.map((v) => ({ text: v.text, start: us(v.at), duration: us(v.duration), estimated: !!v.estimated }));
+/**
+ * 有字幕文件（timeline.subtitles，wka subtitles 生成的 srt）就按它；没有就与人声一一对应。
+ * 重叠的分到「字幕 2」…，规则同人声。
+ */
+function subtitleTracks(voices, srt) {
+  const subs = srt
+    ? srt.map((s) => ({ text: s.text, start: us(s.start), duration: us(s.end - s.start), estimated: false }))
+    : voices.map((v) => ({ text: v.text, start: us(v.at), duration: us(v.duration), estimated: !!v.estimated }));
   return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(SUBTITLE_TRACK, i), segments }));
 }
 
 /**
- * @param {object} timeline { title, size:[W,H], fps, duration, shots, tracks, voices }
+ * @param {object} timeline { title, size:[W,H], fps, duration, shots, tracks, voices, subtitles? }
  * @returns {object} { name, width, height, fps, video, audioTracks, subtitleTracks }
  */
 export function buildDraftPlan(timeline) {
@@ -80,6 +85,6 @@ export function buildDraftPlan(timeline) {
     fps: timeline.fps,
     video: timeline.shots.map((s) => ({ name: s.id, file: s.file, start: us(s.start), duration: us(s.duration) })),
     audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
-    subtitleTracks: subtitleTracks(timeline.voices || []),
+    subtitleTracks: subtitleTracks(timeline.voices || [], timeline.subtitles),
   };
 }

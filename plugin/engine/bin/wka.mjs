@@ -185,6 +185,7 @@ async function main() {
       if (!list.length) return log('还没有片子。用 wka init <片名> --style <id> 开始。');
       for (const f of list) {
         log(`${f.name}  《${f.title}》 ${f.style}`);
+        if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
       }

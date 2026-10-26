@@ -207,7 +207,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     const target = path.join(ctx.filmDir, `${base}${proxy ? '-proxy' : ''}.${exp.ext}`);
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const out = (await mod.encodeOutput({ video, audio, out: target, fps: ctx.film.fps, proxy, timeline })) || target;
-    log(`  导出 ${name} → ${path.relative(ctx.filmDir, out)}`);
+    log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);
     outputs.push(out);
   }
   return outputs;

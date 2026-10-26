@@ -129,7 +129,8 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   const video = path.join(ctx.filmDir, '.cache', proxy ? 'video-proxy.mp4' : 'video.mp4');
   await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
-  return { video, job };
+  const shotSegments = ctx.shots.map((s, i) => ({ id: s.id, start: s.start, duration: s.duration, file: segments[i] }));
+  return { video, job, segments: shotSegments };
 }
 
 /**
@@ -193,7 +194,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, proxy = false, formats = null, log = console.log }) {
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, log = console.log }) {
   const ctx = loadFilm(filmDir);
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   const base = ctx.film.export?.name || 'out';
@@ -203,8 +204,9 @@ export async function encodeOutputs(filmDir, { video, audio, proxy = false, form
     if (!exp) throw new Error(`导出器 "${name}" 没有注册。可用: ${[...ctx.registry.exporters.keys()].join(', ')}`);
     if (exp.status === 'planned') throw new Error(`导出器 "${name}" 还在规划中`);
     const mod = await loadModule(exp);
-    const out = path.join(ctx.filmDir, `${base}${proxy ? '-proxy' : ''}.${exp.ext}`);
-    await mod.encodeOutput({ video, audio, out, fps: ctx.film.fps, proxy });
+    const target = path.join(ctx.filmDir, `${base}${proxy ? '-proxy' : ''}.${exp.ext}`);
+    // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
+    const out = (await mod.encodeOutput({ video, audio, out: target, fps: ctx.film.fps, proxy, timeline })) || target;
     log(`  导出 ${name} → ${path.relative(ctx.filmDir, out)}`);
     outputs.push(out);
   }

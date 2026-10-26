@@ -61,6 +61,10 @@ function prepareVoices(ctx, audio, outDir, log) {
  * 把人声的实测入出点写进 film.json 的 cues（声音同步点）。
  * 没有音频（未装 TTS）时按每秒约 3.6 个汉字估算，并标注为估算值。
  */
+function voiceDuration(line, item) {
+  return item?.duration || Math.max(0.6, [...line.text.replace(/[，。！？、；：,.!?\s]/g, '')].length / 3.6);
+}
+
 function writeVoiceCues(ctx, lines, vo, log) {
   const file = path.join(ctx.filmDir, 'film.json');
   const film = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -69,7 +73,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
   log('  声音同步点：');
   lines.forEach((l, i) => {
     const measured = vo[i]?.duration;
-    const dur = measured || Math.max(0.6, [...l.text.replace(/[，。！？、；：,.!?\s]/g, '')].length / 3.6);
+    const dur = voiceDuration(l, vo[i]);
     const name = l.cue || `vo${i + 1}`;
     film.cues[name] = [+l.at.toFixed(3), +(l.at + dur).toFixed(3)];
     const shot = ctx.shots.find((s) => l.at >= s.start && l.at < s.start + s.duration);
@@ -84,7 +88,9 @@ function writeVoiceCues(ctx, lines, vo, log) {
 }
 
 /**
- * @returns {Promise<string|null>} 混好的 wav 路径；没有任何音轨时返回 null
+ * @returns {Promise<{mix: string|null, tracks: object[], voices: object[]}>}
+ *   mix：混好的 wav 路径，没有任何音轨时为 null；
+ *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}；voices：人声 {text, at, duration, estimated}
  */
 export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const ctx = loadFilm(filmDir);
@@ -97,19 +103,21 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   if (audio.build) {
     const mod = await import(pathToFileURL(path.join(ctx.filmDir, audio.build)).href + `?v=${Date.now()}`);
     const res = await mod.default({ synth, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: ctx.film.cues || {}, log });
-    for (const t of res || []) tracks.push({ start: 0, gain: 0, ...t });
+    for (const t of res || []) tracks.push({ start: 0, gain: 0, ...t, role: 'build' });
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
   }
   const vo = prepareVoices(ctx, audio, path.join(genDir, 'vo'), log);
-  for (const it of vo) if (it?.file) tracks.push({ file: it.file, start: it.at, gain: 2 });
-  if (audio.voices?.length && audio.voice_source !== 'none') writeVoiceCues(ctx, audio.voices, vo, log);
-  for (const t of audio.tracks || []) tracks.push({ start: 0, gain: 0, ...t, file: path.join(ctx.filmDir, t.file) });
+  for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, gain: 2 });
+  const hasVoices = audio.voices?.length && audio.voice_source !== 'none';
+  if (hasVoices) writeVoiceCues(ctx, audio.voices, vo, log);
+  const voices = hasVoices ? audio.voices.map((l, i) => ({ text: l.text, at: l.at, duration: voiceDuration(l, vo[i]), estimated: !vo[i]?.duration })) : [];
+  for (const t of audio.tracks || []) tracks.push({ start: 0, gain: 0, ...t, role: 'track', file: path.join(ctx.filmDir, t.file) });
 
   if (!tracks.length) {
     // 清掉上一次的混音，免得动态分镜和导出误用旧声轨
     fs.rmSync(path.join(ctx.filmDir, '.cache', 'mix.wav'), { force: true });
     log('  · 没有音轨，导出无声视频');
-    return null;
+    return { mix: null, tracks, voices };
   }
   for (const t of tracks) if (!fs.existsSync(t.file)) throw new Error(`音轨不存在：${t.file}`);
 
@@ -128,5 +136,5 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const out = path.join(ctx.filmDir, '.cache', 'mix.wav');
   await run([...inputs, '-filter_complex', filter, '-map', '[out]', '-ar', '48000', out]);
   log(`  ✓ 混音完成（${tracks.length} 条音轨）`);
-  return out;
+  return { mix: out, tracks, voices };
 }

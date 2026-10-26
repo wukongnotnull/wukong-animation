@@ -151,3 +151,20 @@ test('moves an overlapping subtitle to a second 字幕 track', () => {
   }));
   assert.deepEqual(p.subtitleTracks.map((t) => [t.name, t.segments.map((s) => s.text)]), [['字幕', ['甲']], ['字幕 2', ['乙']]]);
 });
+
+test('takes subtitles from the srt when the timeline carries them, ignoring the voices', () => {
+  const p = buildDraftPlan(timeline({
+    voices: [{ text: '江水不回头，山也不回头', at: 0, duration: 3, estimated: true }],
+    subtitles: [
+      { index: 1, start: 0, end: 1.5, text: '江水不回头' },
+      { index: 2, start: 1.5, end: 3, text: '山也不回头' },
+    ],
+  }));
+  assert.deepEqual(p.subtitleTracks, [{
+    name: '字幕',
+    segments: [
+      { text: '江水不回头', start: 0, duration: 1_500_000, estimated: false },
+      { text: '山也不回头', start: 1_500_000, duration: 1_500_000, estimated: false },
+    ],
+  }]);
+});

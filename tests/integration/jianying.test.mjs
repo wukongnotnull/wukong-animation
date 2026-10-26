@@ -28,7 +28,7 @@ const gapped = (file) =>
     '-af', "volume='if(between(t,0.3,1.7),0,1)':eval=frame", '-t', '2', file]);
 
 /** 两镜各 1 秒；配乐脚本 1 条（一声"笃"）、自供录音人声 2 条、用户音轨 2 条（bgm -6dB、中间静音的 gap）。 */
-function makeFilm() {
+function makeFilm({ voices } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-jy-'));
   fs.mkdirSync(path.join(dir, 'shots'));
   fs.mkdirSync(path.join(dir, 'audio'));
@@ -44,7 +44,7 @@ function makeFilm() {
     audio: {
       build: 'audio/build.mjs',
       voice_source: 'user',
-      voices: [
+      voices: voices || [
         { text: '第一句', at: 0.2, file: 'audio/vo1.wav' },
         { text: '第二句', at: 1.3, file: 'audio/vo2.wav' },
       ],
@@ -103,6 +103,25 @@ test('exports an editable 剪映 draft split by shot, audio source and subtitle'
   assert.ok(paths.some((p) => path.basename(p) === 's01.mp4'));
 
   assert.match(r.stdout, /响度/);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(drafts, { recursive: true, force: true });
+});
+
+test('puts overlapping voices and their subtitles on second tracks', opts, () => {
+  const dir = makeFilm({
+    voices: [
+      { text: '第一句', at: 0.2, file: 'audio/vo1.wav' },
+      { text: '第二句', at: 0.5, file: 'audio/vo2.wav' }, // vo1 长 0.5s，到 0.7s 才结束
+    ],
+  });
+  const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+  const r = wka(drafts, 'final', dir, '--formats', 'jianying');
+  assert.equal(r.status, 0, r.stderr);
+  const draft = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it', 'draft_info.json'), 'utf8'));
+  const voices = byType(draft, 'audio').filter((t) => t.name.startsWith('人声'));
+  assert.deepEqual(voices.map((t) => [t.name, t.segments.map((s) => s.target_timerange.start)]), [['人声', [200_000]], ['人声 2', [500_000]]]);
+  assert.ok(Math.abs(voices[0].segments[0].target_timerange.duration - 500_000) < 20_000, 'voice segment is as long as its audio');
+  assert.deepEqual(byType(draft, 'text').map((t) => t.segments.length), [1, 1]);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });

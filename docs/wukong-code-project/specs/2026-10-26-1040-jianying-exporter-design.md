@@ -66,12 +66,12 @@ timeline = { title, size: [W, H], fps, duration, shots: segments, tracks, voices
 - 时间单位：微秒整数（`Math.round(秒 × 1e6)`）。
 - 视频段：每镜一段，`start` 为前面各镜时长之和，名字为镜头 id。
 - 音频轨：
-  - `role: voice` 全部放在名为「人声」的一条轨；
+  - `role: voice` 放在名为「人声」的轨，每段按实测时长；与已有人声重叠的句子放到「人声 2」「人声 3」…（按起点顺序放进第一条不重叠的轨，[#9](https://github.com/wukongnotnull/wukong-animation/issues/9)）；
   - `role: build` / `track` 每个文件一条轨，轨名取文件名；
   - 每段音量 = `10^(gain/20)`（gain 为 dB，缺省 0 → 1.0）；
   - 起点为 `start`，段长裁到片尾（`start` 超过片长的段丢弃）；实际素材时长由 Python 端再与素材长度取较小值。
   - 只放有声音的片段（[#5](https://github.com/wukongnotnull/wukong-animation/issues/5)）：非人声音轨先用 ffmpeg `silencedetect` 找静音（低于 -50 dB、持续 ≥ 1 秒），每个有声区间前后各留 0.1 秒、相接的合并，一个区间一段；各段引用同一素材的不同区间（`source_timerange`），素材只复制一份。整段静音的音轨不放。人声本来一句一个文件，不检测。成片混音不受影响。
-- 字幕：每条 voice 一段，`start = at`，`duration = duration`，文字原样，默认样式；`estimated` 的条目在计划里保留标记供日志输出。
+- 字幕：每条 voice 一段，`start = at`，`duration = duration`，文字原样，默认样式；重叠的分到「字幕 2」…，规则同人声；`estimated` 的条目在计划里保留标记供日志输出。
 - 画布：`size`、`fps` 显式写入。
 
 ### 3.5 草稿写出（`write_draft.py`）

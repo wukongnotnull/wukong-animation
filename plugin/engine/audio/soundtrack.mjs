@@ -90,7 +90,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
 /**
  * @returns {Promise<{mix: string|null, tracks: object[], voices: object[]}>}
  *   mix：混好的 wav 路径，没有任何音轨时为 null；
- *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}；voices：人声 {text, at, duration, estimated}
+ *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}，人声另带实测 duration；voices：人声 {text, at, duration, estimated}
  */
 export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const ctx = loadFilm(filmDir);
@@ -107,7 +107,7 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
   }
   const vo = prepareVoices(ctx, audio, path.join(genDir, 'vo'), log);
-  for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, gain: 2 });
+  for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, duration: it.duration, gain: 2 });
   const hasVoices = audio.voices?.length && audio.voice_source !== 'none';
   if (hasVoices) writeVoiceCues(ctx, audio.voices, vo, log);
   const voices = hasVoices ? audio.voices.map((l, i) => ({ text: l.text, at: l.at, duration: voiceDuration(l, vo[i]), estimated: !vo[i]?.duration })) : [];

@@ -1,0 +1,8 @@
+{
+  "name": "jianying",
+  "version": "0.1.0",
+  "description": "剪映专业版草稿：每镜一段视频、按来源分轨的音频、人声字幕，直接写进剪映草稿目录（需 python3 + pyJianYingDraft，实测 macOS 剪映 11.6）。",
+  "entry": "index.mjs",
+  "ext": "jianying",
+  "status": "experimental"
+}

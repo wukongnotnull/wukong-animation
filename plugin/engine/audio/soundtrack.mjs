@@ -8,32 +8,53 @@ import { run, probeDuration } from '../core/ffmpeg.mjs';
 import { loadFilm } from '../core/job.mjs';
 
 /**
- * VO 素材：按 audio.vo_source（第 6 道工序审片节点④由用户签批）取用户自供录音或 AI 配音。
+ * 决定每条人声从哪来：via 'file' 用挂接的录音，'tts' 走 AI 配音。
+ * 同期声（kind: sync）是现场原声，AI 配不出来，不管 vo_source 是什么都必须挂接录音。
+ * @returns {{source: string, lines: object[]}} lines 与 voiceover 一一对应（source 为 none 时为空）
+ */
+export function planVoiceLines(audio) {
+  const raw = audio.voiceover || [];
+  const source = audio.vo_source || (raw.some((l) => l.file) ? 'user' : 'ai');
+  if (source === 'none') return { source, lines: [] };
+  const lines = raw.map((l) => {
+    const kind = l.kind || 'vo';
+    return { ...l, kind, via: source === 'user' || kind === 'sync' ? 'file' : 'tts' };
+  });
+  const missing = lines.map((l, i) => (l.via === 'file' && !l.file ? `第 ${i + 1} 条「${l.text}」` : null)).filter(Boolean);
+  if (missing.length) {
+    const why = source === 'user' ? 'VO 素材来源为"用户自供录音"' : '同期声只能用现场录音';
+    throw new Error(`${why}，但以下条目没有挂接音频文件（voiceover[].file）：\n  ${missing.join('\n  ')}`);
+  }
+  return { source, lines };
+}
+
+function probeRecording(ctx, l) {
+  const file = path.join(ctx.filmDir, l.file);
+  if (!fs.existsSync(file)) throw new Error(`找不到人声录音：${l.file}`);
+  const duration = probeDuration(file);
+  if (!duration) throw new Error(`无法读取音频时长（格式不支持或文件损坏）：${l.file}`);
+  return { file, at: l.at, duration, text: l.text };
+}
+
+/**
+ * 人声素材：按 audio.vo_source（第 6 道工序审片节点④由用户签批）取用户自供录音或 AI 配音。
  * 返回与 voiceover 一一对应的数组：{file, at, duration} 或 null（无音频，同步点按字数估算）。
  */
 function prepareVoiceOver(ctx, audio, outDir, log) {
-  const lines = audio.voiceover || [];
-  if (!lines.length) return [];
-  const source = audio.vo_source || (lines.some((l) => l.file) ? 'user' : 'ai');
+  if (!audio.voiceover?.length) return [];
+  const { source, lines } = planVoiceLines(audio);
   if (source === 'none') {
     log('  · VO 素材来源：无 VO');
     return [];
   }
-  if (source === 'user') {
-    const missing = lines.map((l, i) => (!l.file ? `第 ${i + 1} 条「${l.text}」` : null)).filter(Boolean);
-    if (missing.length) throw new Error(`VO 素材来源为"用户自供录音"，但以下条目没有挂接音频文件（voiceover[].file）：\n  ${missing.join('\n  ')}`);
-    const items = lines.map((l) => {
-      const file = path.join(ctx.filmDir, l.file);
-      if (!fs.existsSync(file)) throw new Error(`找不到用户自供的 VO 录音：${l.file}`);
-      const duration = probeDuration(file);
-      if (!duration) throw new Error(`无法读取音频时长（格式不支持或文件损坏）：${l.file}`);
-      return { file, at: l.at, duration, text: l.text };
-    });
-    log(`  ✓ VO ${items.length} 条（用户自供录音）`);
-    return items;
-  }
-  const r = synthesizeVoiceOver(lines, outDir, { log });
-  return r ? r.items : lines.map(() => null);
+  const items = lines.map((l) => (l.via === 'file' ? probeRecording(ctx, l) : null));
+  const recorded = items.filter(Boolean).length;
+  if (recorded) log(`  ✓ 人声 ${recorded} 条（录音）`);
+  const ttsIdx = lines.flatMap((l, i) => (l.via === 'tts' ? [i] : []));
+  if (!ttsIdx.length) return items;
+  const r = synthesizeVoiceOver(ttsIdx.map((i) => lines[i]), outDir, { log });
+  ttsIdx.forEach((i, j) => (items[i] = r ? r.items[j] : null));
+  return items;
 }
 
 /**

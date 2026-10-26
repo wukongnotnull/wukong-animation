@@ -93,6 +93,20 @@
               "text": {
                 "type": "string"
               },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "vo",
+                  "dialogue",
+                  "os",
+                  "sync"
+                ],
+                "description": "人声类型：vo 画外音（默认，含旁白、内心独白）/ dialogue 出镜对白 / os 画外但在场景里 / sync 同期声（现场原声、采访，必须挂接 file）"
+              },
+              "speaker": {
+                "type": "string",
+                "description": "说话的人或声音来源，对应分镜「人声」栏的括号，如 对白（老者）"
+              },
               "at": {
                 "type": "number",
                 "minimum": 0

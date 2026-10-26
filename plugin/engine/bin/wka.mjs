@@ -145,10 +145,12 @@ function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
 
 async function cmdFinal(filmDir, o) {
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
-  const audio = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
-  const { video } = await render(filmDir, o);
+  const { mix: audio, tracks, voices } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
+  const { video, job, segments } = await render(filmDir, o);
   const formats = o.formats ? String(o.formats).split(',') : null;
-  const outs = await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats, log });
+  // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
+  const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices };
+  const outs = await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats, log });
   log(`\n完成 ✓  ${outs.map((x) => path.relative(process.cwd(), x)).join('  ')}`);
 }
 

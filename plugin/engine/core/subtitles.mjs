@@ -68,6 +68,19 @@ function splitLine(text, maxChars) {
 }
 
 /**
+ * 成片按字幕方式出哪几个版本、文件名加什么后缀（null 表示不出）：
+ * burned 烧录版，clean 无字幕版，srt 外挂字幕。不出字幕时成片名不加后缀。
+ */
+export function subtitleOutputs(mode) {
+  if (mode === 'none') return { burned: null, clean: '', srt: null };
+  return {
+    burned: ['burn', 'both'].includes(mode) ? '_有字幕' : null,
+    clean: ['srt', 'both'].includes(mode) ? '_无字幕' : null,
+    srt: ['srt', 'both'].includes(mode) ? '_字幕' : null,
+  };
+}
+
+/**
  * @param {object[]} voices film.json 的 audio.voices
  * @param {object} cues film.json 的 cues（wka soundtrack 写入的人声实测入出点）
  * @returns {{index:number,start:number,end:number,text:string}[]} 按入点排序

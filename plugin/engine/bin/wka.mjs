@@ -19,14 +19,14 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, ensureDir } from '../core/paths.mjs';
-import { render, stills, animatic, encodeOutputs, loadFilm, outputSize } from '../core/job.mjs';
+import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview } from '../core/job.mjs';
 import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
-import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings } from '../core/subtitles.mjs';
+import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 
 const argv = process.argv.slice(2);
@@ -187,7 +187,7 @@ async function cmdSubtitles(filmDir, { force, preview }) {
   const out = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}-proxy-subtitled.mp4`);
   const { W, H } = outputSize(ctx.film, true);
   await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.filmDir, '.cache', 'work'), proxy: true, audio: fs.existsSync(mix) ? mix : null, log });
-  log(`字幕预览：${out.startsWith(process.cwd() + path.sep) ? path.relative(process.cwd(), out) : out}`);
+  log(`字幕预览：${out}`);
 }
 
 async function cmdFinal(filmDir, o) {
@@ -196,23 +196,35 @@ async function cmdFinal(filmDir, o) {
   const subs = settings.mode === 'none' ? null : readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles` });
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
   const { mix: audio, tracks, voices } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
-  let { video, job, segments } = await render(filmDir, o);
+  const { video, job, segments } = await render(filmDir, o);
   const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
-  // 只导剪映草稿时用不到成片画面，不必烧录
-  if (subs && ['burn', 'both'].includes(settings.mode) && formats.some((f) => f !== 'jianying')) {
+  // 画面类成片按字幕方式出烧录版 / 无字幕版，文件名标明有没有字幕；剪映草稿只导一份
+  const visual = formats.filter((f) => f !== 'jianying');
+  const drafts = formats.filter((f) => f === 'jianying');
+  const names = subtitleOutputs(subs ? settings.mode : 'none');
+  const outs = [];
+  if (visual.length && names.burned !== null) {
     const out = path.join(ctx.filmDir, '.cache', o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
-    video = await burnSubtitles(video, subs, out, { W: job.W, H: job.H, style: ctx.style, workDir: job.workDir, proxy: o.proxy, log });
+    const burned = await burnSubtitles(video, subs, out, { W: job.W, H: job.H, style: ctx.style, workDir: job.workDir, proxy: o.proxy, log });
+    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, log })));
   }
-  // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
-  const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
-  const outs = await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats, log });
-  if (subs && ['srt', 'both'].includes(settings.mode) && !o.proxy) {
-    const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}.srt`);
+  // 已有烧录版时，无字幕版只多出一个 mp4
+  if (visual.length && names.clean !== null) {
+    const cleanFormats = names.burned === null ? visual : ['mp4'];
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, log })));
+  }
+  if (drafts.length) {
+    // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
+    const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, log })));
+  }
+  if (names.srt !== null && !o.proxy) {
+    const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}${names.srt}.srt`);
     fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
     log(`  导出 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
-  log(`\n完成 ✓  ${outs.map((x) => (x.startsWith(process.cwd() + path.sep) ? path.relative(process.cwd(), x) : x)).join('  ')}`);
+  log(`\n完成 ✓\n${outs.map((x) => `  ${x}`).join('\n')}`);
 }
 
 async function main() {
@@ -276,15 +288,27 @@ async function main() {
       log(`动态分镜：${r.file}`);
       return;
     }
-    case 'render':
+    case 'render': {
       if (!pos[0]) fail('用法：wka render <片目录>');
-      await render(pos[0], { proxy: !!opt('proxy'), only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), log });
+      const proxy = !!opt('proxy');
+      const { video } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), log });
+      if (!proxy) return;
+      // 小样配上声轨，放进 review/ 交给用户审阅
+      const mix = path.join(path.resolve(pos[0]), '.cache', 'mix.wav');
+      const hasMix = fs.existsSync(mix);
+      if (!hasMix) log('  ! 没有 .cache/mix.wav，小样不带声音（先运行 wka soundtrack）');
+      const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : ['-i', video, '-c', 'copy'];
+      log(`小样：${await writeReview(pos[0], '小样.mp4', [...args, '-movflags', '+faststart'])}`);
       return;
-    case 'soundtrack':
+    }
+    case 'soundtrack': {
       if (!pos[0]) fail('用法：wka soundtrack <片目录>');
       loadFilm(pos[0]);
-      await (await import('../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
+      const { mix } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
+      // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/ 交给用户审听
+      if (mix) log(`声轨审听：${await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k'])}`);
       return;
+    }
     case 'subtitles':
       if (!pos[0]) fail('用法：wka subtitles <片目录> [--force] [--preview]');
       return cmdSubtitles(pos[0], { force: !!opt('force'), preview: !!opt('preview') });

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings } from '../../plugin/engine/core/subtitles.mjs';
+import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../../plugin/engine/core/subtitles.mjs';
+import { subtitleStyle, mergeSubtitleStyle } from '../../plugin/engine/core/subtitle-layer.mjs';
 
 const texts = (subs) => subs.map((s) => s.text);
 
@@ -105,4 +106,24 @@ test('subtitleSettings: no subtitles field means mode none; max_chars defaults b
   assert.equal(subtitleSettings({ size: [1080, 1920], subtitles: { mode: 'burn' } }).maxChars, 12);
   assert.equal(subtitleSettings({ size: [1080, 1080], subtitles: { mode: 'both' } }).maxChars, 14);
   assert.equal(subtitleSettings({ size: [1920, 1080], subtitles: { mode: 'srt', max_chars: 20, file: 'zh.srt' } }).maxChars, 20);
+});
+
+test('final file suffixes say whether the video carries subtitles', () => {
+  assert.deepEqual(subtitleOutputs('none'), { burned: null, clean: '', srt: null });
+  assert.deepEqual(subtitleOutputs('burn'), { burned: '_有字幕', clean: null, srt: null });
+  assert.deepEqual(subtitleOutputs('srt'), { burned: null, clean: '_无字幕', srt: '_字幕' });
+  assert.deepEqual(subtitleOutputs('both'), { burned: '_有字幕', clean: '_无字幕', srt: '_字幕' });
+});
+
+test('a film subtitle style overrides the style one: font replaced whole, stroke merged by field', () => {
+  const base = { font: { family: 'Ma Shan Zheng', fallback: ['serif'] }, color: '#2B2B2B', stroke: { color: 'white', width: 0.12 }, bottom: 0.1 };
+  const merged = mergeSubtitleStyle(base, { font: { family: 'Long Cang' }, stroke: { width: 0.2 }, size: 0.05 });
+  assert.deepEqual(merged, { font: { family: 'Long Cang' }, color: '#2B2B2B', stroke: { color: 'white', width: 0.2 }, bottom: 0.1, size: 0.05 });
+});
+
+test('subtitleStyle fills engine defaults under the merged style', () => {
+  const s = subtitleStyle({ subtitles: mergeSubtitleStyle(undefined, { color: '#000000' }) });
+  assert.equal(s.color, '#000000');
+  assert.equal(s.font.family, 'Noto Sans SC');
+  assert.deepEqual(s.stroke, { color: 'rgba(0,0,0,0.65)', width: 0.08 });
 });

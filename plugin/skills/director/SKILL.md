@@ -89,7 +89,7 @@ node <插件根目录>/engine/bin/wka.mjs
 
 **7. 声轨制作（声音先行：先定声轨，再做画面）**
 - 人声写进 `film.json` 的 `audio.voices`，每条给一个同步点名（如 `"cue": "第二句"`）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
-- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。
+- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。
 - `wka soundtrack`：接入用户录音或合成 AI 配音，把每条人声的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。
 - 把混好的声轨 `films/<片>/.cache/mix.wav` 发给用户审听，请用户确认人声效果、配乐、音效和整体节奏。有意见就改 `audio/build.mjs` 或人声后重新 `wka soundtrack`，再提交审听。
 - **没有任何声轨**（无人声、无配乐、无音效）时，`wka soundtrack` 不生成 `mix.wav`。也要停下请用户确认"本片无声"，签批后继续；第 8 道的动态分镜随之无声，只审画面节奏。

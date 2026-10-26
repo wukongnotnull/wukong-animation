@@ -135,7 +135,7 @@ wka signoff films/寒江 "文学脚本 v2 签批：去掉 VO，改为古琴 + �
 
 ### 第 7 道工序：声轨制作
 
-- 配乐（Score）由 `audio/build.mjs` 程序化合成（古琴拨弦、流水、打击乐、混响），关键音效的时间点写进 `cues`。
+- 配乐（Score）由 `audio/build.mjs` 程序化合成（古琴拨弦、流水、打击乐、混响），关键音效的时间点写进 `cues`。配乐、环境声、音效各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`），导出剪映草稿时各占一条轨。
 - 人声逐条写 `voices[].kind`（`vo` 默认 / `dialogue` / `os` / `live`）与 `speaker`；同期声（`live`）只能用现场录音，必须挂接 `file`。
 - `wka soundtrack` 接入客户录音或合成 AI 配音，实测每条人声的入出点写入 `cues`；超出镜头时长或相互重叠的人声条目会被标记，据此回调镜头时长。客户录音与文学脚本篇幅出入较大时，向客户说明并以实际录音为准。
 - 把混好的声轨 `films/<片名>/.cache/mix.wav` 交客户审听：人声效果、配乐、音效、整体节奏。

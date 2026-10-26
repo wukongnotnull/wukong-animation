@@ -28,7 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: plugin/engine/package-lock.json
       - name: 安装 ffmpeg 与中文字体
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
           APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30'
           sudo apt-get $APT update

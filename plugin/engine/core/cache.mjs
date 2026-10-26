@@ -4,12 +4,16 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { ensureDir } from './paths.mjs';
 
+// 文件部件只哈希文件名和内容，不哈希绝对路径：插件每个版本装在不同目录，
+// 带上路径会让每次更新后所有镜头缓存失效。各部件按顺序哈希，内容前带长度，
+// 文件互换内容或内容在相邻文件间挪动都会改变哈希。
 export function hashParts(parts) {
   const h = crypto.createHash('sha256');
   for (const p of parts) {
     if (p && typeof p === 'object' && p.file) {
-      h.update(`file:${p.file}\n`);
-      h.update(fs.existsSync(p.file) ? fs.readFileSync(p.file) : 'MISSING');
+      const body = fs.existsSync(p.file) ? fs.readFileSync(p.file) : null;
+      h.update(`file:${path.basename(p.file)}:${body ? body.length : 'MISSING'}\n`);
+      if (body) h.update(body);
     } else {
       h.update(typeof p === 'string' ? p : JSON.stringify(p));
     }

@@ -5,10 +5,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const IGNORE_BLOCK = `# >>> wukong-animation >>>
-# 渲染缓存、中间帧、风格帧、成片都可以由源文件重新生成，不进版本库
+# 渲染缓存、中间帧、风格帧、审阅副本、成片都可以由源文件重新生成，不进版本库
 films/*/.cache/
 films/*/stills/
 films/*/audio/generated/
+films/*/review/
 films/*/*.mp4
 films/*/*.gif
 films/*/*.webm
@@ -17,6 +18,20 @@ node_modules/
 # 想把成片也纳入版本管理，建议用 Git LFS：git lfs track "films/*/*.mp4"
 # <<< wukong-animation <<<
 `;
+
+const BLOCK_BEGIN = '# >>> wukong-animation >>>';
+const BLOCK_END = '# <<< wukong-animation <<<';
+
+/** 把 .gitignore 里的 wukong-animation 段落写成当前版本：没有就追加，旧版就整段替换，段落外的内容不动。 */
+export function upsertIgnoreBlock(text) {
+  const begin = text.indexOf(BLOCK_BEGIN);
+  const end = text.indexOf(BLOCK_END, begin);
+  if (begin >= 0 && end >= 0) {
+    const after = text.slice(end + BLOCK_END.length).replace(/^\n/, '');
+    return text.slice(0, begin) + IGNORE_BLOCK + after;
+  }
+  return (text && !text.endsWith('\n') ? text + '\n' : text) + (text ? '\n' : '') + IGNORE_BLOCK;
+}
 
 function git(dir, args) {
   const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
@@ -37,9 +52,9 @@ const IDENTITY_HINT =
 /**
  * 初始化项目目录：
  *   1. 不是 git 仓库 → git init（默认分支 main）
- *   2. 写入 / 补全 .gitignore 中的 wukong-animation 段落
+ *   2. 写入 .gitignore 中的 wukong-animation 段落，旧版段落换成当前版本
  *   3. 仓库还没有任何提交 → 做一次初始提交
- * 已经是仓库的目录不会被重新初始化，只补全 .gitignore。
+ * 已经是仓库的目录不会被重新初始化，只补全 / 更新 .gitignore。
  */
 export function initProject(dir, { log = console.log } = {}) {
   dir = path.resolve(dir);
@@ -63,9 +78,10 @@ export function initProject(dir, { log = console.log } = {}) {
 
   const gi = path.join(dir, '.gitignore');
   const old = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
-  if (!old.includes('# >>> wukong-animation >>>')) {
-    fs.writeFileSync(gi, (old && !old.endsWith('\n') ? old + '\n' : old) + (old ? '\n' : '') + IGNORE_BLOCK);
-    log('  ✓ 已写入 .gitignore（忽略渲染缓存、中间帧和成片）');
+  const next = upsertIgnoreBlock(old);
+  if (next !== old) {
+    fs.writeFileSync(gi, next);
+    log(old.includes(BLOCK_BEGIN) ? '  ✓ 已更新 .gitignore 的 wukong-animation 段落' : '  ✓ 已写入 .gitignore（忽略渲染缓存、中间帧和成片）');
   }
 
   const hasCommit = git(dir, ['rev-parse', '--verify', 'HEAD']).ok;

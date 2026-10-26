@@ -18,10 +18,17 @@ const DEFAULTS = {
 /** 一行最宽占画面宽度的比例，超过就缩小字号 */
 const MAX_WIDTH = 0.9;
 
-/** 风格 style.json 的 subtitles 块加上缺省值。 */
+/** 字幕样式叠加：font 整体替换，stroke 按字段合并，其余字段直接覆盖。 */
+export function mergeSubtitleStyle(base = {}, override = {}) {
+  const merged = { ...base, ...override };
+  if (base.font || override.font) merged.font = override.font || base.font;
+  if (base.stroke || override.stroke) merged.stroke = { ...base.stroke, ...override.stroke };
+  return merged;
+}
+
+/** 风格 style.json 的 subtitles 块（已叠加 film.json 的 subtitles.style）加上缺省值。 */
 export function subtitleStyle(style = {}) {
-  const s = style.subtitles || {};
-  return { ...DEFAULTS, ...s, font: s.font || DEFAULTS.font, stroke: { ...DEFAULTS.stroke, ...s.stroke } };
+  return mergeSubtitleStyle(DEFAULTS, style.subtitles);
 }
 
 function buildPage({ W, H, style, fonts, workDir }) {

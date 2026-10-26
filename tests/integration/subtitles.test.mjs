@@ -44,6 +44,9 @@ function bottomPixels(video, t) {
   return r.stdout;
 }
 
+const probe = (file, entries) =>
+  spawnSync('ffprobe', ['-v', 'error', '-show_entries', entries, '-of', 'default=nw=1:nk=1', file], { encoding: 'utf8' }).stdout.trim();
+
 /** 两帧最大的像素差：字幕只占几十个像素，看平均差会被纸色底稀释。 */
 const maxDiff = (a, b) => {
   let m = 0;
@@ -88,28 +91,74 @@ test('wka subtitles writes the srt once and keeps hand edits unless --force', op
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('mode burn: the final mp4 shows the subtitle only while it is on, and no srt is written', opts, () => {
+test('mode burn: only out_有字幕.mp4, showing the subtitle only while it is on', opts, () => {
   const dir = makeFilm({ mode: 'burn' });
   assert.equal(wka('soundtrack', dir).status, 0);
   assert.equal(wka('subtitles', dir).status, 0);
   const r = wka('final', dir);
   assert.equal(r.status, 0, r.stderr);
-  const out = path.join(dir, 'out.mp4');
+  const out = path.join(dir, 'out_有字幕.mp4');
   const clean = path.join(dir, '.cache', 'video.mp4');
   assert.ok(maxDiff(bottomPixels(out, 0.5), bottomPixels(clean, 0.5)) > 100, 'subtitle visible at 0.5s');
   assert.ok(maxDiff(bottomPixels(out, 1.5), bottomPixels(clean, 1.5)) < 30, 'nothing at 1.5s');
-  assert.ok(!fs.existsSync(path.join(dir, 'out.srt')));
+  for (const f of ['out.mp4', 'out_无字幕.mp4', 'out_字幕.srt']) assert.ok(!fs.existsSync(path.join(dir, f)), f);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('mode srt: wka final writes out.srt next to an mp4 without burned subtitles', opts, () => {
+test('mode srt: out_无字幕.mp4 without burned subtitles plus out_字幕.srt', opts, () => {
   const dir = makeFilm({ mode: 'srt' });
   assert.equal(wka('soundtrack', dir).status, 0);
   assert.equal(wka('subtitles', dir).status, 0);
   const r = wka('final', dir);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(fs.readFileSync(path.join(dir, 'out.srt'), 'utf8'), fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8'));
-  assert.ok(maxDiff(bottomPixels(path.join(dir, 'out.mp4'), 0.5), bottomPixels(path.join(dir, '.cache', 'video.mp4'), 0.5)) < 30);
+  assert.equal(fs.readFileSync(path.join(dir, 'out_字幕.srt'), 'utf8'), fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8'));
+  assert.ok(maxDiff(bottomPixels(path.join(dir, 'out_无字幕.mp4'), 0.5), bottomPixels(path.join(dir, '.cache', 'video.mp4'), 0.5)) < 30);
+  assert.ok(!fs.existsSync(path.join(dir, 'out_有字幕.mp4')));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('mode both: a burned and a clean mp4 plus the srt', opts, () => {
+  const dir = makeFilm({ mode: 'both' });
+  assert.equal(wka('soundtrack', dir).status, 0);
+  assert.equal(wka('subtitles', dir).status, 0);
+  const r = wka('final', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const clean = path.join(dir, '.cache', 'video.mp4');
+  assert.ok(maxDiff(bottomPixels(path.join(dir, 'out_有字幕.mp4'), 0.5), bottomPixels(clean, 0.5)) > 100);
+  assert.ok(maxDiff(bottomPixels(path.join(dir, 'out_无字幕.mp4'), 0.5), bottomPixels(clean, 0.5)) < 30);
+  assert.ok(fs.existsSync(path.join(dir, 'out_字幕.srt')));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('film.json subtitles.style overrides the style subtitle look', opts, () => {
+  const burnt = (subtitles) => {
+    const dir = makeFilm(subtitles);
+    assert.equal(wka('soundtrack', dir).status, 0);
+    assert.equal(wka('subtitles', dir).status, 0);
+    const r = wka('final', dir);
+    assert.equal(r.status, 0, r.stderr);
+    const px = bottomPixels(path.join(dir, 'out_有字幕.mp4'), 0.5);
+    fs.rmSync(dir, { recursive: true, force: true });
+    return px;
+  };
+  const plain = burnt({ mode: 'burn' });
+  const dark = burnt({ mode: 'burn', style: { color: '#000000', stroke: { width: 0 } } });
+  assert.ok(maxDiff(plain, dark) > 100);
+});
+
+test('soundtrack and proxy leave playable review copies in review/', opts, () => {
+  const dir = makeFilm({ mode: 'srt' });
+  let r = wka('soundtrack', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const m4a = path.join(dir, 'review', '声轨.m4a');
+  assert.ok(r.stdout.includes(m4a), 'absolute path in the log');
+  assert.equal(probe(m4a, 'stream=codec_name'), 'aac');
+  assert.ok(Math.abs(Number(probe(m4a, 'format=duration')) - Number(probe(path.join(dir, '.cache', 'mix.wav'), 'format=duration'))) < 0.1);
+  r = wka('render', dir, '--proxy');
+  assert.equal(r.status, 0, r.stderr);
+  const proxy = path.join(dir, 'review', '小样.mp4');
+  assert.ok(r.stdout.includes(proxy), 'absolute path in the log');
+  assert.equal(probe(proxy, 'stream=codec_type'), 'video\naudio');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

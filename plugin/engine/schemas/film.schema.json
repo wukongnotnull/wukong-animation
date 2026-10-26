@@ -210,6 +210,60 @@
           "type": "integer",
           "minimum": 4,
           "description": "每条字幕最多几个字（标点不计），缺省横屏 18、竖屏 12、方形 14"
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "这支片的字幕样式，逐项覆盖风格 style.json 的 subtitles 块（font 整体替换，stroke 按字段合并）。改字幕样式写这里，不改插件目录里的 style.json",
+          "properties": {
+            "font": {
+              "type": "object",
+              "required": [
+                "family"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "family": {
+                  "type": "string"
+                },
+                "fallback": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "size": {
+              "type": "number",
+              "minimum": 0.01,
+              "description": "字号，占画面高度的比例，缺省 0.045"
+            },
+            "color": {
+              "type": "string",
+              "description": "文字颜色，缺省 #FFFFFF"
+            },
+            "stroke": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "type": "string"
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "描边宽度，字号的倍数"
+                }
+              },
+              "description": "描边，缺省 rgba(0,0,0,0.65)、0.08"
+            },
+            "bottom": {
+              "type": "number",
+              "minimum": 0,
+              "description": "文字底边到画面底边的距离，占画面高度的比例，缺省 0.08"
+            }
+          }
         }
       }
     }

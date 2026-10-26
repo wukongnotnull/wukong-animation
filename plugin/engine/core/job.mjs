@@ -10,6 +10,7 @@ import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
 import { run, hasDrawtext, drawLabel } from './ffmpeg.mjs';
 import { pickCues } from './cues.mjs';
 import { migrateFilm } from './compat.mjs';
+import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
 
@@ -38,7 +39,9 @@ export function loadFilm(filmDir) {
 
   const styleScripts = (style.scripts || []).map((p) => path.join(style.dir, p));
   const filmScripts = (film.scripts || []).map((p) => path.join(filmDir, p));
-  return { film, filmDir, legacyFields, style, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
+  // 片子可以单独改字幕样式（film.json 的 subtitles.style），不用动插件目录里的 style.json
+  const filmStyle = film.subtitles?.style ? { ...style, subtitles: mergeSubtitleStyle(style.subtitles, film.subtitles.style) } : style;
+  return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
 }
 
 /** 输出画面的尺寸与帧率：小样为半分辨率、半帧率。 */
@@ -141,6 +144,13 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   return { video, job, segments: shotSegments };
 }
 
+/** 审阅副本写进片目录的 review/（不隐藏、体积小，聊天和访达里都能直接播放），返回绝对路径。 */
+export async function writeReview(filmDir, file, args) {
+  const out = path.join(ensureDir(path.join(path.resolve(filmDir), 'review')), file);
+  await run([...args, out]);
+  return out;
+}
+
 /**
  * 渲染静帧。
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
@@ -202,7 +212,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, log = console.log }) {
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', log = console.log }) {
   const ctx = loadFilm(filmDir);
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   const base = ctx.film.export?.name || 'out';
@@ -212,7 +222,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     if (!exp) throw new Error(`导出器 "${name}" 没有注册。可用: ${[...ctx.registry.exporters.keys()].join(', ')}`);
     if (exp.status === 'planned') throw new Error(`导出器 "${name}" 还在规划中`);
     const mod = await loadModule(exp);
-    const target = path.join(ctx.filmDir, `${base}${proxy ? '-proxy' : ''}.${exp.ext}`);
+    const target = path.join(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`);
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const out = (await mod.encodeOutput({ video, audio, out: target, fps: ctx.film.fps, proxy, timeline })) || target;
     log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);

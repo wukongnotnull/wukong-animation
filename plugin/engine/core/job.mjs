@@ -41,13 +41,21 @@ export function loadFilm(filmDir) {
   return { film, filmDir, legacyFields, style, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
 }
 
+/** 输出画面的尺寸与帧率：小样为半分辨率、半帧率。 */
+export function outputSize(film, proxy = false) {
+  const [W0, H0] = film.size;
+  const scale = proxy ? PROXY_SPEC.scale : 1;
+  return {
+    W: Math.round((W0 * scale) / 2) * 2,
+    H: Math.round((H0 * scale) / 2) * 2,
+    fps: proxy ? Math.max(1, Math.round(film.fps / PROXY_SPEC.fpsDiv)) : film.fps,
+  };
+}
+
 /** 构建传给管线的任务描述。 */
 function createRenderJob(ctx, { proxy = false, log }) {
   const [W0, H0] = ctx.film.size;
-  const scale = proxy ? PROXY_SPEC.scale : 1;
-  const W = Math.round((W0 * scale) / 2) * 2;
-  const H = Math.round((H0 * scale) / 2) * 2;
-  const fps = proxy ? Math.max(1, Math.round(ctx.film.fps / PROXY_SPEC.fpsDiv)) : ctx.film.fps;
+  const { W, H, fps } = outputSize(ctx.film, proxy);
   const workDir = ensureDir(path.join(ctx.filmDir, '.cache', 'work'));
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });

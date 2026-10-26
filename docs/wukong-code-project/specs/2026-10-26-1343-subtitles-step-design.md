@@ -31,7 +31,7 @@
 ```
 wka subtitles <片>            ── core/subtitles.mjs  buildSubtitles(voices, cues, opts) → cues[]（纯函数）
    [--force] [--preview]                            formatSrt / parseSrt / checkSubtitles（纯函数）
-                              ── core/subtitle-layer.mjs  burnSubtitles(job, video, cues, out)
+                              ── core/subtitle-layer.mjs  burnSubtitles(video, subs, out, { W, H, style, workDir, proxy, audio })
                                     Chromium 渲染透明 PNG → ffmpeg overlay
 wka final <片>
   ├─ mixSoundtrack
@@ -42,7 +42,7 @@ wka final <片>
 core/state.mjs                ── 14 道工序、10 个节点；migrateProgress(st) 迁移旧编号
 ```
 
-- 新文件：`plugin/engine/core/subtitles.mjs`、`plugin/engine/core/subtitle-layer.mjs`、`plugin/engine/runtime/subtitle.html`（字幕层宿主页）。
+- 新文件：`plugin/engine/core/subtitles.mjs`、`plugin/engine/core/subtitle-layer.mjs`、`plugin/engine/core/subtitle-layer.html`（字幕层宿主页）。宿主页不放 `runtime/`：那里的文件都算进镜头哈希，放进去会让所有镜头缓存失效。
 - 改动文件：`core/state.mjs`、`core/fonts.mjs`（`KNOWN_FONTS` 加 Noto Sans SC）、`bin/wka.mjs`、`exporters/jianying/plan.mjs`、`exporters/jianying/index.mjs`、`schemas/film.schema.json`、`schemas/style.schema.json`。
 - 文档：`docs/PRODUCTION-WORKFLOW.md`（升 v1.2.0）、`plugin/skills/director/SKILL.md`、`plugin/skills/director/STORYBOARD.md`、`README.md`。
 - 不改：镜头渲染管线（`pipelines/browser`）、镜头缓存哈希、`core/qc.mjs`、mp4 / gif / png-seq 导出器。
@@ -106,9 +106,9 @@ core/state.mjs                ── 14 道工序、10 个节点；migrateProgre
 3. 字幕文件已存在：不加 `--force` 时不覆盖，只读入并检查，提示「已存在 subtitles.srt（可能手改过断句）；声音返修后要重新生成，请加 --force，会覆盖手改」。加 `--force` 才重新生成。
 4. `--preview`：把字幕烧录到小样 `.cache/video-proxy.mp4` 上、配 `.cache/mix.wav`，输出 `<export.name>-proxy-subtitled.mp4`，供审片节点 ⑧ 审阅。不管 `mode` 是 `srt` 还是 `burn` 都烧录（只是审阅用）。小样不存在时报错「先运行 wka render --proxy」。
 
-### 3.7 字幕层：`burnSubtitles(job, video, cues, out)`
+### 3.7 字幕层：`burnSubtitles(video, subs, out, { W, H, style, workDir, proxy, audio })`
 
-- 每条字幕用 Chromium 渲染一张与画面同尺寸的透明 PNG（宿主页 `runtime/subtitle.html`），ffmpeg 用 `overlay=enable='between(t,入点,出点)'` 逐条叠到 `video` 上，`libx264` 重新编码（全分辨率 `-crf 16 -preset medium`，小样 `-crf 23 -preset veryfast`，与镜头编码参数一致），输出 `out`。
+- 每条字幕用 Chromium 渲染一张与画面同尺寸的透明 PNG（宿主页 `core/subtitle-layer.html`），ffmpeg 用 `overlay=enable='between(t,入点,出点)'` 逐条叠到 `video` 上，`libx264` 重新编码（全分辨率 `-crf 16 -preset medium`，小样 `-crf 23 -preset veryfast`，与镜头编码参数一致），输出 `out`。
 - 样式取 `style.json` 新增的可选 `subtitles` 块，缺省值：
 
 | 字段 | 缺省 | 说明 |

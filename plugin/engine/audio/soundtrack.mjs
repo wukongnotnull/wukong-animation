@@ -70,11 +70,13 @@ function voiceDuration(line, item) {
   return item?.duration || Math.max(0.6, [...line.text.replace(/[，。！？、；：,.!?\s]/g, '')].length / 3.6);
 }
 
+const sortedJson = (o) => JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))));
+
 function writeVoiceCues(ctx, lines, vo, log) {
   const file = path.join(ctx.filmDir, 'film.json');
   const film = JSON.parse(fs.readFileSync(file, 'utf8'));
   film.cues = film.cues || {};
-  const before = JSON.stringify(film.cues);
+  const before = sortedJson(film.cues);
   log('  声音同步点：');
   lines.forEach((l, i) => {
     const measured = vo[i]?.duration;
@@ -89,12 +91,14 @@ function writeVoiceCues(ctx, lines, vo, log) {
     film.cues = clearCharCues(film.cues, name);
     if (l.chars) {
       const ranges = vo[i]?.file ? detectSoundRanges(vo[i].file, dur, CHAR_SILENCE) : null;
-      Object.assign(film.cues, charCues(l.text, name, { at: l.at, duration: dur, ranges }));
-      log(`             逐字同步点 ${name}#1…（${ranges ? '按人声实测' : '估算'}）`);
+      const chars = charCues(l.text, name, { at: l.at, duration: dur, ranges });
+      Object.assign(film.cues, chars);
+      const n = Object.keys(chars).length;
+      log(n ? `             逐字同步点 ${name}#1…#${n}（${ranges ? '按人声实测' : '估算'}）` : `  ! ${name} 设了 chars，但这句没有要计时的字（只有标点）`);
     }
   });
-  // 同步点没变就不动 film.json，免得无谓地改动文件、触发重渲
-  if (JSON.stringify(film.cues) === before) return log('  · 声音同步点未变化');
+  // 同步点没变就不动 film.json，免得无谓地改动文件、触发重渲。按键排序后再比：逐字点重写后键的顺序会变，值没变
+  if (sortedJson(film.cues) === before) return log('  · 声音同步点未变化');
   fs.writeFileSync(file, JSON.stringify(film, null, 2) + '\n');
 }
 

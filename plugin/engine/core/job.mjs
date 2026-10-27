@@ -25,8 +25,14 @@ async function labelInputs(texts, { size, ctx, log, what }) {
     log(`  ! ffmpeg 不带 drawtext，也没有 browser 管线依赖，${what}不加文字标注（按镜头顺序排列）`);
     return null;
   }
-  const files = await renderLabels(texts, { size, workDir: path.join(ctx.filmDir, '.cache', 'work') });
-  return files.flatMap((f) => ['-i', f]);
+  try {
+    const files = await renderLabels(texts, { size, workDir: path.join(ctx.filmDir, '.cache', 'work') });
+    return files.flatMap((f) => ['-i', f]);
+  } catch (e) {
+    // 装了 playwright 但 Chromium 没下载等：标注不是必需的，降级为不标注
+    log(`  ! 画不了${what}的文字标注（${e.message.split('\n')[0]}），按镜头顺序排列`);
+    return null;
+  }
 }
 
 /**
@@ -198,12 +204,14 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
     contactSheetFile = path.join(outDir, 'sheet.jpg');
     const tw = 640;
     const th = Math.round((tw * job.H) / job.W);
-    const labels = await labelInputs(points.map((p) => `${p.shot} ${p.t}s`), { size: 20, ctx, log, what: '接触表' });
+    // 标注取自静帧文件名（s02-2.70s.png）：管线按镜头分组渲染，文件顺序和 --at 的顺序可能不同，时间也可能被夹到镜头末尾
+    const tags = files.map((f) => path.basename(f, '.png').replace('-', ' '));
+    const labels = await labelInputs(tags, { size: 20, ctx, log, what: '接触表' });
     const inputs = [...files.flatMap((f) => ['-i', f]), ...(labels || [])];
     const scaled = files
       .map((_, i) => (labels
         ? `[${i}:v]scale=${tw}:${th}[s${i}];[s${i}][${files.length + i}:v]overlay=10:10[v${i}]`
-        : `[${i}:v]scale=${tw}:${th}${drawLabel(`${points[i].shot} ${points[i].t}s`)}[v${i}]`))
+        : `[${i}:v]scale=${tw}:${th}${drawLabel(tags[i])}[v${i}]`))
       .join(';');
     const layout = files.map((_, i) => `${(i % cols) * tw}_${Math.floor(i / cols) * th}`).join('|');
     const filter = `${scaled};${files.map((_, i) => `[v${i}]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`;

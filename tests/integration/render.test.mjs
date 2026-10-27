@@ -177,3 +177,19 @@ test('without drawtext the contact sheet and animatic still carry shot labels (d
   assert.ok(pixel(frame, 23, 58)[0] < 200, 'label box in the animatic frame');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('a second soundtrack run with per-character cues leaves film.json untouched', () => {
+  const dir = makeFilm({ s01: SHOT('') });
+  const f = path.join(dir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.mkdirSync(path.join(dir, 'audio'));
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=0.6', path.join(dir, 'audio', 'a.wav')]);
+  film.audio = { voice_source: 'user', voices: [{ text: '春眠', at: 0, cue: 'a', chars: true, file: 'audio/a.wav' }, { text: '不觉', at: 0.7, cue: 'b', file: 'audio/a.wav' }] };
+  fs.writeFileSync(f, JSON.stringify(film));
+  assert.equal(wka('soundtrack', dir).status, 0);
+  const first = fs.readFileSync(f, 'utf8');
+  const r = wka('soundtrack', dir);
+  assert.match(r.stdout, /声音同步点未变化/);
+  assert.equal(fs.readFileSync(f, 'utf8'), first);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

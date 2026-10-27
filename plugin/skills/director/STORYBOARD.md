@@ -75,12 +75,12 @@
 | `shots[].size` | 景别：`大远景` / `远景` / `全景` / `中景` / `近景` / `特写` / `大特写`，与分镜表景别栏一致。第 5 道签批时 `wka signoff --step 5` 检查：每镜都写、4 镜及以上至少 3 种、相邻两镜不同，不合规就拒绝签批 |
 | `cues` | 声音同步点 `名: [入点, 出点]`（全片时间，秒）。人声同步点由 `wka soundtrack` 自动写入，音效同步点手写 |
 | `audio.build` | 配乐脚本，导出 `default async ({synth, duration, outDir, shots, cues}) => [{file, start, gain}]`。配乐、环境声、音效各返回一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`），剪映草稿里按文件分轨 |
-| `audio.voice_source` | 人声素材来源（第 6 道工序，审片节点④）：`user` 用户自供录音 / `ai` AI 配音 / `none` 无人声 |
+| `audio.voice_source` | 人声素材来源（第 6 道工序，审片节点⑤）：`user` 用户自供录音 / `ai` AI 配音 / `none` 无人声 |
 | `audio.voices` | 人声文案，画外音、对白、同期声都写在这里；`user` 时每条用 `file` 挂接录音；`ai` 且没装 TTS 时按每秒 3.6 字预估同步点 |
 | `voices[].kind` | 人声类型，对应分镜「人声」栏的标记：`vo` 画外音（默认，含旁白、内心独白）/ `dialogue` 对白 / `os` 画外但在场景里 / `live` 同期声。`live` 是现场原声，AI 配不出来，必须挂接 `file`；`voice_source` 为 `ai` 时，其余条目照常 AI 配音 |
 | `voices[].chars` | `true` 时 `wka soundtrack` 给这一句的每个字写同步点 `名#1`、`名#2`……（按停顿分句、句内均分的近似时间），镜头里用 `s.cueChars('名')` 读。题字等屏幕文字要逐字跟着人声出现时用 |
 | `voices[].speaker` | 说话的人或声音来源，对应标记括号里的内容，如 `对白（老者）` 写 `"speaker": "老者"` |
-| `export.formats` | 已注册的导出器：`mp4` / `gif` / `png-seq` / `jianying`（剪映草稿，直接写进剪映草稿目录；不写进这里，等 ⑨ 终审定版后在第 14 道用 `wka final <片> --formats jianying` 单独导出） |
-| `subtitles` | 字幕（第 11 道工序，审片节点⑧）：`mode` 为 `none` 不出 / `srt` 外挂 / `burn` 烧录 / `both` 两者；`file` 字幕文件（缺省 `subtitles.srt`，`wka subtitles` 生成，可手改）；`max_chars` 每条最多几个字（缺省横屏 18、竖屏 12、方形 14）；`style` 这支片的字幕样式（字段同 `style.json` 的 `subtitles` 块：`font`、`size`、`color`、`stroke`、`bottom`，逐项覆盖风格的设置）。没有这个字段即不出字幕 |
+| `export.formats` | 已注册的导出器：`mp4` / `gif` / `png-seq` / `jianying`（剪映草稿，直接写进剪映草稿目录；不写进这里，等 ⑩ 终审定版后在第 14 道用 `wka final <片> --formats jianying` 单独导出） |
+| `subtitles` | 字幕（第 11 道工序，审片节点⑨）：`mode` 为 `none` 不出 / `srt` 外挂 / `burn` 烧录 / `both` 两者；`file` 字幕文件（缺省 `subtitles.srt`，`wka subtitles` 生成，可手改）；`max_chars` 每条最多几个字（缺省横屏 18、竖屏 12、方形 14）；`style` 这支片的字幕样式（字段同 `style.json` 的 `subtitles` 块：`font`、`size`、`color`、`stroke`、`bottom`，逐项覆盖风格的设置）。没有这个字段即不出字幕 |
 
 完整字段见 `engine/schemas/film.schema.json`。旧字段名 `voiceover` / `vo_source` 仍能读取，`wka soundtrack` 会提示改成新名；新旧两个名字同时出现会报错。

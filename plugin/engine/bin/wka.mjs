@@ -11,7 +11,8 @@
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy]   静帧 + 接触表
 //   wka animatic <片目录> [--proxy]   动态分镜：关键帧按镜头时长排成粗片并配上声轨
 //   wka render <片目录> [--proxy] [--only s01,s03] [--force]   渲染（--proxy 为小样）
-//   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点
+//   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
+//   wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]   音色试听：同一句用几个音色各合成一遍
 //   wka subtitles <片目录> [--force] [--preview]   字幕制作：从人声生成 subtitles.srt；--preview 烧录到小样上审阅
 //   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif]   终版渲染与终混
 import fs from 'node:fs';
@@ -31,7 +32,7 @@ import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
-const pos = argv.slice(1).filter((a, i, arr) => !a.startsWith('--') && !(arr[i - 1] || '').match(/^--(style|dir|aspect|frames|at|only|formats|step)$/));
+const pos = argv.slice(1).filter((a, i, arr) => !a.startsWith('--') && !(arr[i - 1] || '').match(/^--(style|dir|aspect|frames|at|only|formats|step|voices|text|rate|pitch)$/));
 const opt = (name, def = null) => {
   const i = argv.indexOf(`--${name}`);
   if (i === -1) return def;
@@ -303,10 +304,22 @@ async function main() {
     }
     case 'soundtrack': {
       if (!pos[0]) fail('用法：wka soundtrack <片目录>');
-      loadFilm(pos[0]);
+      loadFilm(pos[0], { requireShots: false });
       const { mix } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
       // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/ 交给用户审听
       if (mix) log(`声轨审听：${await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k'])}`);
+      return;
+    }
+    case 'audition': {
+      if (!pos[0]) fail('用法：wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]');
+      const ctx = loadFilm(pos[0], { requireShots: false });
+      const { auditionVoices, DEFAULT_AUDITION_VOICES } = await import('../audio/audition.mjs');
+      const voices = typeof opt('voices') === 'string' ? opt('voices').split(',').map((v) => v.trim()).filter(Boolean) : DEFAULT_AUDITION_VOICES;
+      const first = ctx.film.audio?.voices?.[0] || {};
+      const str = (name) => (typeof opt(name) === 'string' ? opt(name) : undefined);
+      // 没给参数时用第一条人声的文本和它已经调过的语速、音高
+      const text = str('text') ?? first.text;
+      auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
       return;
     }
     case 'subtitles':
@@ -322,7 +335,7 @@ async function main() {
         log,
       });
     default:
-      log(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 16).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+      log(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 17).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
   }
 }
 

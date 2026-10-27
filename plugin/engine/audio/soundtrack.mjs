@@ -93,7 +93,8 @@ function writeVoiceCues(ctx, lines, vo, log) {
  *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}，人声另带实测 duration；voices：人声 {text, at, duration, estimated}
  */
 export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
+  // 声轨在画镜头之前做（第 7 道），只用到镜头时长，不要求镜头文件已经写好
+  const ctx = loadFilm(filmDir, { requireShots: false });
   if (ctx.legacyFields.length) log(`  ! film.json 用了旧字段名，已按新名读取，建议改过来：${ctx.legacyFields.join('，')}`);
   const audio = ctx.film.audio || {};
   const genDir = path.join(ctx.filmDir, 'audio', 'generated');

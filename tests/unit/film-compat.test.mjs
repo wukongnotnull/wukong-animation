@@ -33,3 +33,21 @@ test('rejects a film that sets both the old and the new name', () => {
   assert.throws(() => migrateFilm({ audio: { voiceover: [line], voices: [line] } }), /voiceover.*voices/s);
   assert.throws(() => migrateFilm({ audio: { vo_source: 'ai', voice_source: 'ai' } }), /vo_source.*voice_source/s);
 });
+
+test('loadFilm can skip the shot-file check (for the soundtrack step)', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-load-'));
+  fs.mkdirSync(path.join(dir, 'shots'));
+  fs.writeFileSync(path.join(dir, 'shots', 's01.js'), '');
+  const shots = ['s01', 's02', 's03'].map((id, i) => ({ id, file: `shots/${id}.js`, duration: i + 1 }));
+  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify({ title: 't', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1, shots }));
+  assert.throws(() => loadFilm(dir), /镜头 s02 的文件不存在/);
+  const ctx = loadFilm(dir, { requireShots: false });
+  assert.equal(ctx.shots.length, 3);
+  assert.equal(ctx.totalDuration, 6);
+  assert.equal(ctx.shots[2].start, 3);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

@@ -55,7 +55,7 @@ const IDENTITY_HINT =
  * 初始化项目目录：
  *   1. 不是 git 仓库 → git init（默认分支 main）
  *   2. 写入 .gitignore 中的 wukong-animation 段落，旧版段落换成当前版本
- *   3. 仓库还没有任何提交 → 做一次初始提交
+ *   3. 仓库还没有任何提交 → 做一次初始提交；已有提交且改写了 .gitignore → 单独提交 .gitignore
  * 已经是仓库的目录不会被重新初始化，只补全 / 更新 .gitignore。
  */
 export function initProject(dir, { log = console.log } = {}) {
@@ -81,12 +81,15 @@ export function initProject(dir, { log = console.log } = {}) {
   const gi = path.join(dir, '.gitignore');
   const old = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
   const next = upsertIgnoreBlock(old);
+  const hasCommit = git(dir, ['rev-parse', '--verify', 'HEAD']).ok;
+  // 改写前 .gitignore 里有用户自己没提交的改动时，不替用户提交
+  const userEdits = hasCommit && !git(dir, ['diff', '--quiet', 'HEAD', '--', '.gitignore']).ok;
   if (next !== old) {
     fs.writeFileSync(gi, next);
     log(old.includes(BLOCK_BEGIN) ? '  ✓ 已更新 .gitignore 的 wukong-animation 段落' : '  ✓ 已写入 .gitignore（忽略渲染缓存、中间帧和成片）');
   }
 
-  const hasCommit = git(dir, ['rev-parse', '--verify', 'HEAD']).ok;
+  if (hasCommit && next !== old) commitIgnoreUpdate(dir, userEdits, log);
   if (!hasCommit) {
     if (!hasIdentity(dir)) {
       log('  ! ' + IDENTITY_HINT);
@@ -97,6 +100,20 @@ export function initProject(dir, { log = console.log } = {}) {
     }
   }
   return { git: true, created };
+}
+
+function commitIgnoreUpdate(dir, userEdits, log) {
+  if (userEdits) {
+    log('  ! .gitignore 里有你自己没提交的改动，已更新 wukong-animation 段落，请自己提交');
+    return;
+  }
+  if (!hasIdentity(dir)) {
+    log('  ! ' + IDENTITY_HINT);
+    return;
+  }
+  git(dir, ['add', '.gitignore']);
+  const r = git(dir, ['commit', '-m', 'wukong-animation: 更新 .gitignore', '--', '.gitignore']);
+  log(r.ok ? '  ✓ 已提交 .gitignore' : `  ! 提交 .gitignore 失败：${r.err}`);
 }
 
 /**

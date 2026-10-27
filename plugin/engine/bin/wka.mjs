@@ -315,9 +315,11 @@ async function main() {
       const ctx = loadFilm(pos[0], { requireShots: false });
       const { auditionVoices, DEFAULT_AUDITION_VOICES } = await import('../audio/audition.mjs');
       const voices = typeof opt('voices') === 'string' ? opt('voices').split(',').map((v) => v.trim()).filter(Boolean) : DEFAULT_AUDITION_VOICES;
-      const text = typeof opt('text') === 'string' ? opt('text') : ctx.film.audio?.voices?.[0]?.text;
+      const first = ctx.film.audio?.voices?.[0] || {};
       const str = (name) => (typeof opt(name) === 'string' ? opt(name) : undefined);
-      auditionVoices({ text, voices, rate: str('rate'), pitch: str('pitch'), outDir: path.join(ctx.filmDir, 'review'), log });
+      // 没给参数时用第一条人声的文本和它已经调过的语速、音高
+      const text = str('text') ?? first.text;
+      auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
       return;
     }
     case 'subtitles':

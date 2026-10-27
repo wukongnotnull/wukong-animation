@@ -83,7 +83,7 @@ export function initProject(dir, { log = console.log } = {}) {
   const next = upsertIgnoreBlock(old);
   const hasCommit = git(dir, ['rev-parse', '--verify', 'HEAD']).ok;
   // 改写前 .gitignore 里有用户自己没提交的改动时，不替用户提交
-  const userEdits = hasCommit && old && !git(dir, ['diff', '--quiet', 'HEAD', '--', '.gitignore']).ok;
+  const userEdits = hasCommit && !git(dir, ['diff', '--quiet', 'HEAD', '--', '.gitignore']).ok;
   if (next !== old) {
     fs.writeFileSync(gi, next);
     log(old.includes(BLOCK_BEGIN) ? '  ✓ 已更新 .gitignore 的 wukong-animation 段落' : '  ✓ 已写入 .gitignore（忽略渲染缓存、中间帧和成片）');

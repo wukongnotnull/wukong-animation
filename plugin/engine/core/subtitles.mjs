@@ -7,8 +7,12 @@ const NOT_COUNTED = /[\s，。！？、；：,.!?;:…“”‘’"'（）()《�
 const BREAK_AFTER = /[，。！？、；：,.!?;:]/u;
 /** 条目结尾要去掉的标点；？！… 保留 */
 const TRAILING = /[。，、；：,.;:]+$/u;
-// 句中的这些标点在字幕里换成一个全角空格；？！… 和书名号、引号保留
-const INNER_PAUSE = /[。，、；：,.;:]+/gu;
+// 句中的停顿标点在字幕里换成一个全角空格，连同两边的空白；？！… 和书名号、引号保留。
+// 夹在两个数字之间的 . 和 ,（3.5、1,000）不是停顿；ASCII 的 ... 先当作省略号 …
+const INNER_PAUSE = /\s*(?:[。，、；：;:]|(?<!\d)[.,]|[.,](?!\d))+\s*/gu;
+const ASCII_ELLIPSIS = /\.{3,}/g;
+/** 一条字幕的显示文字：去掉结尾标点，句中停顿换成全角空格。 */
+const subtitleText = (p) => p.replace(ASCII_ELLIPSIS, '…').trim().replace(TRAILING, '').replace(INNER_PAUSE, '　').trim();
 
 const MAX_CHARS_BY_ASPECT = { landscape: 18, portrait: 12, square: 14 };
 const SHORTEST = 0.6;
@@ -99,7 +103,7 @@ export function buildSubtitles(voices, cues, { maxChars }) {
     return pieces.map((p) => {
       const from = start + ((end - start) * done) / total;
       done += countChars(p);
-      return { start: ms(from), end: ms(start + ((end - start) * done) / total), text: p.replace(TRAILING, '').replace(INNER_PAUSE, '　') };
+      return { start: ms(from), end: ms(start + ((end - start) * done) / total), text: subtitleText(p) };
     });
   });
   return subs.sort((a, b) => a.start - b.start).map((s, i) => ({ index: i + 1, ...s }));

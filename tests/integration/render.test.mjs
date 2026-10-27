@@ -114,3 +114,14 @@ test('wka soundtrack works before the shots are drawn (only s01.js exists)', () 
   assert.ok(fs.existsSync(path.join(dir, '.cache', 'mix.wav')));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('c2d.wash survives a scale(0) frame and a far zoom-out', opts, () => {
+  const body = "ctx.save(); ctx.scale(0, 0); wk.c2d.wash(ctx, [[0, 0], [10, 0], [10, 10]], { blur: 2 }); ctx.restore();"
+    + " ctx.save(); ctx.scale(0.02, 0.02); wk.c2d.wash(ctx, [[0, 0], [2000, 0], [2000, 2000], [0, 2000]], { color: '#000000', alpha: 0.8, blur: 0, edge: 0 }); ctx.restore();";
+  const dir = makeFilm({ s01: SHOT(body) });
+  const r = wka('still', dir, '--at', 's01:0.5');
+  assert.equal(r.status, 0, r.stderr);
+  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((f) => f.startsWith('s01-')));
+  assert.ok(pixel(png, 10, 10)[0] < 120, 'the zoomed-out square should still be inked');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

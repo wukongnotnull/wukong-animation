@@ -344,7 +344,7 @@
    */
   c2d.wash = function (ctx, shape, o = {}) {
     const color = o.color || '#4d4d4d';
-    const [bx, by, bw, bh] = o.bounds || canvasBounds(ctx);
+    const [bx, by, bw, bh] = o.bounds || washBounds(ctx, shape, o);
     const s = scratch(bw, bh, 1);
     const g = s.ctx;
     g.translate(-bx, -by);
@@ -383,17 +383,30 @@
     ctx.restore();
   };
 
-  // 整幅画布在当前变换下的坐标范围 [x, y, w, h]（向外取整）。
+  // 离屏层面积上限（画布面积的倍数）。缩得很小时整幅画布换算回来会非常大，超过 Chromium 的画布上限
+  const WASH_MAX_AREA = 4;
+
+  // 包住一组点的矩形 [x, y, w, h]（向外取整）
+  function boxOf(pts, pad = 0) {
+    const x0 = Math.floor(Math.min(...pts.map((p) => p[0])) - pad);
+    const y0 = Math.floor(Math.min(...pts.map((p) => p[1])) - pad);
+    const x1 = Math.ceil(Math.max(...pts.map((p) => p[0])) + pad);
+    const y1 = Math.ceil(Math.max(...pts.map((p) => p[1])) + pad);
+    return [x0, y0, x1 - x0, y1 - y0];
+  }
+
+  // wash 的默认离屏范围：整幅画布在当前变换下覆盖的区域。
   // 镜头先 translate 再围绕原点画时，形状坐标有负数，不能直接用 [0, 0, 画布宽, 画布高]。
-  function canvasBounds(ctx) {
+  // 变换不可逆（scale(0)）时退回整幅画布；范围过大时（缩得很小）改用多边形自己的外接框。
+  function washBounds(ctx, shape, o) {
     const cw = ctx.canvas.width, ch = ctx.canvas.height;
     const inv = ctx.getTransform().inverse();
-    const pts = [[0, 0], [cw, 0], [0, ch], [cw, ch]].map(([x, y]) => inv.transformPoint(new DOMPoint(x, y)));
-    const x0 = Math.floor(Math.min(...pts.map((p) => p.x)));
-    const y0 = Math.floor(Math.min(...pts.map((p) => p.y)));
-    const x1 = Math.ceil(Math.max(...pts.map((p) => p.x)));
-    const y1 = Math.ceil(Math.max(...pts.map((p) => p.y)));
-    return [x0, y0, x1 - x0, y1 - y0];
+    const corners = [[0, 0], [cw, 0], [0, ch], [cw, ch]].map(([x, y]) => inv.transformPoint(new DOMPoint(x, y)));
+    const b = boxOf(corners.map((p) => [p.x, p.y]));
+    if (!b.every(Number.isFinite)) return [0, 0, cw, ch];
+    if (b[2] * b[3] <= WASH_MAX_AREA * cw * ch) return b;
+    if (Array.isArray(shape) && shape.length) return boxOf(shape, (o.blur ?? 6) * 3 + (o.edgeWidth ?? 2));
+    return [0, 0, cw, ch];
   }
 
   function polyPath(pts, close) {

@@ -134,3 +134,10 @@ test('sentence punctuation inside a subtitle becomes one full-width space; ？�
   assert.equal(subs[0].text, '春晓　孟浩然');
   assert.equal(subs[1].text, '何处？春归');
 });
+
+test('decimals, thousands separators and ... survive; ASCII pauses become one full-width space', () => {
+  const cues = { a: [0, 3], b: [4, 7] };
+  const subs = buildSubtitles([{ text: '增长了3.5亿，达到1,000万', at: 0, cue: 'a' }, { text: 'Hello, world. 等等...', at: 4, cue: 'b' }], cues, { maxChars: 30 });
+  assert.equal(subs[0].text, '增长了3.5亿　达到1,000万');
+  assert.equal(subs[1].text, 'Hello　world　等等…');
+});

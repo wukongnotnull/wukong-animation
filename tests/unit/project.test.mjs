@@ -74,3 +74,13 @@ test('a .gitignore with the user\'s own uncommitted edits is updated but not com
   assert.ok(logs.some((m) => /请自己提交/.test(m)));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('a tracked .gitignore the user deleted without committing is not committed for them', () => {
+  const { dir, g } = repoWithOldBlock();
+  fs.rmSync(path.join(dir, '.gitignore'));
+  const logs = [];
+  initProject(dir, { log: (m) => logs.push(m) });
+  assert.match(g('log', '-1', '--format=%s').stdout, /^init/);
+  assert.ok(logs.some((m) => /请自己提交/.test(m)));
+  fs.rmSync(dir, { recursive: true, force: true });
+});

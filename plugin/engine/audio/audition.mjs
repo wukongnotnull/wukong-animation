@@ -19,6 +19,7 @@ export const voiceShortName = (voice) => voice.replace(/^zh-CN-/, '').replace(/N
  */
 export function auditionVoices({ text, voices = DEFAULT_AUDITION_VOICES, rate, pitch, outDir, engines = ENGINES, log = console.log }) {
   if (!text) throw new Error('没有试听文本：film.json 里还没有人声条目时，用 --text 指定一句');
+  if (!voices.length) throw new Error('至少一个音色（--voices a,b,c）');
   if (voices.length > MAX_VOICES) throw new Error(`一次最多 ${MAX_VOICES} 个音色，收到 ${voices.length} 个`);
   const engine = engines.find((e) => e.name === 'edge-tts' && e.available());
   if (!engine) throw new Error('试听需要 edge-tts（pip install edge-tts）；也可以改用自供录音');
@@ -34,7 +35,7 @@ export function auditionVoices({ text, voices = DEFAULT_AUDITION_VOICES, rate, p
       if (!engine.synth(text, voice, raw, { rate, pitch }) || !fs.existsSync(raw)) throw new Error(`试听合成失败：${voice}`);
       const file = path.join(outDir, `试听-${i + 1}-${voiceShortName(voice)}.m4a`);
       const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-c:a', 'aac', '-b:a', '192k', file], { encoding: 'utf8' });
-      if (r.status !== 0) throw new Error(`试听转码失败（${voice}）：${r.stderr.slice(-400)}`);
+      if (r.status !== 0) throw new Error(`试听转码失败（${voice}）：${(r.stderr || r.error?.message || '').slice(-400)}`);
       log(`${file}  ${voice}`);
       return { file, voice };
     });

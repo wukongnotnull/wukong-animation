@@ -62,3 +62,11 @@ test('errors: no text, more than 4 voices, no edge-tts', () => {
   assert.throws(() => auditionVoices({ text: '句', outDir: dir, engines: [], log: quiet }), /edge-tts.*自供录音/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('an empty voice list is an error, and old audition files are kept', () => {
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, '试听-1-Yunxi.m4a'), 'old');
+  assert.throws(() => auditionVoices({ text: '句', voices: [], outDir: dir, engines: [fakeEdge()], log: quiet }), /至少一个音色/);
+  assert.deepEqual(fs.readdirSync(dir), ['试听-1-Yunxi.m4a']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

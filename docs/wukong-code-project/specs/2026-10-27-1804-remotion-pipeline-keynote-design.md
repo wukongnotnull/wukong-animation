@@ -168,4 +168,4 @@ export default function S01({ dur, s }: ShotProps) {
 11. `wka list styles` 显示 `70  keynote  发布会 Keynote  信息叙事  remotion/`，不标“不可用”；README 进度 2 / 72。
 12. 现有测试和冒烟测试全部通过，水墨基准图无变化。
 
-实现时需要先验证的一项（结果写回本 spec）：playwright 1.64.1 自带的 Chromium 能否作为 Remotion 4.0.539 的 `browserExecutable`。不能时改用 Remotion 的 `ensureBrowser()`，并在 `wka setup` 里加这一步下载。
+已验证（2026-10-27，macOS arm64）：playwright 1.64.1 的完整版 Chromium（`chromium.executablePath()`，Chrome for Testing）作 `browserExecutable` 时页面无响应，不能用；它同时装的 `chromium_headless_shell-1248/chrome-headless-shell-<平台>/chrome-headless-shell` 可以，30 帧渲染正常。所以管线从 `chromium.executablePath()` 推出同版本 headless shell 的路径（把路径里的 `chromium-<rev>` 换成 `chromium_headless_shell-<rev>`，再找 `chrome-headless-shell[.exe]`）；找不到时不传 `browserExecutable`，由 Remotion 自行下载它的 Chrome Headless Shell（约 170 MB），日志里说明。`wka setup` 不用改（`playwright install chromium` 默认就装 headless shell）。

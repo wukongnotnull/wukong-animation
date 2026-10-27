@@ -41,6 +41,28 @@ function shotSizeLine(shots) {
   return problems.length ? `  景别 ✗ ${problems.join('；')}` : `  景别 ${describeShotSizes(shots)}，相邻都不同 ✓`;
 }
 
+/**
+ * 逐帧判定。标了 full_bleed 的镜头画面铺满一张图，深色底占比没有意义，不查留白。
+ * @returns {{ issues: { kind: string, t: number, shot: string, msg: string }[], cuts: number }}
+ */
+export function judgeFrames(frames, cfg, { boundaries, fps, fullBleed = new Set() }) {
+  const issues = [];
+  const push = (kind, f, msg) => issues.push({ kind, t: f.t, shot: f.shot, msg });
+  let cuts = 0;
+  for (const f of frames) {
+    if (f.t < cfg.skip_start) continue;
+    if (f.whitespace !== null && !fullBleed.has(f.shot) && f.whitespace < cfg.whitespace_min) push('留白不足', f, `${(f.whitespace * 100).toFixed(1)}% < ${(cfg.whitespace_min * 100).toFixed(1)}%`);
+    if (f.accent !== null && f.accent > cfg.accent_max) push('点缀色超量', f, `${(f.accent * 100).toFixed(2)}% > ${(cfg.accent_max * 100).toFixed(2)}%`);
+    if (f.std < 1.0) push('空帧', f, '画面几乎没有内容');
+    if (f.diff > cfg.diff_max) {
+      const atBoundary = boundaries.some((b) => Math.abs(b - f.t) <= 1.5 / fps);
+      if (atBoundary) cuts++;
+      else push('突变/闪烁', f, `相邻帧差 ${f.diff.toFixed(1)} > ${cfg.diff_max}`);
+    }
+  }
+  return { issues, cuts };
+}
+
 export async function runQc(filmDir, { proxy = false, fps = 10, log = console.log } = {}) {
   const ctx = loadFilm(filmDir);
   const cfg = { ...QC_DEFAULTS, ...(ctx.style.qc || {}) };
@@ -83,21 +105,8 @@ export async function runQc(filmDir, { proxy = false, fps = 10, log = console.lo
     prevLum = lum;
   });
 
-  // —— 判定 ——
-  const issues = [];
-  const push = (kind, f, msg) => issues.push({ kind, t: f.t, shot: f.shot, msg });
-  let cuts = 0;
-  for (const f of frames) {
-    if (f.t < cfg.skip_start) continue;
-    if (f.whitespace !== null && f.whitespace < cfg.whitespace_min) push('留白不足', f, `${(f.whitespace * 100).toFixed(1)}% < ${(cfg.whitespace_min * 100).toFixed(1)}%`);
-    if (f.accent !== null && f.accent > cfg.accent_max) push('点缀色超量', f, `${(f.accent * 100).toFixed(2)}% > ${(cfg.accent_max * 100).toFixed(2)}%`);
-    if (f.std < 1.0) push('空帧', f, '画面几乎没有内容');
-    if (f.diff > cfg.diff_max) {
-      const atBoundary = boundaries.some((b) => Math.abs(b - f.t) <= 1.5 / fps);
-      if (atBoundary) cuts++;
-      else push('突变/闪烁', f, `相邻帧差 ${f.diff.toFixed(1)} > ${cfg.diff_max}`);
-    }
-  }
+  const fullBleed = new Set(ctx.film.shots.filter((s) => s.full_bleed).map((s) => s.id));
+  const { issues, cuts } = judgeFrames(frames, cfg, { boundaries, fps, fullBleed });
   if (cuts > cfg.cuts_max) issues.push({ kind: '硬切过多', t: null, shot: '*', msg: `${cuts} 次 > ${cfg.cuts_max}` });
 
   // 连续的同类问题合并成区间

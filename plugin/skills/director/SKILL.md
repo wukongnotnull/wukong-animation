@@ -249,7 +249,7 @@ edge-tts 的中文普通话音色：
 
 **10. 小样渲染与技术质检（Proxy & QC）= 量化检测 + 目视审片**
 - `wka render <片> --proxy` 渲染小样（半分辨率、半帧率），同时合成带声音的 `review/小样.mp4`。
-- `wka qc <片> --proxy`：检测留白比例、点缀色占比、帧间差异、黑帧 / 空帧、非预期硬切，阈值来自风格规格 `style.json → qc`。有 ✗ 就打开 `stills/qc/qc-sheet.jpg` 查看超标帧。
+- `wka qc <片> --proxy`：检测留白比例、点缀色占比、帧间差异、黑帧 / 空帧、非预期硬切，阈值来自风格规格 `style.json → qc`。画面铺满一张图（截图、照片）的镜头，在 `film.json` 里给它标 `"full_bleed": true`，就不查这一镜的留白。有 ✗ 就打开 `stills/qc/qc-sheet.jpg` 查看超标帧。
 - `wka still <片> --frames 4 --proxy`：每镜抽 4 帧，对照 STYLE.md 的"交付前质检"清单逐项核对。
 - 只返修问题镜头：`wka render <片> --proxy --only s03`。
 

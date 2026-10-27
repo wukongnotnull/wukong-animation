@@ -13,6 +13,7 @@
 //   wka animatic <片目录> [--proxy]   动态分镜：关键帧按镜头时长排成粗片并配上声轨
 //   wka render <片目录> [--proxy] [--only s01,s03] [--force]   渲染（--proxy 为小样）
 //   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
+//   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理
 //   wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]   音色试听：同一句用几个音色各合成一遍
 //   wka subtitles <片目录> [--force] [--preview]   字幕制作：从人声生成 subtitles.srt；--preview 烧录到小样上审阅
 //   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif]   终版渲染与终混
@@ -176,6 +177,26 @@ function reportSubtitleCheck(ctx, settings, subs) {
   if (errors.length) fail(`${settings.file} 有错误：\n  ${errors.join('\n  ')}`);
 }
 
+/** 录音音效（第 7 道声轨制作用）：--list 只列来源与大小给用户确认，不带参数则下载并处理。 */
+async function cmdSfx(filmDir, { list }) {
+  if (!filmDir) fail('用法：wka sfx <片目录> [--list]');
+  const { style } = loadFilm(filmDir, { requireShots: false });
+  const { loadSfxLibrary, listSfx, fetchSfx } = await import('../audio/sfx.mjs');
+  const lib = loadSfxLibrary(style);
+  if (!lib) fail(`风格 ${style.id} 没有录音音效清单（style.json 的 sfx），音效请用 synth 合成`);
+  if (list) {
+    const rows = listSfx(lib);
+    for (const r of rows) log(`${r.name.padEnd(8)} ${r.role.padEnd(10)} ${r.title.padEnd(36)} ${r.url.padEnd(62)} ${r.bytes === null ? '   ? KB' : `${String(Math.round(r.bytes / 1024)).padStart(4)} KB`}`);
+    const total = rows.reduce((a, r) => a + (r.bytes || 0), 0);
+    log(`${rows.length} 个文件，共 ${(total / 1024 / 1024).toFixed(1)} MB → ${lib.dir}\n${lib.license}`);
+    return;
+  }
+  log(`下载并处理录音音效 → ${lib.dir}`);
+  const failed = (await fetchSfx(lib, { log })).filter((r) => !r.ok);
+  if (failed.length) fail(`${failed.length} 个音效没准备好：${failed.map((r) => r.name).join('、')}`);
+  log('完成 ✓');
+}
+
 /** 字幕制作（第 11 道）：生成或检查 subtitles.srt；--preview 把字幕烧录到小样上审阅。 */
 async function cmdSubtitles(filmDir, { force, preview }) {
   const ctx = loadFilm(filmDir);
@@ -332,6 +353,8 @@ async function main() {
       if (mix) log(`声轨审听：${await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k'])}`);
       return;
     }
+    case 'sfx':
+      return cmdSfx(pos[0], { list: !!opt('list') });
     case 'audition': {
       if (!pos[0]) fail('用法：wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]');
       const ctx = loadFilm(pos[0], { requireShots: false });
@@ -356,8 +379,11 @@ async function main() {
         formats: opt('formats'),
         log,
       });
-    default:
-      log(fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(1, 17).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+    default: {
+      // 帮助：文件开头的注释块（第 1 行是 shebang）
+      const lines = fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n');
+      log(lines.slice(1, lines.findIndex((l, i) => i > 0 && !l.startsWith('//'))).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+    }
   }
 }
 

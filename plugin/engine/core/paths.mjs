@@ -21,6 +21,7 @@ export const HOME = process.env.WUKONG_ANIMATION_HOME || path.join(os.homedir(),
 export const DEPS_DIR = path.join(HOME, 'deps', ENGINE_VERSION);
 export const CACHE_DIR = path.join(HOME, 'cache');
 export const FONT_CACHE_DIR = path.join(CACHE_DIR, 'fonts');
+export const SFX_CACHE_DIR = path.join(CACHE_DIR, 'sfx');
 export const USER_STYLES_DIR = path.join(HOME, 'styles');
 
 export const SLOT_DIRS = {

@@ -114,6 +114,10 @@
         ]
       }
     },
+    "sfx": {
+      "type": "string",
+      "description": "录音音效清单（相对风格目录），如 sfx.json；音频按需下载到 ~/.wukong-animation/cache/sfx/"
+    },
     "post": {
       "type": "array",
       "items": {

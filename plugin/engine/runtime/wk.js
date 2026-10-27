@@ -59,6 +59,13 @@
     if (!c) throw new Error(`没有声音同步点 "${name}"。已有：${Object.keys(cues).join('、') || '（无）'}。先运行 wka soundtrack`);
     return c[i] - meta.start;
   }
+  // 逐字同步点：wka soundtrack 给 voices[].chars 为 true 的句子写出 名#1、名#2……
+  function charsOf(name, meta) {
+    const out = [];
+    for (let k = 1; cues[`${name}#${k}`]; k++) out.push({ in: cues[`${name}#${k}`][0] - meta.start, out: cues[`${name}#${k}`][1] - meta.start });
+    if (!out.length) throw new Error(`没有 "${name}" 的逐字同步点。在 film.json 的 voices 里给这一句加 "chars": true，再运行 wka soundtrack`);
+    return out;
+  }
 
   function baseState(id, meta) {
     return {
@@ -66,6 +73,8 @@
       cueIn: (name) => cueOf(name, meta, 0),
       /** 同步点出点（相对本镜头，秒） */
       cueOut: (name) => cueOf(name, meta, 1),
+      /** 逐字同步点（相对本镜头，秒）：[{ in, out }, …]，一个字一项，标点不算 */
+      cueChars: (name) => charsOf(name, meta),
       id,
       W: cfg.W,
       H: cfg.H,

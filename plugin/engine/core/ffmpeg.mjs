@@ -9,6 +9,7 @@ let drawtextCache = null;
 
 /** 当前 ffmpeg 是否带 drawtext 滤镜（依赖 freetype，Homebrew 默认构建不带）。 */
 export function hasDrawtext() {
+  if (process.env.WKA_NO_DRAWTEXT) return false; // 测试用：模拟不带 drawtext 的 ffmpeg
   if (drawtextCache === null) {
     const r = spawnSync('ffmpeg', ['-hide_banner', '-filters'], { encoding: 'utf8' });
     drawtextCache = /\sdrawtext\s/.test(r.stdout || '');

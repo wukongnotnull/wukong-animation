@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { loadFilm } from './job.mjs';
 import { run, hasDrawtext, drawLabel } from './ffmpeg.mjs';
 import { ensureDir } from './paths.mjs';
+import { checkShotSizes, describeShotSizes } from './shot-sizes.mjs';
 
 const QC_DEFAULTS = { whitespace_min: 0, paper_tol: 20, accent_tol: 60, accent_max: 1, diff_max: 30, cuts_max: 99, skip_start: 0.5 };
 
@@ -33,6 +34,12 @@ function decode(video, w, h, fps, onFrame) {
 /**
  * @returns {Promise<{ok:boolean, shots:object[], issues:object[], contactSheet:string|null, report:string}>}
  */
+/** 景别检查只报告，不算进 QC 通过与否（签批第 5 道时才拦）。 */
+function shotSizeLine(shots) {
+  const problems = checkShotSizes(shots);
+  return problems.length ? `  景别 ✗ ${problems.join('；')}` : `  景别 ${describeShotSizes(shots)}，相邻都不同 ✓`;
+}
+
 export async function runQc(filmDir, { proxy = false, fps = 10, log = console.log } = {}) {
   const ctx = loadFilm(filmDir);
   const cfg = { ...QC_DEFAULTS, ...(ctx.style.qc || {}) };
@@ -141,6 +148,7 @@ export async function runQc(filmDir, { proxy = false, fps = 10, log = console.lo
     '  镜头   最少留白   最多点缀   最大帧差',
     ...shots.map((s) => `  ${s.id.padEnd(5)} ${pct(s.whitespaceMin)}    ${pct(s.accentMax)}    ${s.diffMax === null ? '-' : s.diffMax.toFixed(1).padStart(6)}`),
     `  镜头切换处硬切 ${cuts} 次`,
+    shotSizeLine(ctx.film.shots),
   ];
   if (merged.length) {
     lines.push(`  ✗ ${merged.length} 项问题：`);

@@ -1,12 +1,11 @@
 // 把引擎的时间线换算成剪映草稿计划：时间用微秒整数，音量用线性倍数。纯函数，不碰文件。
 import path from 'node:path';
+import { JIANYING_FONTS } from './fonts.mjs';
 
 const US = 1e6;
 const VOICE_TRACK = '人声';
 const SUBTITLE_TRACK = '字幕';
 
-// 剪映用不了任意字体文件：常见书法字体换成剪映字库里免费、最接近的（pyJianYingDraft FontType 的名字）；没有对应的不设字体
-const JIANYING_FONTS = { 'Ma Shan Zheng': '古风小楷' };
 // 以下两个换算在剪映 11.6 里对着烧录字幕校过：字号 5.2 ≈ 画高 5%；描边 40 ≈ 字号 12% 的烧录描边
 const SIZE_PER_HEIGHT = 5.2 / 0.05;
 const BORDER_PER_STROKE = 40 / 0.12;
@@ -105,6 +104,7 @@ function jianyingSubtitleStyle(s) {
   if (!s) return null;
   const stroke = parseColor(s.stroke.color);
   return {
+    // 对照表里没有或值为 null：不设字体，用剪映默认字体
     font: JIANYING_FONTS[s.font.family] || null,
     size: round(s.size * SIZE_PER_HEIGHT, 2),
     ...parseColor(s.color),

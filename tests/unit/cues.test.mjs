@@ -39,3 +39,17 @@ test('pickCues falls back to every cue when usage cannot be determined', () => {
   assert.deepEqual(pickCues({ b: [3, 4], a: [1, 2] }, [shot]), { a: [1, 2], b: [3, 4] });
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('cueChars with a literal name is recognised as that cue’s per-character points', () => {
+  assert.deepEqual([...usedCueNames(["const c = s.cueChars('第四句');"])], ['第四句#*']);
+  assert.equal(usedCueNames(['s.cueChars(name)']), null);
+});
+
+test('pickCues expands cueChars to every 名#n cue (sorted keys, like other cues)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-cues-'));
+  const shot = path.join(dir, 's01.js');
+  fs.writeFileSync(shot, "s.cueChars('四')");
+  const cues = { 四: [1, 3], '四#1': [1, 1.5], '四#2': [1.5, 2], '四#10': [2.5, 3], '三#1': [0, 1] };
+  assert.deepEqual(Object.keys(pickCues(cues, [shot])), ['四#1', '四#10', '四#2']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

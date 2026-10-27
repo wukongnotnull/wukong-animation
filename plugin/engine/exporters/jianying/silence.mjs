@@ -34,9 +34,12 @@ export function soundRanges(silences, duration, { pad = PAD } = {}) {
   return ranges;
 }
 
-/** 对一个音频文件做静音检测，返回有声音的区间（秒，相对文件开头）。 */
-export function detectSoundRanges(file, duration) {
-  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', `silencedetect=noise=${NOISE_DB}dB:d=${MIN_SILENCE}`, '-f', 'null', '-'], { encoding: 'utf8' });
+/**
+ * 对一个音频文件做静音检测，返回有声音的区间（秒，相对文件开头）。
+ * 缺省参数给剪映草稿切配乐用；逐字同步点要找句中短停顿，用更灵敏的参数。
+ */
+export function detectSoundRanges(file, duration, { noise = NOISE_DB, minSilence = MIN_SILENCE, pad = PAD } = {}) {
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', `silencedetect=noise=${noise}dB:d=${minSilence}`, '-f', 'null', '-'], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`静音检测失败：${file}\n${(r.stderr || '').slice(-400)}`);
-  return soundRanges(parseSilences(r.stderr, duration), duration);
+  return soundRanges(parseSilences(r.stderr, duration), duration, { pad });
 }

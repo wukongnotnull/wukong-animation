@@ -51,11 +51,11 @@ export async function encodeOutput({ out, proxy, timeline }) {
   if (r.status !== 0) throw new Error(`写剪映草稿失败：\n${(r.stderr || r.error?.message || '').trim()}`);
 
   // 片子 film.json 自己改的字幕字体 lint 查不到，导出时提示（对照表里值为 null 的是有意用默认字体，不提示）
-  const family = timeline.subtitleStyle?.font?.family;
-  if (family && plan.subtitleTracks.some((t) => t.segments.length) && missingJianyingFonts([family]).length) {
-    console.log(`  ! 字幕字体「${family}」在剪映字体对照表里没有对应项，草稿里用剪映默认字体。`);
-    console.log('    要指定剪映字体，在插件的 engine/exporters/jianying/fonts.json 补一项（这需要改插件，告诉开发者）');
-  }
+  const bilingual = plan.subtitleTracks.some((t) => t.name.startsWith('英文字幕'));
+  const families = [timeline.subtitleStyle?.font?.family, bilingual ? timeline.subtitleStyle?.font_en?.family : null].filter(Boolean);
+  const missing = plan.subtitleTracks.some((t) => t.segments.length) ? missingJianyingFonts([...new Set(families)]) : [];
+  for (const family of missing) console.log(`  ! 字幕字体「${family}」在剪映字体对照表里没有对应项，草稿里用剪映默认字体。`);
+  if (missing.length) console.log('    要指定剪映字体，在插件的 engine/exporters/jianying/fonts.json 补一项（这需要改插件，告诉开发者）');
   const estimated = plan.subtitleTracks.flatMap((t) => t.segments).filter((s) => s.estimated).map((s) => `「${s.text}」`);
   if (estimated.length) console.log(`  ! 以下字幕没有人声音频，时长为估算值：${estimated.join('、')}`);
   console.log('  · 草稿未做响度标准化和结尾淡出，请在剪映里用「响度统一」和淡出处理');

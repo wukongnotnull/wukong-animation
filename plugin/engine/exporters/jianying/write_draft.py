@@ -73,8 +73,9 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
             segment = draft.AudioSegment(material, Timerange(s["start"], duration), source_timerange=Timerange(s["sourceStart"], duration), volume=s["volume"])
             add(script, segment, t["name"], f"音轨「{t['name']}」")
 
-    options = text_options(plan.get("subtitleStyle"))
     for t in plan["subtitleTracks"]:
+        # 双语时每条字幕轨带自己的样式（中文上移一行、英文用英文字体）
+        options = text_options(t.get("style") or plan.get("subtitleStyle"))
         script.append_track(TrackSpec(TrackType.text, t["name"]))
         for s in t["segments"]:
             add(script, draft.TextSegment(s["text"], Timerange(s["start"], s["duration"]), **options), t["name"], f"字幕「{s['text']}」")

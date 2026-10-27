@@ -5,6 +5,9 @@ import { JIANYING_FONTS } from './fonts.mjs';
 const US = 1e6;
 const VOICE_TRACK = '人声';
 const SUBTITLE_TRACK = '字幕';
+const EN_SUBTITLE_TRACK = '英文字幕';
+/** 字幕行高（字号的倍数），与烧录层一致 */
+const LINE_HEIGHT = 1.3;
 
 // 以下两个换算在剪映 11.6 里对着烧录字幕校过：字号 5.2 ≈ 画高 5%；描边 40 ≈ 字号 12% 的烧录描边
 const SIZE_PER_HEIGHT = 5.2 / 0.05;
@@ -70,11 +73,11 @@ function audioTracks(tracks, duration) {
  * 有字幕文件（timeline.subtitles，wka subtitles 生成的 srt）就按它；没有就与人声一一对应。
  * 重叠的分到「字幕 2」…，规则同人声。
  */
-function subtitleTracks(voices, srt) {
+function subtitleTracks(voices, srt, base = SUBTITLE_TRACK) {
   const subs = srt
     ? srt.map((s) => ({ text: s.text, start: us(s.start), duration: us(s.end - s.start), estimated: false }))
     : voices.map((v) => ({ text: v.text, start: us(v.at), duration: us(v.duration), estimated: !!v.estimated }));
-  return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(SUBTITLE_TRACK, i), segments }));
+  return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(base, i), segments }));
 }
 
 const round = (x, digits = 4) => +x.toFixed(digits);
@@ -100,17 +103,27 @@ function parseColor(css) {
  * 字幕样式（subtitle-layer.mjs subtitleStyle() 补齐缺省值后的 style.json subtitles 块）→ 剪映文字参数。
  * size、bottom 是画高的比例；transformY 是字幕中心的纵向位移，单位半个画高，向下为负。
  */
-function jianyingSubtitleStyle(s) {
+function jianyingSubtitleStyle(s, { font = s?.font, lift = 0 } = {}) {
   if (!s) return null;
   const stroke = parseColor(s.stroke.color);
   return {
     // 对照表里没有或值为 null：不设字体，用剪映默认字体
-    font: JIANYING_FONTS[s.font.family] || null,
+    font: JIANYING_FONTS[font.family] || null,
     size: round(s.size * SIZE_PER_HEIGHT, 2),
     ...parseColor(s.color),
     border: { ...stroke, width: round(Math.min(100, s.stroke.width * BORDER_PER_STROKE), 2) },
-    transformY: round(-(1 - s.bottom - s.size / 2 - 0.5) * 2),
+    // lift：往上挪几行（双语时中文在英文上面一行）
+    transformY: round(-(1 - s.bottom - s.size / 2 - 0.5) * 2 + lift * s.size * LINE_HEIGHT * 2),
   };
+}
+
+/** 双语：中文轨上移一行，另起「英文字幕」轨在原来的位置；每条轨带自己的样式。单语时原样返回。 */
+function bilingualTracks(tracks, srt, style) {
+  if (!srt?.some((s) => s.en)) return tracks;
+  const en = subtitleTracks([], srt.map((s) => ({ ...s, text: s.en || '' })), EN_SUBTITLE_TRACK);
+  const zhStyle = jianyingSubtitleStyle(style, { lift: 1 });
+  const enStyle = jianyingSubtitleStyle(style, { font: style?.font_en || style?.font });
+  return [...tracks.map((t) => ({ ...t, style: zhStyle })), ...en.map((t) => ({ ...t, style: enStyle }))];
 }
 
 /**
@@ -126,7 +139,7 @@ export function buildDraftPlan(timeline) {
     fps: timeline.fps,
     video: timeline.shots.map((s) => ({ name: s.id, file: s.file, start: us(s.start), duration: us(s.duration) })),
     audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
-    subtitleTracks: subtitleTracks(timeline.voices || [], timeline.subtitles),
+    subtitleTracks: bilingualTracks(subtitleTracks(timeline.voices || [], timeline.subtitles), timeline.subtitles, timeline.subtitleStyle),
     subtitleStyle: jianyingSubtitleStyle(timeline.subtitleStyle),
   };
 }

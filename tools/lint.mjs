@@ -88,8 +88,8 @@ for (const st of styles.values()) {
   if (ids.has(st.order)) errors.push(`${where}: order ${st.order} 与 ${ids.get(st.order)} 重复`);
   ids.set(st.order, st.id);
   // 剪映草稿的字幕字体要有对照，否则剪映里会悄悄变成默认字体
-  const subFont = st.subtitles?.font?.family;
-  for (const f of missingJianyingFonts(subFont ? [subFont] : [])) errors.push(`${where}: 字幕字体 "${f}" 在剪映字体对照表里没有对应项（plugin/engine/exporters/jianying/fonts.json，没有合适的剪映字体就写 null）`);
+  const subFonts = [st.subtitles?.font?.family, st.subtitles?.font_en?.family].filter(Boolean);
+  for (const f of missingJianyingFonts(subFonts)) errors.push(`${where}: 字幕字体 "${f}" 在剪映字体对照表里没有对应项（plugin/engine/exporters/jianying/fonts.json，没有合适的剪映字体就写 null）`);
   // 内置风格必须带示范片：冒烟测试靠它做确定性与基准图比对，没有就等于没测
   const ex = path.join(st.dir, 'examples');
   const films = fs.existsSync(ex) ? fs.readdirSync(ex).filter((e) => fs.existsSync(path.join(ex, e, 'film.json'))) : [];

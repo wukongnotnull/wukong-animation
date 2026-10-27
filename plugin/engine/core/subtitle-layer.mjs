@@ -22,6 +22,7 @@ const MAX_WIDTH = 0.9;
 export function mergeSubtitleStyle(base = {}, override = {}) {
   const merged = { ...base, ...override };
   if (base.font || override.font) merged.font = override.font || base.font;
+  if (base.font_en || override.font_en) merged.font_en = override.font_en || base.font_en;
   if (base.stroke || override.stroke) merged.stroke = { ...base.stroke, ...override.stroke };
   return merged;
 }
@@ -32,6 +33,7 @@ export function subtitleStyle(style = {}) {
 }
 
 function buildPage({ W, H, style, fonts, workDir }) {
+  const enFont = style.font_en || style.font;
   const size = Math.round(style.size * H);
   const config = {
     W,
@@ -40,6 +42,7 @@ function buildPage({ W, H, style, fonts, workDir }) {
     bottom: Math.round(style.bottom * H),
     maxWidth: Math.round(W * MAX_WIDTH),
     family: fonts.stacks[style.font.family],
+    familyEn: fonts.stacks[enFont.family],
     color: style.color,
     strokeColor: style.stroke.color,
     strokeWidth: style.stroke.width,
@@ -58,7 +61,10 @@ async function renderPngs({ W, H, style, subs, workDir, log }) {
   } catch {
     throw new Error('烧录字幕需要 browser 管线依赖（playwright + Chromium），运行 /wukong-animation:setup 安装');
   }
-  const fonts = prepareFonts([style.font], { text: subs.map((s) => s.text).join(''), workDir, log });
+  // 英文字体只在真有英文行时才准备（单语片子不多下载、不多打日志）
+  const bilingual = subs.some((s) => s.en);
+  const families = [style.font, ...(bilingual && style.font_en && style.font_en.family !== style.font.family ? [style.font_en] : [])];
+  const fonts = prepareFonts(families, { text: subs.map((s) => s.text + (s.en || '')).join(''), workDir, log });
   for (const r of fonts.report) log(`  字幕字体 ${r}`);
   const page = buildPage({ W, H, style, fonts, workDir });
   const dir = ensureDir(path.join(workDir, 'subtitles'));
@@ -68,8 +74,9 @@ async function renderPngs({ W, H, style, subs, workDir, log }) {
     await tab.goto('file://' + page.file);
     const files = [];
     for (const s of subs) {
-      const used = await tab.evaluate((text) => window.setSubtitle(text), s.text);
-      if (used < page.size) log(`  ! 第 ${s.index} 条一行放不下，字号从 ${page.size}px 缩到 ${used}px`);
+      const used = await tab.evaluate(([text, en]) => window.setSubtitle(text, en), [s.text, s.en || null]);
+      if (used.zh < page.size) log(`  ! 第 ${s.index} 条${s.en ? '中文' : ''}一行放不下，字号从 ${page.size}px 缩到 ${used.zh}px`);
+      if (used.en !== null && used.en < page.size) log(`  ! 第 ${s.index} 条英文一行放不下，字号从 ${page.size}px 缩到 ${used.en}px`);
       const f = path.join(dir, `${String(s.index).padStart(4, '0')}.png`);
       await tab.screenshot({ path: f, omitBackground: true });
       files.push(f);

@@ -5,7 +5,7 @@ import { JIANYING_FONTS, missingJianyingFonts } from '../../plugin/engine/export
 import { buildDraftPlan } from '../../plugin/engine/exporters/jianying/plan.mjs';
 
 test('the font map covers the fonts the repo uses', () => {
-  assert.deepEqual(JIANYING_FONTS, { 'Ma Shan Zheng': '古风小楷', 'Zhi Mang Xing': '毛笔行楷', 'Noto Serif SC': '思源中宋', 'Noto Sans SC': null });
+  assert.deepEqual(JIANYING_FONTS, { 'Ma Shan Zheng': '古风小楷', 'Zhi Mang Xing': '毛笔行楷', 'Noto Serif SC': '思源中宋', 'Noto Sans SC': null, Inter: null });
 });
 
 test('missingJianyingFonts reports families with no entry; null entries count as mapped', () => {

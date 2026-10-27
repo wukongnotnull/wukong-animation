@@ -27,12 +27,36 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: plugin/engine/package-lock.json
+      # ffmpeg + 中文字体每次要从 Ubuntu 镜像下 124 MB，镜像偶尔慢到 10 分钟都下不完。
+      # 把下载好的 .deb 缓存起来：之后每次从缓存装，只联网更新软件源索引（十几 MB）。
+      - name: 恢复 ffmpeg 与中文字体安装包缓存
+        id: apt-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-archives
+          key: apt-${{ runner.os }}-ffmpeg-noto-cjk-
+          restore-keys: apt-${{ runner.os }}-ffmpeg-noto-cjk-
       - name: 安装 ffmpeg 与中文字体
+        id: apt
         timeout-minutes: 10
         run: |
-          APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30'
+          mkdir -p ~/apt-archives/partial
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Dir::Cache::Archives=$HOME/apt-archives -o APT::Keep-Downloaded-Packages=true"
           sudo apt-get $APT update
-          sudo apt-get $APT install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          # 缓存没命中又碰上镜像慢：单次最多 4 分钟，超时再试一次（已下好的包留在缓存目录里，不会重下）
+          for i in 1 2; do sudo timeout 240 apt-get $APT install -y --no-install-recommends ffmpeg fonts-noto-cjk && break; done
+          ffmpeg -version > /dev/null
+          # 去掉镜像上已经没有的旧版本包，缓存不会越攒越大
+          sudo apt-get $APT autoclean
+          sudo chown -R "$USER" ~/apt-archives
+          echo "hash=$(ls ~/apt-archives/*.deb | xargs -n1 basename | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      # 包有变化（首次运行、Ubuntu 更新了版本）才另存一份新缓存
+      - name: 保存 ffmpeg 与中文字体安装包缓存
+        if: steps.apt-restore.outputs.cache-matched-key != format('apt-{0}-ffmpeg-noto-cjk-{1}', runner.os, steps.apt.outputs.hash)
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-archives
+          key: apt-${{ runner.os }}-ffmpeg-noto-cjk-${{ steps.apt.outputs.hash }}
       - name: 安装 npm 依赖
         working-directory: plugin/engine
         run: npm ci --no-audit --no-fund

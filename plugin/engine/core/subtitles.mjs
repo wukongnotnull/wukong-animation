@@ -28,13 +28,19 @@ export function subtitleSettings(film) {
   return { mode: s.mode || 'none', file: s.file || 'subtitles.srt', maxChars: s.max_chars || MAX_CHARS_BY_ASPECT[aspect] };
 }
 
+const DIGIT = /[0-9]/;
+/** 3.5、1,000 里的 . 和 , 夹在两个数字之间，不是断句点。 */
+const inNumber = (chars, i) => (chars[i] === '.' || chars[i] === ',') && DIGIT.test(chars[i - 1] || '') && DIGIT.test(chars[i + 1] || '');
+
 /** 按句内标点切开，标点跟着前一段。 */
 function clauses(text) {
   const out = [];
+  const chars = [...text];
   let cur = '';
-  for (const ch of text) {
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
     cur += ch;
-    if (BREAK_AFTER.test(ch)) {
+    if (BREAK_AFTER.test(ch) && !inNumber(chars, i)) {
       out.push(cur);
       cur = '';
     }

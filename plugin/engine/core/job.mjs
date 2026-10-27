@@ -197,10 +197,16 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
 
 const ANIMATIC_FPS = 12;
 
-/** 动态分镜：每镜一张关键帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨，输出 animatic.mp4。 */
+/**
+ * 动态分镜：每镜一张关键帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
+ * 交给用户审的两样都放进 review/：动态分镜.mp4 和接触表.jpg（stills/sheet.jpg 照旧生成）。
+ */
 export async function animatic(filmDir, { proxy = false, log = console.log } = {}) {
   const ctx = loadFilm(filmDir);
-  const { files, contactSheet } = await stills(filmDir, { frames: 1, proxy, log });
+  const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, log });
+  const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
+  const contactSheet = sheet ? path.join(reviewDir, '接触表.jpg') : null;
+  if (sheet) fs.copyFileSync(sheet, contactSheet);
   const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String(ctx.shots[i].duration), '-i', f]);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
   const hasAudio = fs.existsSync(audio);
@@ -208,7 +214,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
   else log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
   const filter = files.map((_, i) => `[${i}:v]format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`).join(';') + `;${files.map((_, i) => `[v${i}]`).join('')}concat=n=${files.length}:v=1:a=0[v]`;
   const audioArgs = hasAudio ? ['-map', `${files.length}:a`, '-c:a', 'aac', '-b:a', '192k'] : [];
-  const out = path.join(ctx.filmDir, 'animatic.mp4');
+  const out = path.join(reviewDir, '动态分镜.mp4');
   await run([...inputs, '-filter_complex', filter, '-map', '[v]', ...audioArgs, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', out]);
   log(`  动态分镜 → ${path.relative(ctx.filmDir, out)}（${files.length} 镜 · ${ctx.totalDuration.toFixed(1)}s${hasAudio ? ' · 含声轨' : ''}）`);
   return { file: out, contactSheet, hasAudio };

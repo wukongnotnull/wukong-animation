@@ -125,3 +125,17 @@ test('c2d.wash survives a scale(0) frame and a far zoom-out', opts, () => {
   assert.ok(pixel(png, 10, 10)[0] < 120, 'the zoomed-out square should still be inked');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('wka animatic puts the animatic and its contact sheet in review/', opts, () => {
+  const dir = makeFilm({ s01: SHOT(''), s02: SHOT('') });
+  const r = wka('animatic', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const video = path.join(dir, 'review', '动态分镜.mp4');
+  const sheet = path.join(dir, 'review', '接触表.jpg');
+  assert.ok(fs.existsSync(video) && fs.existsSync(sheet));
+  assert.ok(r.stdout.includes(`动态分镜：${video}`));
+  assert.ok(r.stdout.includes(`接触表：${sheet}`));
+  assert.ok(!fs.existsSync(path.join(dir, 'animatic.mp4')));
+  assert.ok(fs.existsSync(path.join(dir, 'stills', 'sheet.jpg')), 'stills/sheet.jpg is still written for the director');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

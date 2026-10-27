@@ -185,7 +185,7 @@ async function cmdSubtitles(filmDir, { force, preview }) {
   const video = path.join(ctx.filmDir, '.cache', 'video-proxy.mp4');
   if (!fs.existsSync(video)) fail('还没有小样：先运行 wka render --proxy');
   const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
-  const out = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}-proxy-subtitled.mp4`);
+  const out = path.join(ensureDir(path.join(ctx.filmDir, 'review')), '字幕预览.mp4');
   const { W, H } = outputSize(ctx.film, true);
   await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.filmDir, '.cache', 'work'), proxy: true, audio: fs.existsSync(mix) ? mix : null, log });
   log(`字幕预览：${out}`);

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { auditionVoices, voiceShortName } from '../../plugin/engine/audio/audition.mjs';
+import { auditionVoices, voiceShortName, resolveVoice } from '../../plugin/engine/audio/audition.mjs';
 
 const quiet = () => {};
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'wka-aud-'));
@@ -68,5 +68,23 @@ test('an empty voice list is an error, and old audition files are kept', () => {
   fs.writeFileSync(path.join(dir, '试听-1-Yunxi.m4a'), 'old');
   assert.throws(() => auditionVoices({ text: '句', voices: [], outDir: dir, engines: [fakeEdge()], log: quiet }), /至少一个音色/);
   assert.deepEqual(fs.readdirSync(dir), ['试听-1-Yunxi.m4a']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('voices can be given as full names, Chinese names or short names', () => {
+  assert.equal(resolveVoice('zh-CN-YunyangNeural'), 'zh-CN-YunyangNeural');
+  assert.equal(resolveVoice('云扬'), 'zh-CN-YunyangNeural');
+  assert.equal(resolveVoice('晓北'), 'zh-CN-liaoning-XiaobeiNeural');
+  assert.equal(resolveVoice('Yunyang'), 'zh-CN-YunyangNeural');
+  assert.equal(resolveVoice('liaoning-Xiaobei'), 'zh-CN-liaoning-XiaobeiNeural');
+  assert.throws(() => resolveVoice('老张'), /云扬.*晓妮/s);
+});
+
+test('audition synthesizes with the resolved full names', () => {
+  const dir = tmp();
+  const e = fakeEdge();
+  const files = auditionVoices({ text: '句', voices: ['云扬', 'Yunjian'], outDir: dir, engines: [e], log: quiet });
+  assert.deepEqual(e.calls.map((c) => c.voice), ['zh-CN-YunyangNeural', 'zh-CN-YunjianNeural']);
+  assert.deepEqual(files.map((f) => path.basename(f.file)), ['试听-1-Yunyang.m4a', '试听-2-Yunjian.m4a']);
   fs.rmSync(dir, { recursive: true, force: true });
 });

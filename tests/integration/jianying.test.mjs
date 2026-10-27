@@ -200,3 +200,19 @@ test('refuses to export a draft in proxy mode', opts, () => {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });
+
+test('warns when the film’s subtitle font has no 剪映 counterpart, but not for fonts mapped to null', opts, () => {
+  for (const [family, warned] of [['Long Cang', true], ['Noto Sans SC', false]]) {
+    const dir = makeFilm();
+    const f = path.join(dir, 'film.json');
+    fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), subtitles: { mode: 'none', style: { font: { family } } } }));
+    const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+    const r = wka(drafts, 'final', dir, '--formats', 'jianying');
+    assert.equal(r.status, 0, r.stderr);
+    const re = new RegExp(`字幕字体「${family}」在剪映字体对照表里没有对应项`);
+    if (warned) assert.match(r.stdout, re);
+    else assert.doesNotMatch(r.stdout, /在剪映字体对照表里没有对应项/);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(drafts, { recursive: true, force: true });
+  }
+});

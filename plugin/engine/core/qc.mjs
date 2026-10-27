@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { loadFilm } from './job.mjs';
-import { run, hasDrawtext, drawLabel } from './ffmpeg.mjs';
+import { run, drawLabel } from './ffmpeg.mjs';
 import { ensureDir } from './paths.mjs';
+import { labelPngs } from './labels.mjs';
 import { checkShotSizes, describeShotSizes } from './shot-sizes.mjs';
 
 const QC_DEFAULTS = { whitespace_min: 0, paper_tol: 20, accent_tol: 60, accent_max: 1, diff_max: 30, cuts_max: 99, skip_start: 0.5 };
@@ -125,11 +126,16 @@ export async function runQc(filmDir, { proxy = false, fps = 10, log = console.lo
   if (picks.length) {
     const dir = ensureDir(path.join(ctx.filmDir, 'stills', 'qc'));
     const files = [];
-    if (!hasDrawtext()) log('  ! ffmpeg 不带 drawtext，超标帧接触表不加文字标注（顺序与下方问题列表中带时间点的条目一致）');
+    const texts = picks.map((m) => `${m.shot} ${m.t0}s ${m.kind}`);
+    const labels = await labelPngs(texts, {
+      size: 22, workDir: path.join(ctx.filmDir, '.cache', 'work'), log, what: '超标帧接触表', order: '顺序与下方问题列表中带时间点的条目一致',
+    });
     for (const [i, m] of picks.entries()) {
       const f = path.join(dir, `qc-${i + 1}.jpg`);
-      const label = `${m.shot} ${m.t0}s ${m.kind}`.replace(/:/g, '\\:');
-      await run(['-ss', String(m.t0), '-i', video, '-frames:v', '1', '-vf', `scale=640:-2${drawLabel(label, { size: 22, box: 0.6 })}`, '-q:v', '3', f]);
+      const look = labels
+        ? ['-i', labels[i], '-filter_complex', '[0:v]scale=640:-2[s];[s][1:v]overlay=10:10']
+        : ['-vf', `scale=640:-2${drawLabel(texts[i].replace(/:/g, '\\:'), { size: 22, box: 0.6 })}`];
+      await run(['-ss', String(m.t0), '-i', video, ...look, '-frames:v', '1', '-q:v', '3', f]);
       files.push(f);
     }
     contactSheet = path.join(dir, 'qc-sheet.jpg');

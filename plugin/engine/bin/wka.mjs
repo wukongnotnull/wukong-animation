@@ -30,17 +30,10 @@ import { runQc } from '../core/qc.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
+import { parseArgs } from './args.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
-const argv = process.argv.slice(2);
-const cmd = argv[0];
-const pos = argv.slice(1).filter((a, i, arr) => !a.startsWith('--') && !(arr[i - 1] || '').match(/^--(style|dir|aspect|frames|at|only|formats|step|voices|text|rate|pitch)$/));
-const opt = (name, def = null) => {
-  const i = argv.indexOf(`--${name}`);
-  if (i === -1) return def;
-  const v = argv[i + 1];
-  return v === undefined || v.startsWith('--') ? true : v;
-};
+const { cmd, pos, opt } = parseArgs(process.argv.slice(2));
 const log = (...a) => console.log(...a);
 const fail = (msg) => {
   console.error(`✗ ${msg}`);

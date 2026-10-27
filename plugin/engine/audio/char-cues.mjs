@@ -49,3 +49,12 @@ export function clearCharCues(cues, name) {
   const prefix = `${name}#`;
   return Object.fromEntries(Object.entries(cues).filter(([k]) => !(k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length)))));
 }
+
+/** cues 里形如「名#数字」、但「名」不在 keepNames 里的键：人声改名或删掉后留下的逐字同步点。 */
+export function orphanCharCues(cues, keepNames) {
+  const keep = new Set(keepNames);
+  return Object.keys(cues).filter((k) => {
+    const m = k.match(/^(.+)#\d+$/);
+    return m && !keep.has(m[1]);
+  });
+}

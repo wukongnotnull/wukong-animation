@@ -7,33 +7,13 @@ import { validate } from './validate.mjs';
 import { ShotCache, hashParts } from './cache.mjs';
 import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
-import { run, hasDrawtext, drawLabel } from './ffmpeg.mjs';
+import { run, drawLabel } from './ffmpeg.mjs';
 import { pickCues } from './cues.mjs';
 import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
-import { renderLabels, canRenderLabels } from './labels.mjs';
+import { labelPngs } from './labels.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
-
-/**
- * ffmpeg 不带 drawtext 时的镜号标注：Chromium 画成 PNG，返回 [-i 文件, …]；
- * 有 drawtext（用 drawLabel）或画不了（没装 browser 管线依赖）时返回 null。
- */
-async function labelInputs(texts, { size, ctx, log, what }) {
-  if (hasDrawtext()) return null;
-  if (!canRenderLabels()) {
-    log(`  ! ffmpeg 不带 drawtext，也没有 browser 管线依赖，${what}不加文字标注（按镜头顺序排列）`);
-    return null;
-  }
-  try {
-    const files = await renderLabels(texts, { size, workDir: path.join(ctx.filmDir, '.cache', 'work') });
-    return files.flatMap((f) => ['-i', f]);
-  } catch (e) {
-    // 装了 playwright 但 Chromium 没下载等：标注不是必需的，降级为不标注
-    log(`  ! 画不了${what}的文字标注（${e.message.split('\n')[0]}），按镜头顺序排列`);
-    return null;
-  }
-}
 
 /**
  * @param {{requireShots?: boolean}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）
@@ -198,7 +178,7 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
   const files = await mod.renderStills(job, points, outDir);
   log(`  静帧 ${files.length} 张 → stills/`);
   let contactSheetFile = null;
-  if (contactSheet && files.length > 1) {
+  if (contactSheet && files.length) {
     const cols = Math.min(files.length, frames > 1 ? frames : 3);
     const rows = Math.ceil(files.length / cols);
     contactSheetFile = path.join(outDir, 'sheet.jpg');
@@ -206,17 +186,19 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
     const th = Math.round((tw * job.H) / job.W);
     // 标注取自静帧文件名（s02-2.70s.png）：管线按镜头分组渲染，文件顺序和 --at 的顺序可能不同，时间也可能被夹到镜头末尾
     const tags = files.map((f) => path.basename(f, '.png').replace('-', ' '));
-    const labels = await labelInputs(tags, { size: 20, ctx, log, what: '接触表' });
-    const inputs = [...files.flatMap((f) => ['-i', f]), ...(labels || [])];
+    const labels = await labelPngs(tags, { size: 20, workDir: job.workDir, log, what: '接触表' });
+    const inputs = [...files, ...(labels || [])].flatMap((f) => ['-i', f]);
     const scaled = files
       .map((_, i) => (labels
         ? `[${i}:v]scale=${tw}:${th}[s${i}];[s${i}][${files.length + i}:v]overlay=10:10[v${i}]`
         : `[${i}:v]scale=${tw}:${th}${drawLabel(tags[i])}[v${i}]`))
       .join(';');
     const layout = files.map((_, i) => `${(i % cols) * tw}_${Math.floor(i / cols) * th}`).join('|');
-    const filter = `${scaled};${files.map((_, i) => `[v${i}]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`;
-    if (files.length === 1) fs.copyFileSync(files[0], contactSheetFile);
-    else await run([...inputs, '-filter_complex', filter, '-frames:v', '1', '-q:v', '3', contactSheetFile]);
+    // 只有一张时不拼图，缩放加标注就是接触表
+    const filter = files.length === 1
+      ? `${scaled};[v0]null`
+      : `${scaled};${files.map((_, i) => `[v${i}]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`;
+    await run([...inputs, '-filter_complex', filter, '-frames:v', '1', '-q:v', '3', contactSheetFile]);
     log(`  接触表 → ${path.relative(ctx.filmDir, contactSheetFile)} (${cols}×${rows})`);
   }
   return { files, contactSheet: contactSheetFile };
@@ -240,9 +222,9 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
   if (hasAudio) inputs.push('-i', audio);
   else log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
   // 标注 PNG 排在图片和声轨之后，声轨的输入序号（files.length）不变
-  const labels = await labelInputs(ctx.shots.map((s) => s.id), { size: 28, ctx, log, what: '动态分镜' });
+  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.filmDir, '.cache', 'work'), log, what: '动态分镜' });
   const labelBase = files.length + (hasAudio ? 1 : 0);
-  if (labels) inputs.push(...labels);
+  if (labels) inputs.push(...labels.flatMap((f) => ['-i', f]));
   const frame = (i) => (labels
     ? `[${i}:v]format=yuv420p[f${i}];[f${i}][${labelBase + i}:v]overlay=20:20,format=yuv420p[v${i}]`
     : `[${i}:v]format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);

@@ -1,4 +1,4 @@
-# 制作流程 v1.8.0（当前版本）
+# 制作流程 v1.8.1（当前版本）
 
 - 日期：2026-10-27（v1.0.0 为 2026-10-25）
 - 状态：**当前生效**，与插件 `plugin/skills/director/SKILL.md`、`plugin/engine/core/state.mjs` 一致
@@ -9,6 +9,7 @@
 - 修订 v1.3.1（2026-10-26）：按试拍结果补规则——第 1 道只有必需项缺失才停下；第 2 道人声选择以客户为准，故事里没有的人声由第 4 道补写；第 3 道只用可直接开拍（`available`）的风格出方案，提报前先读候选风格的 `STYLE.md` 禁忌清单（[#19](https://github.com/wukongnotnull/wukong-animation/issues/19)）
 - 修订 v1.4.0（2026-10-26）：按《一叶知秋》试拍结果补规则——审片节点固定按「交付物绝对路径 → 一两句说明 → 签批卡片」提交；声轨、小样交 `review/` 下能直接播放的副本；分镜至少 3 种景别、相邻两镜景别不同；风格帧每镜至少两个层次；屏幕文字跟着人声逐字对位；字幕要搭风格、在安全框内，样式写 `film.json` 的 `subtitles.style`；成片文件名标明有没有字幕，`both` 同时出无字幕版；第 14 道不管简报怎么选都先问要不要导出剪映草稿（[#22](https://github.com/wukongnotnull/wukong-animation/issues/22)）
 - 修订 v1.6.0（2026-10-27）：景别写进 `film.json` 的 `shots[].size`，第 5 道签批时引擎检查（每镜都写、4 镜及以上至少 3 种、相邻不同），不合规拒绝签批；人声可设 `chars: true`，`wka soundtrack` 写出逐字同步点，题字逐字对位改用 `s.cueChars`；ffmpeg 不带 drawtext 时接触表和动态分镜改由 Chromium 画镜号；剪映字体对照改成单独的对照表，lint 检查每个风格的字幕字体都有对照（[#24](https://github.com/wukongnotnull/wukong-animation/issues/24)）
+- 修订 v1.8.1（2026-10-27）：第 6 道试听选音色也按「试听文件可点击路径 → 推荐理由 → 选音色卡片」三步提交；凡请客户看、听文件处都必须先列可点击路径，不能只说「已生成、可播放」
 - 修订 v1.8.0（2026-10-27）：审片节点三步提交的第 1 步改为签批卡片前逐个列出要签批的文件，每个一行可点击的 Markdown 链接（文字为绝对路径、地址为相对当前工作目录的路径），客户点击即可观看；第 6 道试听、第 7 道声轨、第 10 道小样、第 13 道成片同此格式（[#37](https://github.com/wukongnotnull/wukong-animation/issues/37)）
 - 修订 v1.7.0（2026-10-27）：第 2 道制作简报改为追问式确认，不再用选择卡片；片名定下即 `wka brief <片名>` 建占位片目录，追问达成共识后写 `brief.md`，新增审片节点 ① 制作简报，原节点 ①–⑩ 顺延为 ②–⑪，流程变为 14 道工序 · 11 个审片节点；「简报复核」移出待议变更（[#34](https://github.com/wukongnotnull/wukong-animation/issues/34)）
 - 修订 v1.5.2（2026-10-27）：交给客户审的文件都放进 `review/`——动态分镜 `review/动态分镜.mp4`、接触表 `review/接触表.jpg`、字幕预览 `review/字幕预览.mp4`（[#28](https://github.com/wukongnotnull/wukong-animation/issues/28)）

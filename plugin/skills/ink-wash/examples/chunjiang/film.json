@@ -1,0 +1,35 @@
+{
+  "title": "春江花月夜",
+  "style": "ink-wash",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "seed": 72,
+  "scripts": [],
+  "shots": [
+    {
+      "id": "s01",
+      "file": "shots/s01.js",
+      "duration": 4,
+      "size": "远景",
+      "note": "开场"
+    }
+  ],
+  "audio": {
+    "build": "audio/build.mjs",
+    "voices": [],
+    "tracks": []
+  },
+  "export": {
+    "formats": [
+      "mp4"
+    ],
+    "name": "chunjiang"
+  },
+  "subtitles": {
+    "mode": "both",
+    "bilingual": true
+  }
+}

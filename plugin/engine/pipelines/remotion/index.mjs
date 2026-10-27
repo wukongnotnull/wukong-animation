@@ -66,6 +66,8 @@ async function prepare(job) {
       entryPoint,
       publicDir,
       outDir: path.join(dir, 'bundle'),
+      // webpack 缓存放进工作目录，不往用户主目录写
+      rootDir: dir,
       webpackOverride: (c) => ({
         ...c,
         resolve: {

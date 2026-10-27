@@ -4,6 +4,13 @@ import { continueRender, delayRender, staticFile } from 'remotion';
 
 const PREFIX = /wka-static:([^')]+)/g;
 
+/** 声音同步点（film.json 的 cues，全片时间）→ 相对本镜头的秒数，与 browser 管线的 s.cueIn / s.cueOut 一致。 */
+function cueOf(s, name, i) {
+  const c = s.cues[name];
+  if (!c) throw new Error(`没有声音同步点 "${name}"。已有：${Object.keys(s.cues).join('、') || '（无）'}。先运行 wka soundtrack`);
+  return c[i] - s.start;
+}
+
 /**
  * @param {{ Shot: Function, Wrap?: Function, s: object, dur: number, fontCss: string }} props
  */
@@ -16,11 +23,12 @@ export function WkaShot({ Shot, Wrap, s, dur, fontCss }) {
       .then(() => document.fonts.ready)
       .then(() => continueRender(handle));
   }, []);
-  const inner = <Shot dur={dur} s={s} />;
+  const shot = { ...s, cueIn: (name) => cueOf(s, name, 0), cueOut: (name) => cueOf(s, name, 1) };
+  const inner = <Shot dur={dur} s={shot} />;
   return (
     <>
       <style>{css}</style>
-      {Wrap ? <Wrap dur={dur} s={s}>{inner}</Wrap> : inner}
+      {Wrap ? <Wrap dur={dur} s={shot}>{inner}</Wrap> : inner}
     </>
   );
 }

@@ -1,0 +1,20 @@
+{
+  "title": "七十二变",
+  "style": "keynote",
+  "size": [1920, 1080],
+  "fps": 30,
+  "seed": 70,
+  "scripts": ["shots/panel.tsx"],
+  "shots": [
+    { "id": "s01", "file": "shots/s01.tsx", "duration": 3.5, "size": "全景", "note": "L01 大字：每一帧都由代码画出" },
+    { "id": "s02", "file": "shots/s02.tsx", "duration": 4, "size": "中景", "note": "L04：观点 + 代码重绘的 film.json 面板，逐条亮要点；hold 进下一镜" },
+    { "id": "s03", "file": "shots/s03.tsx", "duration": 3, "size": "特写", "note": "接着上一镜推近面板，高亮 style 一行（对象级神奇移动）" },
+    { "id": "s04", "file": "shots/s04.tsx", "duration": 3.5, "size": "远景", "note": "72 个格子逐个弹出，点亮 2 个：已修成 2 / 72 变" }
+  ],
+  "audio": {
+    "build": "audio/build.mjs",
+    "voices": [],
+    "tracks": []
+  },
+  "export": { "formats": ["mp4"], "name": "qishier" }
+}

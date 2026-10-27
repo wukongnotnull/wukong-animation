@@ -23,22 +23,23 @@ export const PRODUCTION_STEPS = {
 /** 最后一道工序；签批到这里即全部完成 */
 export const LAST_STEP = Math.max(...Object.keys(PRODUCTION_STEPS).map(Number));
 /** 审片节点所在的工序 */
-export const REVIEW_GATES = { 3: '①美术定调', 4: '②文学脚本', 5: '③分镜', 6: '④人声素材来源', 7: '⑤声轨审听', 8: '⑥风格帧与动态分镜', 10: '⑦小样', 11: '⑧字幕', 13: '⑨终审', 14: '⑩剪映草稿' };
+export const REVIEW_GATES = { 2: '①制作简报', 3: '②美术定调', 4: '③文学脚本', 5: '④分镜', 6: '⑤人声素材来源', 7: '⑥声轨审听', 8: '⑦风格帧与动态分镜', 10: '⑧小样', 11: '⑨字幕', 13: '⑩终审', 14: '⑪剪映草稿' };
 
-/** 进度文件的流程版本：1 = v0.4.0 及以前（没有字幕工序），2 = 第 11 道起为字幕制作 */
-const FLOW = 2;
+/** 进度文件的流程版本：1 = v0.4.0 及以前（没有字幕工序），2 = 第 11 道起为字幕制作，3 = 第 2 道起为审片节点「①制作简报」 */
+const FLOW = 3;
 /** flow 1 里第 11 道起的工序，在 flow 2 里都往后挪一位 */
 const FLOW1_SHIFT_FROM = 11;
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 
 /**
- * 把旧流程的工序编号换成新编号。纯函数，不改入参。
+ * 把旧流程的工序编号、节点标签换成新的。纯函数，不改入参。
  * @returns {{state: object, migrated: boolean}}
  */
 export function migrateProgress(st) {
   if (st.flow === FLOW) return { state: st, migrated: false };
-  const shift = (step) => (step >= FLOW1_SHIFT_FROM ? step + 1 : step);
+  // flow 2 的工序编号已是新的，只需换节点标签
+  const shift = (step) => ((st.flow || 1) < 2 && step >= FLOW1_SHIFT_FROM ? step + 1 : step);
   const history = (st.history || []).map((h) => {
     const step = shift(h.step);
     return { ...h, step, label: PRODUCTION_STEPS[step] || '', gate: REVIEW_GATES[step] || null };
@@ -75,16 +76,18 @@ export function recordProgress(filmDir, { step, note = '', sha = null }) {
   return st;
 }
 
-/** 扫描项目里的所有片子，返回每支的进度；migrated 表示这次读取时换算过旧编号。 */
+/** 扫描项目里的所有片子，返回每支的进度；migrated 表示这次读取时换算过旧编号。
+ *  只有 brief.md 的占位片（第 2 道建、第 3 道才 wka init）也列出，标题取目录名，风格「未定」。 */
 export function listProductions(projectDir = '.') {
   const films = path.resolve(projectDir, 'films');
   if (!fs.existsSync(films)) return [];
   return fs
     .readdirSync(films, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && fs.existsSync(path.join(films, d.name, 'film.json')))
+    .filter((d) => d.isDirectory() && ['film.json', 'brief.md'].some((f) => fs.existsSync(path.join(films, d.name, f))))
     .map((d) => {
       const dir = path.join(films, d.name);
-      const film = JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8'));
+      const filmFile = path.join(dir, 'film.json');
+      const film = fs.existsSync(filmFile) ? JSON.parse(fs.readFileSync(filmFile, 'utf8')) : { title: d.name, style: '未定' };
       const { state: st, migrated } = loadProgress(dir);
       const last = st.history[st.history.length - 1];
       const next = st.step >= LAST_STEP ? null : st.step + 1;

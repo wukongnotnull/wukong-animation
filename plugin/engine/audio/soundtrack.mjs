@@ -42,7 +42,7 @@ function probeRecording(ctx, l) {
 }
 
 /**
- * 人声素材：按 audio.voice_source（第 6 道工序审片节点④由用户签批）取用户自供录音或 AI 配音。
+ * 人声素材：按 audio.voice_source（第 6 道工序审片节点⑤由用户签批）取用户自供录音或 AI 配音。
  * 返回与 voices 一一对应的数组：{file, at, duration} 或 null（无音频，同步点按字数估算）。
  */
 function prepareVoices(ctx, audio, outDir, log) {

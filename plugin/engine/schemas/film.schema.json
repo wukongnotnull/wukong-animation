@@ -173,7 +173,7 @@
             "ai",
             "none"
           ],
-          "description": "人声素材来源：user = 用户自供录音；ai = AI 配音（TTS）；none = 无人声。第 6 道工序审片节点④由用户签批。旧名 vo_source 仍可用"
+          "description": "人声素材来源：user = 用户自供录音；ai = AI 配音（TTS）；none = 无人声。第 6 道工序审片节点⑤由用户签批。旧名 vo_source 仍可用"
         }
       }
     },

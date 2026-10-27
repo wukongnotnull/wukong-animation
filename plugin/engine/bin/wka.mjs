@@ -4,6 +4,7 @@
 //   wka check                         检查环境与所有插槽
 //   wka list [styles|pipelines|kits|exporters]
 //   wka init-project [目录]           git 初始化工程（第 1 道工序）
+//   wka brief <片名> [--dir 项目目录]  建占位片目录和简报空白稿（第 2 道工序）
 //   wka init <片名> --style <id> [--dir 项目目录] [--aspect 16:9|9:16]
 //   wka status [项目目录]             各片制作进度（恢复在制项目）
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
@@ -143,6 +144,19 @@ function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
   log(`  技术文档：${path.join(st.dir, 'TECH.md')}`);
 }
 
+/** 制作简报（第 2 道）：建占位片目录和 brief.md 空白稿；第 3 道 wka init 在这个目录上补齐工程。 */
+function cmdBrief(name, { dir = '.' }) {
+  if (!name) fail('用法：wka brief <片名> [--dir 项目目录]');
+  const filmDir = path.resolve(dir, 'films', name);
+  const brief = path.join(filmDir, 'brief.md');
+  if (fs.existsSync(brief)) fail(`${brief} 已存在`);
+  const tpl = fs.readFileSync(path.join(PLUGIN_ROOT, 'skills', 'director', 'templates', 'brief.md'), 'utf8');
+  fs.mkdirSync(filmDir, { recursive: true });
+  fs.writeFileSync(brief, tpl.replaceAll('<片名>', name));
+  recordProgress(filmDir, { step: 1, note: '建立占位片目录' });
+  log(`✓ 已创建 ${path.relative(process.cwd(), brief) || brief}`);
+}
+
 /** 读字幕文件并检查；有错误就中断，警告打印后继续。 */
 function readSubtitles(ctx, settings, { missing }) {
   const file = path.join(ctx.filmDir, settings.file);
@@ -236,6 +250,8 @@ async function main() {
       log('项目初始化');
       initProject(pos[0] || '.', { log });
       return;
+    case 'brief':
+      return cmdBrief(pos[0], { dir: opt('dir', '.') });
     case 'init':
       return cmdInit(pos[0], { style: opt('style'), dir: opt('dir', '.'), aspect: opt('aspect', '16:9') });
     case 'signoff': {

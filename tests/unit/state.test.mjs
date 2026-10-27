@@ -35,33 +35,56 @@ test('14 steps: subtitles is step 11, the JianYing draft delivery is the last on
   assert.equal(PRODUCTION_STEPS[14], '剪映草稿交付');
 });
 
-test('10 review gates: ⑧ subtitles, ⑨ final approval, ⑩ JianYing draft', () => {
-  assert.equal(Object.keys(REVIEW_GATES).length, 10);
-  assert.equal(REVIEW_GATES[10], '⑦小样');
-  assert.equal(REVIEW_GATES[11], '⑧字幕');
+test('11 review gates: ① brief, ⑨ subtitles, ⑩ final approval, ⑪ JianYing draft', () => {
+  assert.equal(Object.keys(REVIEW_GATES).length, 11);
+  assert.equal(REVIEW_GATES[1], undefined);
+  assert.equal(REVIEW_GATES[2], '①制作简报');
+  assert.equal(REVIEW_GATES[3], '②美术定调');
+  assert.equal(REVIEW_GATES[10], '⑧小样');
+  assert.equal(REVIEW_GATES[11], '⑨字幕');
   assert.equal(REVIEW_GATES[12], undefined);
-  assert.equal(REVIEW_GATES[13], '⑨终审');
-  assert.equal(REVIEW_GATES[14], '⑩剪映草稿');
+  assert.equal(REVIEW_GATES[13], '⑩终审');
+  assert.equal(REVIEW_GATES[14], '⑪剪映草稿');
 });
 
 test('migrateProgress shifts steps from 11 on by one and renames their gates', () => {
   const old = { step: 12, history: OLD_HISTORY };
   const { state, migrated } = migrateProgress(old);
   assert.equal(migrated, true);
-  assert.equal(state.flow, 2);
+  assert.equal(state.flow, 3);
   assert.equal(state.step, 13);
   assert.deepEqual(state.history.map((h) => [h.step, h.label, h.gate]), [
-    [10, '小样渲染与技术质检', '⑦小样'],
-    [13, '终检与交付', '⑨终审'],
+    [10, '小样渲染与技术质检', '⑧小样'],
+    [13, '终检与交付', '⑩终审'],
   ]);
   assert.equal(state.history[1].note, '成片 v4 终审通过');
   assert.equal(state.history[1].sha, 'abc');
   assert.equal(old.step, 12, '不改入参');
 });
 
-test('migrateProgress keeps steps before 11 and leaves flow 2 alone', () => {
+test('migrateProgress relabels the gates of a flow 2 file without moving steps', () => {
+  const flow2 = {
+    flow: 2,
+    step: 4,
+    history: [
+      { step: 3, label: '美术定调', gate: '①美术定调', note: '选定水墨', sha: null, at: '2026-10-27T01:00:00.000Z' },
+      { step: 4, label: '文学脚本撰写', gate: '②文学脚本', note: 'v2 签批', sha: 'def', at: '2026-10-27T02:00:00.000Z' },
+    ],
+  };
+  const { state, migrated } = migrateProgress(flow2);
+  assert.equal(migrated, true);
+  assert.equal(state.flow, 3);
+  assert.equal(state.step, 4);
+  assert.deepEqual(state.history.map((h) => [h.step, h.gate, h.note]), [
+    [3, '②美术定调', '选定水墨'],
+    [4, '③文学脚本', 'v2 签批'],
+  ]);
+  assert.equal(flow2.history[0].gate, '①美术定调', '不改入参');
+});
+
+test('migrateProgress keeps steps before 11 and leaves flow 3 alone', () => {
   assert.equal(migrateProgress({ step: 10, history: [] }).state.step, 10);
-  const current = { flow: 2, step: 11, history: [] };
+  const current = { flow: 3, step: 11, history: [] };
   const r = migrateProgress(current);
   assert.equal(r.migrated, false);
   assert.equal(r.state, current);
@@ -72,14 +95,14 @@ test('readProgress migrates an old file and writes it back', () => {
   writeFlow1(film, 12, OLD_HISTORY);
   assert.equal(readProgress(film).step, 13);
   const saved = JSON.parse(fs.readFileSync(stateFile(film), 'utf8'));
-  assert.equal(saved.flow, 2);
+  assert.equal(saved.flow, 3);
   assert.equal(saved.step, 13);
 });
 
-test('a new progress file is written as flow 2', () => {
+test('a new progress file is written as flow 3', () => {
   const { film } = project();
   recordProgress(film, { step: 3, note: '选定水墨' });
-  assert.equal(JSON.parse(fs.readFileSync(stateFile(film), 'utf8')).flow, 2);
+  assert.equal(JSON.parse(fs.readFileSync(stateFile(film), 'utf8')).flow, 3);
 });
 
 test('listProductions flags a migrated film and points it at the draft delivery', () => {
@@ -99,7 +122,7 @@ test('a film signed off at the subtitles gate goes on to the final render', () =
   recordProgress(film, { step: 11, note: '字幕 v1 签批' });
   const [f] = listProductions(dir);
   assert.equal(f.next, 12);
-  assert.equal(f.last.gate, '⑧字幕');
+  assert.equal(f.last.gate, '⑨字幕');
 });
 
 test('a film signed off at step 14 is finished', () => {
@@ -108,5 +131,22 @@ test('a film signed off at step 14 is finished', () => {
   const [f] = listProductions(dir);
   assert.equal(f.next, null);
   assert.equal(f.nextLabel, '已完成');
-  assert.equal(f.last.gate, '⑩剪映草稿');
+  assert.equal(f.last.gate, '⑪剪映草稿');
+});
+
+test('a placeholder film with only brief.md is listed with its folder name and no style yet', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-state-'));
+  const film = path.join(dir, 'films', '春晓');
+  fs.mkdirSync(film, { recursive: true });
+  fs.writeFileSync(path.join(film, 'brief.md'), '# 《春晓》制作简报\n');
+  fs.mkdirSync(path.join(dir, 'films', '空目录'));
+  recordProgress(film, { step: 2, note: '简报签批' });
+  const list = listProductions(dir);
+  assert.equal(list.length, 1);
+  const [f] = list;
+  assert.equal(f.name, '春晓');
+  assert.equal(f.title, '春晓');
+  assert.equal(f.style, '未定');
+  assert.equal(f.next, 3);
+  assert.equal(f.last.gate, '①制作简报');
 });

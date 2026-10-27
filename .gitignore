@@ -9,3 +9,9 @@ frames/
 .DS_Store
 tests/smoke/out/
 __pycache__/
+# 在 examples/ 里制作示范片时的进度与中间产物（配音、静帧、审片文件），只提交源文件
+plugin/skills/*/examples/*/.wka/
+plugin/skills/*/examples/*/stills/
+plugin/skills/*/examples/*/review/
+plugin/skills/*/examples/*/audio/generated/
+plugin/skills/*/examples/*/*.gif

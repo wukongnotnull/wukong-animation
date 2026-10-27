@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { requireDep } from './deps.mjs';
 import { ensureDir } from './paths.mjs';
+import { hasDrawtext } from './ffmpeg.mjs';
 
 const PAD = 0.3; // 文字四周留白，字号的倍数
 
@@ -45,5 +46,25 @@ export function canRenderLabels() {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * ffmpeg 不带 drawtext 时的标注：Chromium 画成 PNG，返回与 texts 一一对应的 PNG 路径；
+ * 有 drawtext（调用方用 drawLabel）或画不了（没装 browser 管线依赖、Chromium 起不来）时返回 null。
+ * what：标在哪儿（「接触表」），order：不加标注时怎么对应（「按镜头顺序排列」），都只用于提示。
+ */
+export async function labelPngs(texts, { size, workDir, log, what, order = '按镜头顺序排列' }) {
+  if (hasDrawtext()) return null;
+  if (!canRenderLabels()) {
+    log(`  ! ffmpeg 不带 drawtext，也没有 browser 管线依赖，${what}不加文字标注（${order}）`);
+    return null;
+  }
+  try {
+    return await renderLabels(texts, { size, workDir });
+  } catch (e) {
+    // 装了 playwright 但 Chromium 没下载等：标注不是必需的，降级为不标注
+    log(`  ! 画不了${what}的文字标注（${e.message.split('\n')[0]}），${order}`);
+    return null;
   }
 }

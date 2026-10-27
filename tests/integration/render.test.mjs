@@ -193,3 +193,70 @@ test('a second soundtrack run with per-character cues leaves film.json untouched
   assert.equal(fs.readFileSync(f, 'utf8'), first);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('renaming a chars voice clears its old per-character cues and keeps hand-written ones', () => {
+  const dir = makeFilm({ s01: SHOT('') });
+  const f = path.join(dir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.mkdirSync(path.join(dir, 'audio'));
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=0.6', path.join(dir, 'audio', 'a.wav')]);
+  film.cues = { 落印: [0.8, 0.9] };
+  film.audio = { voice_source: 'user', voices: [{ text: '春眠', at: 0, cue: '甲', chars: true, file: 'audio/a.wav' }] };
+  fs.writeFileSync(f, JSON.stringify(film));
+  assert.equal(wka('soundtrack', dir).status, 0);
+  const renamed = JSON.parse(fs.readFileSync(f, 'utf8'));
+  renamed.audio.voices[0].cue = '乙';
+  fs.writeFileSync(f, JSON.stringify(renamed));
+  const r = wka('soundtrack', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const keys = Object.keys(JSON.parse(fs.readFileSync(f, 'utf8')).cues);
+  assert.deepEqual(keys.filter((k) => k.startsWith('甲#')), []);
+  assert.deepEqual(keys.filter((k) => k.startsWith('乙#')), ['乙#1', '乙#2']);
+  assert.ok(keys.includes('落印'));
+  assert.match(r.stdout, /清掉了已不用的逐字同步点：甲#1…#2/);
+  // 人声全删了，逐字点也跟着清掉
+  fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), audio: {} }));
+  assert.equal(wka('soundtrack', dir).status, 0);
+  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(f, 'utf8')).cues).filter((k) => k.includes('#')), []);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('two voices with the same cue name stop wka soundtrack and leave film.json alone', () => {
+  const dir = makeFilm({ s01: SHOT('') });
+  const f = path.join(dir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.mkdirSync(path.join(dir, 'audio'));
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=0.3', path.join(dir, 'audio', 'a.wav')]);
+  film.audio = { voice_source: 'user', voices: [{ text: '春眠', at: 0, cue: '甲', file: 'audio/a.wav' }, { text: '不觉', at: 0.5, cue: '甲', file: 'audio/a.wav' }] };
+  fs.writeFileSync(f, JSON.stringify(film));
+  const before = fs.readFileSync(f, 'utf8');
+  const r = wka('soundtrack', dir);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /同步点名重复：「甲」用在第 1、2 条/);
+  assert.equal(fs.readFileSync(f, 'utf8'), before);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('a one-shot film still gets a labelled contact sheet from wka animatic', opts, () => {
+  const dir = makeFilm({ s01: SHOT('') });
+  const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const sheet = path.join(dir, 'review', '接触表.jpg');
+  assert.ok(fs.existsSync(sheet), r.stdout);
+  assert.ok(pixel(sheet, 14, 20)[0] < 200, 'label box in the top-left');
+  assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest is still paper');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('without drawtext the QC contact sheet still carries labels (drawn by Chromium)', opts, () => {
+  // 一镜只有纸色：采样帧都算「空帧」，会抽出超标帧
+  const dir = makeFilm({ s01: SHOT('') });
+  assert.equal(wka('render', dir).status, 0);
+  const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'qc', dir);
+  assert.equal(r.status, 2, r.stderr);
+  assert.doesNotMatch(r.stdout + r.stderr, /不加文字标注/);
+  const sheet = path.join(dir, 'stills', 'qc', 'qc-sheet.jpg');
+  assert.ok(pixel(sheet, 14, 20)[0] < 200, 'label box in the top-left');
+  assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest is still paper');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

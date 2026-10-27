@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { charCues, clearCharCues } from '../../plugin/engine/audio/char-cues.mjs';
+import { charCues, clearCharCues, orphanCharCues } from '../../plugin/engine/audio/char-cues.mjs';
 
 test('one sound range per clause: characters share their clause evenly, punctuation takes no time', () => {
   const cues = charCues('春眠，不觉晓。', '一', { at: 10, duration: 3, ranges: [{ start: 0.2, end: 1.0 }, { start: 1.5, end: 2.4 }] });
@@ -26,4 +26,10 @@ test('without audio the estimated span is shared evenly', () => {
 test('clearCharCues removes only that line’s per-character points', () => {
   const out = clearCharCues({ 一: [0, 1], '一#1': [0, 0.5], '一#2': [0.5, 1], 二: [2, 3], '二#1': [2, 3], '一二#1': [9, 9] }, '一');
   assert.deepEqual(out, { 一: [0, 1], 二: [2, 3], '二#1': [2, 3], '一二#1': [9, 9] });
+});
+
+test('orphanCharCues lists per-character points whose line is gone, and nothing else', () => {
+  const cues = { 落印: [3, 3.2], 甲: [0, 1], '甲#1': [0, 0.5], '甲#a': [1, 2], '乙#1': [1, 1.5], '乙#12': [1.5, 2], '丙#1': [2, 3] };
+  assert.deepEqual(orphanCharCues(cues, ['丙']).sort(), ['乙#1', '乙#12', '甲#1']);
+  assert.deepEqual(orphanCharCues(cues, ['甲', '乙', '丙']), []);
 });

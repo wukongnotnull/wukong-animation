@@ -6,7 +6,7 @@ import * as synth from './synth.mjs';
 import { synthesizeVoiceOver } from './tts.mjs';
 import { run, probeDuration } from '../core/ffmpeg.mjs';
 import { loadFilm } from '../core/job.mjs';
-import { charCues, clearCharCues } from './char-cues.mjs';
+import { charCues, clearCharCues, orphanCharCues } from './char-cues.mjs';
 import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
 
 // 逐字同步点找句中停顿：比剪映切配乐更灵敏，不留前后余量
@@ -70,6 +70,49 @@ function voiceDuration(line, item) {
   return item?.duration || Math.max(0.6, [...line.text.replace(/[，。！？、；：,.!?\s]/g, '')].length / 3.6);
 }
 
+const cueName = (line, i) => line.cue || `vo${i + 1}`;
+
+/** cue 名重复时后一句会悄悄盖掉前一句的同步点，直接报错。 */
+function checkCueNames(lines) {
+  const seen = new Map();
+  lines.forEach((l, i) => seen.set(cueName(l, i), [...(seen.get(cueName(l, i)) || []), i + 1]));
+  const dup = [...seen].filter(([, idx]) => idx.length > 1).map(([name, idx]) => `「${name}」用在第 ${idx.join('、')} 条`);
+  if (dup.length) throw new Error(`人声的同步点名重复：${dup.join('；')}。每条人声的 cue 名要不同（film.json 的 audio.voices[].cue）`);
+}
+
+/** 「甲#1…#5、乙#1」：把逐字同步点按名字归并成一行。 */
+function describeCharCues(keys) {
+  const byName = new Map();
+  for (const k of keys) {
+    const [, name, n] = k.match(/^(.+)#(\d+)$/);
+    byName.set(name, [...(byName.get(name) || []), +n]);
+  }
+  return [...byName].map(([name, ns]) => {
+    const [lo, hi] = [Math.min(...ns), Math.max(...ns)];
+    return lo === hi ? `${name}#${lo}` : `${name}#${lo}…#${hi}`;
+  }).join('、');
+}
+
+/**
+ * 人声改名或删掉后，它以前写的逐字点没人再清，镜头会读到过期时间：去掉不属于 keepNames 的「名#数字」。
+ * 手写的同步点（不带 #数字）不动。返回新对象。
+ */
+function dropOrphanCharCues(cues, keepNames, log) {
+  const orphans = orphanCharCues(cues, keepNames);
+  if (!orphans.length) return cues;
+  log(`  · 清掉了已不用的逐字同步点：${describeCharCues(orphans)}`);
+  return Object.fromEntries(Object.entries(cues).filter(([k]) => !orphans.includes(k)));
+}
+
+/** 人声全删了：只清孤立的逐字点，有变化才写 film.json。 */
+function clearAllCharCues(ctx, log) {
+  const file = path.join(ctx.filmDir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!film.cues) return;
+  const cues = dropOrphanCharCues(film.cues, [], log);
+  if (cues !== film.cues) fs.writeFileSync(file, JSON.stringify({ ...film, cues }, null, 2) + '\n');
+}
+
 const sortedJson = (o) => JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))));
 
 function writeVoiceCues(ctx, lines, vo, log) {
@@ -81,7 +124,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
   lines.forEach((l, i) => {
     const measured = vo[i]?.duration;
     const dur = voiceDuration(l, vo[i]);
-    const name = l.cue || `vo${i + 1}`;
+    const name = cueName(l, i);
     film.cues[name] = [+l.at.toFixed(3), +(l.at + dur).toFixed(3)];
     const shot = ctx.shots.find((s) => l.at >= s.start && l.at < s.start + s.duration);
     const over = shot && l.at + dur > shot.start + shot.duration ? `  ! 超出 ${shot.id} 结尾 ${(l.at + dur - shot.start - shot.duration).toFixed(2)}s` : '';
@@ -97,6 +140,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
       log(n ? `             逐字同步点 ${name}#1…#${n}（${ranges ? '按人声实测' : '估算'}）` : `  ! ${name} 设了 chars，但这句没有要计时的字（只有标点）`);
     }
   });
+  film.cues = dropOrphanCharCues(film.cues, lines.map((l, i) => (l.chars ? cueName(l, i) : null)).filter(Boolean), log);
   // 同步点没变就不动 film.json，免得无谓地改动文件、触发重渲。按键排序后再比：逐字点重写后键的顺序会变，值没变
   if (sortedJson(film.cues) === before) return log('  · 声音同步点未变化');
   fs.writeFileSync(file, JSON.stringify(film, null, 2) + '\n');
@@ -112,6 +156,7 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { requireShots: false });
   if (ctx.legacyFields.length) log(`  ! film.json 用了旧字段名，已按新名读取，建议改过来：${ctx.legacyFields.join('，')}`);
   const audio = ctx.film.audio || {};
+  checkCueNames(audio.voices || []);
   const genDir = path.join(ctx.filmDir, 'audio', 'generated');
   fs.mkdirSync(genDir, { recursive: true });
   const tracks = [];
@@ -126,6 +171,7 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, duration: it.duration, gain: 2 });
   const hasVoices = audio.voices?.length && audio.voice_source !== 'none';
   if (hasVoices) writeVoiceCues(ctx, audio.voices, vo, log);
+  else clearAllCharCues(ctx, log);
   const voices = hasVoices ? audio.voices.map((l, i) => ({ text: l.text, at: l.at, duration: voiceDuration(l, vo[i]), estimated: !vo[i]?.duration })) : [];
   for (const t of audio.tracks || []) tracks.push({ start: 0, gain: 0, ...t, role: 'track', file: path.join(ctx.filmDir, t.file) });
 

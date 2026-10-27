@@ -27,12 +27,32 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: plugin/engine/package-lock.json
+      # 每次都要从 Ubuntu 镜像下 150 MB 安装包（ffmpeg + 中文字体 124 MB、Chromium 系统依赖 26 MB），
+      # 镜像偶尔慢到几分钟都下不完。把下载好的 .deb 缓存起来：之后从缓存装，只联网更新软件源索引（十几 MB）。
+      - name: 恢复 apt 安装包缓存
+        id: apt-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/apt-archives
+          key: apt-${{ runner.os }}-deps-
+          restore-keys: apt-${{ runner.os }}-deps-
+      - name: 让所有 apt 调用都用缓存目录
+        run: |
+          mkdir -p ~/apt-archives/partial
+          # 写成全局配置：Playwright 安装 Chromium 依赖时内部调用的 apt-get 也会用上
+          sudo tee /etc/apt/apt.conf.d/99wka-cache > /dev/null <<EOF
+          Dir::Cache::Archives "$HOME/apt-archives";
+          APT::Keep-Downloaded-Packages "true";
+          Acquire::Retries "3";
+          Acquire::http::Timeout "30";
+          EOF
       - name: 安装 ffmpeg 与中文字体
         timeout-minutes: 10
         run: |
-          APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30'
-          sudo apt-get $APT update
-          sudo apt-get $APT install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          sudo apt-get update
+          # 缓存没命中又碰上镜像慢：单次最多 4 分钟，超时再试一次（已下好的包留在缓存目录里，不会重下）
+          for i in 1 2; do sudo timeout 240 apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk && break; done
+          ffmpeg -version > /dev/null
       - name: 安装 npm 依赖
         working-directory: plugin/engine
         run: npm ci --no-audit --no-fund
@@ -47,12 +67,26 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit != 'true'
         timeout-minutes: 8
         working-directory: plugin/engine
-        run: npx playwright install --with-deps chromium
+        run: for i in 1 2; do timeout 210 npx playwright install --with-deps chromium && break; done
       - name: 安装 Chromium 系统依赖
         if: steps.pw-cache.outputs.cache-hit == 'true'
         timeout-minutes: 5
         working-directory: plugin/engine
-        run: npx playwright install-deps chromium
+        run: for i in 1 2; do timeout 140 npx playwright install-deps chromium && break; done
+      - name: 整理 apt 安装包缓存
+        id: apt
+        run: |
+          # 去掉镜像上已经没有的旧版本包，缓存不会越攒越大
+          sudo apt-get autoclean
+          sudo chown -R "$USER" ~/apt-archives
+          echo "hash=$(ls ~/apt-archives/*.deb | xargs -n1 basename | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      # 包有变化（首次运行、Ubuntu 更新了版本）才另存一份新缓存
+      - name: 保存 apt 安装包缓存
+        if: steps.apt-restore.outputs.cache-matched-key != format('apt-{0}-deps-{1}', runner.os, steps.apt.outputs.hash)
+        uses: actions/cache/save@v4
+        with:
+          path: ~/apt-archives
+          key: apt-${{ runner.os }}-deps-${{ steps.apt.outputs.hash }}
       - name: 单元与集成测试
         timeout-minutes: 5
         run: node --test tests/unit/*.test.mjs tests/integration/*.test.mjs

@@ -30,7 +30,7 @@ import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
-import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../core/subtitles.mjs';
+import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 
@@ -171,6 +171,44 @@ function readSubtitles(ctx, settings, { missing }) {
   return subs;
 }
 
+/** 片目录里的英文稿；没有时为 null。 */
+function readEnglish(ctx, settings) {
+  const file = path.join(ctx.filmDir, settings.enFile);
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    fail(`${settings.enFile} 不是合法的 JSON：${e.message}`);
+  }
+}
+
+/** 双语：按中文字幕重排英文稿（保留能对上的英文），内容变了才写文件，报待填条目。 */
+function syncEnglishFile(ctx, settings, subs) {
+  const file = path.join(ctx.filmDir, settings.enFile);
+  let pairs;
+  try {
+    pairs = syncEnglish(subs, readEnglish(ctx, settings));
+  } catch (e) {
+    fail(e.message);
+  }
+  const text = JSON.stringify(pairs, null, 1) + '\n';
+  if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== text) fs.writeFileSync(file, text);
+  const pending = pairs.flatMap((p, i) => (p.en.trim() ? [] : [`第 ${i + 1} 条「${p.zh}」`]));
+  log(`✓ 英文字幕 ${pairs.length} 条，其中 ${pending.length} 条待填 → ${settings.enFile}`);
+  for (const p of pending) log(`  · ${p}`);
+  for (const w of checkEnglish(pairs, { maxChars: settings.maxCharsEn })) log(`  ! ${w}`);
+}
+
+/** 双语时把英文挂到字幕条目上（每条多一个 en）；对不上或有空条就停。 */
+function withEnglish(ctx, settings, subs) {
+  if (!settings.bilingual) return subs;
+  try {
+    return attachEnglish(subs, readEnglish(ctx, settings));
+  } catch (e) {
+    fail(e.message);
+  }
+}
+
 function reportSubtitleCheck(ctx, settings, subs) {
   const { errors, warnings } = checkSubtitles(subs, { duration: ctx.totalDuration, maxChars: settings.maxChars });
   for (const w of warnings) log(`  ! ${w}`);
@@ -215,7 +253,9 @@ async function cmdSubtitles(filmDir, { force, preview }) {
     fs.writeFileSync(file, formatSrt(subs));
     log(`✓ 字幕 ${subs.length} 条 → ${settings.file}`);
   }
+  if (settings.bilingual) syncEnglishFile(ctx, settings, subs);
   if (!preview) return;
+  subs = withEnglish(ctx, settings, subs);
   const video = path.join(ctx.filmDir, '.cache', 'video-proxy.mp4');
   if (!fs.existsSync(video)) fail('还没有小样：先运行 wka render --proxy');
   const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
@@ -228,7 +268,7 @@ async function cmdSubtitles(filmDir, { force, preview }) {
 async function cmdFinal(filmDir, o) {
   const ctx = loadFilm(filmDir);
   const settings = subtitleSettings(ctx.film);
-  const subs = settings.mode === 'none' ? null : readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles` });
+  const subs = settings.mode === 'none' ? null : withEnglish(ctx, settings, readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles` }));
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
   const { mix: audio, tracks, voices } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
   const { video, job, segments } = await render(filmDir, o);
@@ -236,7 +276,7 @@ async function cmdFinal(filmDir, o) {
   // 画面类成片按字幕方式出烧录版 / 无字幕版，文件名标明有没有字幕；剪映草稿只导一份
   const visual = formats.filter((f) => f !== 'jianying');
   const drafts = formats.filter((f) => f === 'jianying');
-  const names = subtitleOutputs(subs ? settings.mode : 'none');
+  const names = subtitleOutputs(subs ? settings.mode : 'none', settings.bilingual);
   const outs = [];
   if (visual.length && names.burned !== null) {
     const out = path.join(ctx.filmDir, '.cache', o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
@@ -257,6 +297,12 @@ async function cmdFinal(filmDir, o) {
     const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}${names.srt}.srt`);
     fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
     log(`  导出 srt → ${path.basename(srt)}`);
+    outs.push(srt);
+  }
+  if (names.srtEn && !o.proxy) {
+    const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}${names.srtEn}.srt`);
+    fs.writeFileSync(srt, englishSrt(subs));
+    log(`  导出英文 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
   log(`\n完成 ✓\n${outs.map((x) => `  ${x}`).join('\n')}`);

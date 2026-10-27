@@ -95,6 +95,14 @@
         "sans-serif"
       ]
     },
+    "font_en": {
+      "family": "Inter",
+      "fallback": [
+        "Helvetica Neue",
+        "Arial",
+        "sans-serif"
+      ]
+    },
     "size": 0.041,
     "color": "#FFFFFF",
     "stroke": {

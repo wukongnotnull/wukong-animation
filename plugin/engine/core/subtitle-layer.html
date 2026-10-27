@@ -8,33 +8,41 @@
 {{FONT_CSS}}
 html,body{margin:0;padding:0;background:transparent;overflow:hidden}
 #frame{position:relative;overflow:hidden}
-#line{position:absolute;left:0;right:0;text-align:center;line-height:1.3;white-space:pre;paint-order:stroke fill}
-#line span{display:inline-block}
+#block{position:absolute;left:0;right:0;text-align:center}
+.line{line-height:1.3;white-space:pre;paint-order:stroke fill}
+.line span{display:inline-block}
 </style>
 <script>window.__SUB = {{CONFIG}};</script>
 </head>
 <body>
-<div id="frame"><div id="line"><span id="text"></span></div></div>
+<!-- 双语时英文行在样式的 bottom 处，中文行在它正上方；单语时只有中文行 -->
+<div id="frame"><div id="block"><div class="line" id="line"><span id="text"></span></div><div class="line" id="line-en"><span id="text-en"></span></div></div></div>
 <script>
 (() => {
   const c = window.__SUB;
   const frame = document.getElementById('frame');
-  const line = document.getElementById('line');
-  const text = document.getElementById('text');
+  const block = document.getElementById('block');
+  const lines = { zh: [document.getElementById('line'), document.getElementById('text'), c.family], en: [document.getElementById('line-en'), document.getElementById('text-en'), c.familyEn] };
   Object.assign(frame.style, { width: c.W + 'px', height: c.H + 'px' });
-  Object.assign(line.style, { bottom: c.bottom + 'px', fontFamily: c.family, color: c.color });
-  /** 摆好一条字幕；整行放不下就缩小字号，返回实际字号。 */
-  window.setSubtitle = async (s) => {
+  Object.assign(block.style, { bottom: c.bottom + 'px', color: c.color });
+  /** 摆好一行；整行放不下就缩小字号，返回实际字号。 */
+  const fit = async ([line, text, family], s) => {
     let size = c.size;
+    line.style.fontFamily = family;
     text.textContent = s;
     for (;;) {
       line.style.fontSize = size + 'px';
       line.style.webkitTextStroke = `${size * c.strokeWidth * 2}px ${c.strokeColor}`;
-      await document.fonts.load(`${size}px ${c.family}`, s).catch(() => {});
+      await document.fonts.load(`${size}px ${family}`, s).catch(() => {});
       await document.fonts.ready;
       if (text.offsetWidth <= c.maxWidth || size <= 8) return size;
       size -= 1;
     }
+  };
+  /** 摆好一条字幕（en 为空时只有中文行），返回两行各自的实际字号。 */
+  window.setSubtitle = async (s, en) => {
+    lines.en[0].style.display = en ? '' : 'none';
+    return { zh: await fit(lines.zh, s), en: en ? await fit(lines.en, en) : null };
   };
 })();
 </script>

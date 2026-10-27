@@ -15,6 +15,8 @@ const ASCII_ELLIPSIS = /\.{3,}/g;
 const subtitleText = (p) => p.replace(ASCII_ELLIPSIS, '…').trim().replace(TRAILING, '').replace(INNER_PAUSE, '　').trim();
 
 const MAX_CHARS_BY_ASPECT = { landscape: 18, portrait: 12, square: 14 };
+/** 英文字幕每条最多几个字符（含空格）：源规范横屏约 45 */
+const MAX_CHARS_EN_BY_ASPECT = { landscape: 45, portrait: 28, square: 34 };
 const SHORTEST = 0.6;
 
 export const countChars = (text) => [...text.replace(NOT_COUNTED, '')].length;
@@ -25,7 +27,14 @@ export function subtitleSettings(film) {
   const s = film.subtitles || {};
   const [W, H] = film.size;
   const aspect = W > H ? 'landscape' : W < H ? 'portrait' : 'square';
-  return { mode: s.mode || 'none', file: s.file || 'subtitles.srt', maxChars: s.max_chars || MAX_CHARS_BY_ASPECT[aspect] };
+  return {
+    mode: s.mode || 'none',
+    file: s.file || 'subtitles.srt',
+    maxChars: s.max_chars || MAX_CHARS_BY_ASPECT[aspect],
+    bilingual: !!s.bilingual,
+    enFile: 'subtitles.en.json',
+    maxCharsEn: s.max_chars_en || MAX_CHARS_EN_BY_ASPECT[aspect],
+  };
 }
 
 const DIGIT = /[0-9]/;
@@ -83,14 +92,69 @@ function splitLine(text, maxChars) {
  * 成片按字幕方式出哪几个版本、文件名加什么后缀（null 表示不出）：
  * burned 烧录版，clean 无字幕版，srt 外挂字幕。不出字幕时成片名不加后缀。
  */
-export function subtitleOutputs(mode) {
+export function subtitleOutputs(mode, bilingual = false) {
   if (mode === 'none') return { burned: null, clean: '', srt: null };
+  const srt = ['srt', 'both'].includes(mode);
   return {
     burned: ['burn', 'both'].includes(mode) ? '_有字幕' : null,
-    clean: ['srt', 'both'].includes(mode) ? '_无字幕' : null,
-    srt: ['srt', 'both'].includes(mode) ? '_字幕' : null,
+    clean: srt ? '_无字幕' : null,
+    srt: srt ? '_字幕' : null,
+    ...(bilingual ? { srtEn: srt ? '_英文字幕' : null } : {}),
   };
 }
+
+/**
+ * 按字幕条目重排英文稿：条数、顺序同字幕，zh 取字幕文字；旧稿里 zh 相同的条目保留 en（按出现顺序一一取用），其余 en 为空。
+ * @param {{text: string}[]} subs
+ * @param {{zh: string, en: string}[]|null} old
+ * @returns {{zh: string, en: string}[]}
+ */
+/** 英文稿的格式：数组，每条 en 是文字（可以为空）。 */
+function checkEnglishShape(pairs) {
+  if (!Array.isArray(pairs)) throw new Error('subtitles.en.json 要是数组：[{ "zh": "…", "en": "…" }, …]');
+  const bad = pairs.findIndex((p) => !p || typeof p !== 'object' || (p.en !== undefined && typeof p.en !== 'string'));
+  if (bad !== -1) throw new Error(`subtitles.en.json 第 ${bad + 1} 条的 en 要是文字（加引号），没填就写 ""`);
+}
+
+export function syncEnglish(subs, old) {
+  if (old) checkEnglishShape(old);
+  const pool = new Map();
+  for (const p of old || []) pool.set(p.zh, [...(pool.get(p.zh) || []), p.en || '']);
+  const taken = new Map();
+  return subs.map((s) => {
+    const i = taken.get(s.text) || 0;
+    taken.set(s.text, i + 1);
+    return { zh: s.text, en: pool.get(s.text)?.[i] ?? '' };
+  });
+}
+
+const RERUN = '重跑 wka subtitles <片> 会按现在的中文字幕重排英文稿，能对上的英文会保留';
+
+/** 英文稿挂到字幕条目上（返回新数组，每条多一个 en）；对不上、有空条就报错。 */
+export function attachEnglish(subs, pairs) {
+  if (!pairs) throw new Error(`没有英文字幕（subtitles.en.json）。${RERUN}`);
+  checkEnglishShape(pairs);
+  if (pairs.length !== subs.length) throw new Error(`英文字幕 ${pairs.length} 条，中文字幕 ${subs.length} 条，对不上。${RERUN}`);
+  const bad = subs.findIndex((s, i) => pairs[i].zh !== s.text);
+  if (bad !== -1) throw new Error(`英文稿第 ${bad + 1} 条的中文是「${pairs[bad].zh}」，字幕里是「${subs[bad].text}」。${RERUN}`);
+  const blank = pairs.flatMap((p, i) => (String(p.en || '').trim() ? [] : [i + 1]));
+  if (blank.length) throw new Error(`还有 ${blank.length} 条英文没填：第 ${blank.join('、')} 条（subtitles.en.json）`);
+  return subs.map((s, i) => ({ ...s, en: String(pairs[i].en).trim() }));
+}
+
+/** 英文稿的警告：超长、句号结尾（省略号、问号不算）。 */
+export function checkEnglish(pairs, { maxChars }) {
+  return pairs.flatMap((p, i) => {
+    const en = String(p.en || '').trim();
+    const w = [];
+    if (en.length > maxChars) w.push(`第 ${i + 1} 条英文 ${en.length} 个字符，超过 ${maxChars}`);
+    if (/[^.]\.$/.test(en) || en === '.') w.push(`第 ${i + 1} 条英文以句号结尾（英文字幕不加句号，问句保留问号）`);
+    return w;
+  });
+}
+
+/** 外挂英文 srt：时间同中文字幕。 */
+export const englishSrt = (subs) => formatSrt(subs.map((s) => ({ ...s, text: s.en })));
 
 /**
  * @param {object[]} voices film.json 的 audio.voices

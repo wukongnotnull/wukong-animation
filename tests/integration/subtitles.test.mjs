@@ -183,3 +183,38 @@ test('wka subtitles --preview burns the subtitles onto the proxy', opts, () => {
   assert.ok(!fs.existsSync(path.join(dir, 'out-proxy-subtitled.mp4')));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/** 底部 1/3 里与无字幕画面差得明显的最上面一行（没有就 -1）。 */
+const topRow = (a, b) => {
+  for (let y = 0; y < H / 3; y++) for (let x = 0; x < W; x++) if (Math.abs(a[y * W + x] - b[y * W + x]) > 100) return y;
+  return -1;
+};
+
+test('双语：wka subtitles 生成英文稿并报待填；没填完 final 报错；填好后烧两行并外挂英文 srt', opts, () => {
+  const dir = makeFilm({ mode: 'both', bilingual: true });
+  assert.equal(wka('soundtrack', dir).status, 0);
+  const r = wka('subtitles', dir);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /英文字幕 1 条，其中 1 条待填/);
+  const enFile = path.join(dir, 'subtitles.en.json');
+  assert.deepEqual(JSON.parse(fs.readFileSync(enFile, 'utf8')), [{ zh: '山不说话', en: '' }]);
+  const blank = wka('final', dir);
+  assert.notEqual(blank.status, 0);
+  assert.match(blank.stderr, /还有 1 条英文没填：第 1 条/);
+
+  fs.writeFileSync(enFile, JSON.stringify([{ zh: '山不说话', en: 'The mountain is silent' }]));
+  assert.match(wka('subtitles', dir).stdout, /英文字幕 1 条，其中 0 条待填/);
+  const f = wka('final', dir);
+  assert.equal(f.status, 0, f.stderr);
+  assert.equal(fs.readFileSync(path.join(dir, 'out_英文字幕.srt'), 'utf8'), fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8').replace('山不说话', 'The mountain is silent'));
+
+  const mono = makeFilm({ mode: 'burn' });
+  assert.equal(wka('soundtrack', mono).status, 0);
+  assert.equal(wka('subtitles', mono).status, 0);
+  assert.ok(!fs.existsSync(path.join(mono, 'subtitles.en.json')), '单语片子不生成英文稿');
+  assert.equal(wka('final', mono).status, 0);
+  const rows = (d, file) => topRow(bottomPixels(path.join(d, file), 0.5), bottomPixels(path.join(d, '.cache', 'video.mp4'), 0.5));
+  const [two, one] = [rows(dir, 'out_有字幕.mp4'), rows(mono, 'out_有字幕.mp4')];
+  assert.ok(one > 0 && two >= 0 && one - two >= 8, `双语字幕顶边 ${two}，单语 ${one}：应高出约一行`);
+  for (const d of [dir, mono]) fs.rmSync(d, { recursive: true, force: true });
+});

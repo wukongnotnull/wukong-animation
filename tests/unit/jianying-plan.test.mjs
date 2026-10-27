@@ -203,3 +203,22 @@ test('leaves the font unset when 剪映 has no counterpart for it', () => {
 test('rejects a subtitle colour it cannot read', () => {
   assert.throws(() => buildDraftPlan(timeline({ subtitleStyle: { ...inkSubs, color: 'ink' } })), /字幕颜色/);
 });
+
+test('双语：多一条「英文字幕」轨，英文在原位置、中文上移一行；英文用 font_en', () => {
+  const subtitles = [{ index: 1, start: 0.5, end: 1.5, text: '甲', en: 'A' }];
+  const style = { ...inkSubs, font_en: { family: 'Inter' } };
+  const p = buildDraftPlan(timeline({ subtitles, subtitleStyle: style }));
+  assert.deepEqual(p.subtitleTracks.map((t) => [t.name, t.segments.map((s) => s.text)]), [['字幕', ['甲']], ['英文字幕', ['A']]]);
+  const [zh, en] = p.subtitleTracks.map((t) => t.style);
+  assert.equal(en.transformY, p.subtitleStyle.transformY);
+  assert.equal(zh.transformY, +(p.subtitleStyle.transformY + inkSubs.size * 1.3 * 2).toFixed(4));
+  assert.equal(zh.font, '古风小楷');
+  assert.equal(en.font, null); // Inter 不在剪映字体对照表里
+  assert.equal(en.size, zh.size);
+});
+
+test('单语：字幕轨不带单独样式（与原来相同）', () => {
+  const subtitles = [{ index: 1, start: 0.5, end: 1.5, text: '甲' }];
+  const p = buildDraftPlan(timeline({ subtitles, subtitleStyle: inkSubs }));
+  assert.deepEqual(p.subtitleTracks.map((t) => Object.keys(t)), [['name', 'segments']]);
+});

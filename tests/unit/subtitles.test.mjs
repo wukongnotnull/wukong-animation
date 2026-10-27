@@ -102,7 +102,7 @@ test('checkSubtitles: overlaps, long lines and very short subtitles are warnings
 
 test('subtitleSettings: no subtitles field means mode none; max_chars defaults by aspect', () => {
   assert.equal(subtitleSettings({ size: [1920, 1080] }).mode, 'none');
-  assert.deepEqual(subtitleSettings({ size: [1920, 1080], subtitles: { mode: 'srt' } }), { mode: 'srt', file: 'subtitles.srt', maxChars: 18 });
+  assert.deepEqual(subtitleSettings({ size: [1920, 1080], subtitles: { mode: 'srt' } }), { mode: 'srt', file: 'subtitles.srt', maxChars: 18, bilingual: false, enFile: 'subtitles.en.json', maxCharsEn: 45 });
   assert.equal(subtitleSettings({ size: [1080, 1920], subtitles: { mode: 'burn' } }).maxChars, 12);
   assert.equal(subtitleSettings({ size: [1080, 1080], subtitles: { mode: 'both' } }).maxChars, 14);
   assert.equal(subtitleSettings({ size: [1920, 1080], subtitles: { mode: 'srt', max_chars: 20, file: 'zh.srt' } }).maxChars, 20);

@@ -154,8 +154,263 @@
   ],
   "audio": {
     "build": "audio/build.mjs",
-    "voices": [],
-    "tracks": []
+    "voices": [
+      {
+        "text": "春江潮水连海平，",
+        "at": 4.0,
+        "cue": "第1句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "海上明月共潮生。",
+        "at": 7.2,
+        "cue": "第2句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "滟滟随波千万里，",
+        "at": 10.8,
+        "cue": "第3句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "何处春江无月明！",
+        "at": 14.0,
+        "cue": "第4句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江流宛转绕芳甸，",
+        "at": 17.6,
+        "cue": "第5句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "月照花林皆似霰；",
+        "at": 20.8,
+        "cue": "第6句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "空里流霜不觉飞，",
+        "at": 24.4,
+        "cue": "第7句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "汀上白沙看不见。",
+        "at": 27.6,
+        "cue": "第8句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江天一色无纤尘，",
+        "at": 31.2,
+        "cue": "第9句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "皎皎空中孤月轮。",
+        "at": 34.4,
+        "cue": "第10句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江畔何人初见月？",
+        "at": 38.0,
+        "cue": "第11句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江月何年初照人？",
+        "at": 41.2,
+        "cue": "第12句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "人生代代无穷已，",
+        "at": 44.8,
+        "cue": "第13句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江月年年望相似。",
+        "at": 48.0,
+        "cue": "第14句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "不知江月待何人，",
+        "at": 51.6,
+        "cue": "第15句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "但见长江送流水。",
+        "at": 54.8,
+        "cue": "第16句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "白云一片去悠悠，",
+        "at": 58.4,
+        "cue": "第17句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "青枫浦上不胜愁。",
+        "at": 61.6,
+        "cue": "第18句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "谁家今夜扁舟子？",
+        "at": 65.2,
+        "cue": "第19句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "何处相思明月楼？",
+        "at": 68.4,
+        "cue": "第20句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "可怜楼上月徘徊，",
+        "at": 72.0,
+        "cue": "第21句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "应照离人妆镜台。",
+        "at": 75.2,
+        "cue": "第22句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "玉户帘中卷不去，",
+        "at": 78.8,
+        "cue": "第23句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "捣衣砧上拂还来。",
+        "at": 82.0,
+        "cue": "第24句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "此时相望不相闻，",
+        "at": 85.6,
+        "cue": "第25句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "愿逐月华流照君。",
+        "at": 88.8,
+        "cue": "第26句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "鸿雁长飞光不度，",
+        "at": 92.4,
+        "cue": "第27句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "鱼龙潜跃水成文。",
+        "at": 95.6,
+        "cue": "第28句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "昨夜闲潭梦落花，",
+        "at": 99.2,
+        "cue": "第29句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "可怜春半不还家。",
+        "at": 102.4,
+        "cue": "第30句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江水流春去欲尽，",
+        "at": 106.0,
+        "cue": "第31句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "江潭落月复西斜。",
+        "at": 109.2,
+        "cue": "第32句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "斜月沉沉藏海雾，",
+        "at": 112.8,
+        "cue": "第33句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "碣石潇湘无限路。",
+        "at": 116.0,
+        "cue": "第34句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "不知乘月几人归，",
+        "at": 119.6,
+        "cue": "第35句",
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      },
+      {
+        "text": "落月摇情满江树。",
+        "at": 122.8,
+        "cue": "第36句",
+        "chars": true,
+        "voice": "zh-CN-YunyangNeural",
+        "rate": "-20%"
+      }
+    ],
+    "tracks": [],
+    "voice_source": "ai"
   },
   "export": {
     "formats": [

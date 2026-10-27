@@ -55,20 +55,20 @@ plugin/skills/keynote/
 remotion 风格的镜头是 `shots/sNN.tsx`，默认导出一个 React 组件：
 
 ```tsx
-import { SceneShell, Headline, useFrameSpec } from '@wka/style';
+import { SceneShell, Headline, useFrame } from '@wka/style';
 import type { ShotProps } from '@wka/style';
 
 export default function S01({ dur, s }: ShotProps) {
-  const f = useFrameSpec();
+  const f = useFrame();
   return (
     <SceneShell dur={dur}>
-      <Headline text="仓库在，[记忆]就在" box={f.layout.L01.phrase} style="T01" />
+      <Headline lines={["仓库在，[记忆]就在"]} rect={f.layout.L01.phrase} style="T01" />
     </SceneShell>
   );
 }
 ```
 
-- `ShotProps`：`dur`（本镜帧数）、`s`（`{ id, W, H, designW, designH, fps, seed, cues, duration, start }`，与 browser 管线传给 `render` 的 `s` 字段同名同义）。
+- `ShotProps`：`dur`（本镜帧数）、`s`（`{ id, W, H, designW, designH, fps, seed, cues, duration, start }`，与 browser 管线传给 `render` 的 `s` 字段同名同义）。`s` 另有 `cueIn(名)` / `cueOut(名)`（秒，相对本镜），由 `WkaShot` 注入；`W/H` 为设计尺寸。
 - 组件必须只依赖 `useCurrentFrame()` 和 props（Remotion 本身的约束，等同 browser 管线“render 是 t 的纯函数”）。
 - `film.json` 的 `scripts` 里列出的 `.ts/.tsx` 文件可在镜头中用 `@wka/film/<文件名>` 引用（片子自己的公共组件）。
 

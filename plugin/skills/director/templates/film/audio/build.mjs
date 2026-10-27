@@ -4,6 +4,7 @@
 export default async function ({ synth, duration, outDir }) {
   const bgm = synth.buffer(duration); // 配乐
   // synth.qin(bgm, { at: 0.5, note: 'D3', dur: 5 });
+  // synth.bed(bgm);                     // 口播片的铺底音乐；返回音轨加 duck: true 随人声闪避
   const ambience = synth.buffer(duration); // 环境声（整片铺底）
   // synth.water(ambience, { from: 0, to: duration, gain: 0.2 });
   const fx = synth.buffer(duration); // 点状音效

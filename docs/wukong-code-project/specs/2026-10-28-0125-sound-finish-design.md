@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | 铺底音乐 | `engine/audio/synth.mjs` 新增 `bed(buf, o)` | 把源 `make_sounds.py` 的背景音乐移植成 JS，写进 synth 缓冲 |
 | 闪避 | `engine/audio/duck.mjs`（新） | 按人声区间算增益包络（纯函数）；把标了 `duck` 的音轨处理成闪避后的文件 |
-| 母带 | `engine/audio/loudness.mjs`（新） | 两遍 `loudnorm`：测量 → 线性应用；静音直通 |
+| 母带 | `engine/audio/loudness.mjs`（新） | 两遍：ebur128 测量 → loudnorm 线性应用；静音直通 |
 | 听感审计 | `engine/audio/audit.mjs`（新） | 混出"音效"和"其余"两条分轨，逐帧测电平，在每个音效起点比较（判定是纯函数） |
 | 接入 | `engine/audio/soundtrack.mjs` | 混音前做闪避；混音后两遍母带替换单遍 `loudnorm`；最后跑审计并打印 |
 | 风格声明 | `style.json` 新增可选 `loudness`（LUFS，数字）；keynote 设 `-14`；缺省 `-18` | 响度目标按风格定，水墨等现有风格不变 |
@@ -40,22 +40,23 @@
 - `audio/build.mjs` 返回的音轨可以带 `duck: true`：`{ file: 'bgm.wav', start: 0, gain: -6, duck: true }`（`-6` dB ≈ 源的 0.5"停顿时"电平）。
 - 人声区间取本次 `wka soundtrack` 实测的每条人声 `[at, at + duration]`（与写进 `cues` 的同一组数）。
 - 包络（纯函数 `duckEnvelope(intervals, seconds, sr)`）：说话时 0.48（= 源 0.24 / 0.5），停顿时 1；每段人声开始前 0.2 s（源 6 帧）线性压下，结束后 0.47 s（源 14 帧）线性回升；多段重叠取最深。
-- 处理后写 `audio/generated/ducked/<原文件名>`，混音和剪映草稿都用这个文件（文件名不变，草稿里轨道名还是 `bgm.wav`）：审听听到的就是草稿里的。
+- 处理后写 `audio/generated/ducked/<原文件名>`（多条闪避音轨重名时，后面的放进 `ducked/2/` …），混音和剪映草稿都用这个文件（文件名不变，草稿里轨道名还是 `bgm.wav`）：审听听到的就是草稿里的。
 - 没有人声时不处理，打印"没有人声，背景音乐不闪避"。
 
 ### 3.3 母带（两遍）
 
-- 第一遍：把各音轨按现有方式混好（`adelay`、`volume`、`amix`、`apad`、`atrim`、末尾淡出）写 `.cache/premix.wav`，再 `loudnorm=I=<目标>:TP=-1.5:LRA=11:print_format=json` 测量。
-- 第二遍：`loudnorm=…:measured_I=…:measured_TP=…:measured_LRA=…:measured_thresh=…:offset=…:linear=true` 写 `.cache/mix.wav`（48 kHz）。
+- 第一遍：把各音轨按现有方式混好（`adelay`、`volume`、`amix`、`apad`、`atrim`、末尾淡出）写 `.cache/premix.wav`，用 `ebur128=peak=true` 测整体响度、门限、响度范围、真峰值。
+  - 实施中改定：源 skill 用 loudnorm 自己的第一遍测量；实测十几秒的片段上它偏 0.7 LU（loudnorm 测 -12.3、ebur128 测 -13.0，应用后落在 -14.7），所以测量改用 ebur128。
+- 第二遍：`loudnorm=I=<目标>:TP=-1.5:LRA=11:measured_I=…:measured_TP=…:measured_LRA=…:measured_thresh=…:linear=true` 写 `.cache/mix.wav`（48 kHz）；线性增益会让真峰值超标、或响度范围超过 LRA 11 时，loudnorm 自己退回动态模式。
 - 目标 `I` = 风格 `loudness`，缺省 -18。
-- 测出 `input_i` 为 `-inf` / 空：直接拷贝 premix，打印"声轨没有可测响度，未做响度标准化"。
-- 日志打印"响度 -14.0 LUFS（目标 -14）"，数值取第二遍输出的 `output_i`。
+- 测出 -70 LUFS 及以下（ebur128 对静音的读数）：直接拷贝 premix，打印"声轨没有可测响度，未做响度标准化"。
+- 日志打印"响度 -14.0 LUFS（目标 -14）"，数值是对 `mix.wav` 用 ebur128 复测的结果。
 
 ### 3.4 听感审计
 
 - 只在本次配乐脚本用了 `sfx.place`（有放置记录）时运行。
 - 分轨：返回音轨里文件名为 `sfx.wav` 的是"音效轨"，其余（人声、闪避后的背景音乐、环境声、`tracks`）为"其余"；两条分轨用和正式混音相同的延迟和增益，不做响度标准化（第二遍是线性增益，不影响相对电平）。
-- 有放置记录却没有 `sfx.wav`：打印"音效没有单独写成 sfx.wav，跳过听感审计"。
+- 有放置记录却没有 `sfx.wav`：打印"音效没有单独写成 sfx.wav，跳过听感审计"。放置时间相对音效缓冲，按 `sfx.wav` 音轨的 `start` 换成全片时间；放进别的文件的音效（音效轨在该处无声）不算被盖住，汇总里单列"不在 sfx.wav 里，没审"。
 - 逐帧（1/30 s）测单声道 RMS 电平（dBFS）。每个放置点取起点后 6 帧窗口：`差值 = 音效轨窗口内最大值 − 其余轨窗口内平均功率`；`差值 < -3 dB` 且该音效不是 `quiet` 记为被盖住。同一帧起的音效共用一次测量。
 - 输出（不中断）：按音效汇总"次数 / 被盖住 / 最差差值"；被盖住的逐条列"全片时间、镜头、音效、差值"；最后一行合计。没有被盖住时只打一行合计。
 - 处理建议写进文档（与源一致）：调高电平（`place` 的 `volume`）、挪到句间空档、换起音更脆的录音；改电平属于混音取舍，先把审计结果给用户看。
@@ -76,8 +77,8 @@
 ## 5. 错误处理与运维
 
 - ffmpeg 失败报出步骤名（混音 / 响度测量 / 响度应用 / 闪避 / 审计）与 ffmpeg 输出末尾。
-- 测量结果解析不到 JSON：报错并附 ffmpeg 输出末尾，不静默退回单遍。
-- `.cache/premix.wav` 与分轨文件是中间产物，留在 `.cache/`。
+- 解析不到 ebur128 的测量结果：报错并附 ffmpeg 输出末尾，不静默退回单遍。
+- `.cache/premix.wav` 与分轨文件是中间产物，留在 `.cache/`；用 32 位浮点（多轨叠加会超过 0 dBFS，16 位会在测量前削波）。
 
 ## 6. 验收标准与测试
 

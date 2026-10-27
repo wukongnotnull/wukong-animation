@@ -42,7 +42,28 @@ export default async function ({ synth, sfx, duration, outDir, cues }) {
 
 - 时刻用全片时间（秒）。镜头里的帧号换成全片时间：`镜头 start + 帧号 / fps`（`shots` 参数里有每镜的 `start`）。
 - 和画面对应：`<Cursor clicks>` 的每个点击帧放 `click`；`zoomInFrames(beats, stages)` 给出的第一次推近放 `spring`；`fade` 接缝（真正换话题）放 `swish`。
-- 配乐仍可以用 `synth` 合成，和音效分开写 `bgm.wav` / `sfx.wav`。
+- 配乐和音效分开写 `bgm.wav` / `sfx.wav`：听感审计按文件名 `sfx.wav` 认音效轨，剪映草稿里也各占一条轨。
+
+## 背景音乐
+
+```js
+const bgm = synth.buffer(duration);
+synth.bed(bgm);                                            // 96 BPM 铺底：开头淡入 1.5 秒、结尾淡出 3 秒
+tracks.push({ file: synth.writeWav(bgm, `${outDir}/bgm.wav`), start: 0, gain: -6, duck: true });
+```
+
+- `synth.bed(buf, { from, to, gain, seed })`：Fmaj7 / Em7 / Dm7 / Cmaj7 循环，前 4 小节只有铺底和贝斯，之后加鼓和琶音。用户认可了这个音量（`gain: -6` 对应源工程停顿时的 0.5），不要再调。
+- `duck: true`：按 `wka soundtrack` 实测的人声区间闪避——说话时压到停顿时的 0.48 倍，开口前 0.2 秒开始下压，说完 0.47 秒回升。处理后的文件在 `audio/generated/ducked/`，混音和剪映草稿都用它。
+
+## 听感审计
+
+`wka soundtrack` 每次都会审计（用了 `sfx.place` 才跑）：把 `sfx.wav` 和其余音轨（人声、闪避后的背景音乐…）分开混，在每个音效起点比电平，音效比其余低 3 dB 以上算被盖住，按音效汇总并列出时间点和镜头。出字幕的打字声 `subtype` 是故意做轻的（清单里 `quiet`），只列不报。
+
+被盖住时的三种改法：调高这个音效（`place` 的 `volume`）；挪到不说话的空档（比如句间停顿）；换一个起音更脆的录音。改电平属于混音取舍，先把审计结果给用户看再动。源工程实测：每页开头的切镜嗖声在开口即说的页里常被盖住（23 次中 8 次）。
+
+## 响度
+
+keynote 的 `style.json` 写了 `"loudness": -14`：`wka soundtrack` 先混好、用 ebur128 测量，再按测量值线性应用 loudnorm，声轨（以及小样、终版 mp4、审听文件）落在 -14 LUFS、真峰值 ≤ -1.5 dBTP。日志里的"响度 -14.0 LUFS（目标 -14）"是复测值。剪映草稿各轨独立，不做响度标准化。
 
 ## 密度规则（用户反馈"太密"后定下的）
 

@@ -140,6 +140,6 @@ test('示范片《七十二变》只用清单里有的音效，写出 sfx.wav', 
   const tracks = await build({ synth, sfx: fake, duration: 14, outDir, shots: [], cues: {}, log: () => {} });
   assert.ok(used.length > 0);
   for (const n of used) assert.ok(lib.sounds[n], n);
-  assert.deepEqual(tracks.map((t) => path.basename(t.file)), ['sfx.wav']);
+  assert.deepEqual(tracks.map((t) => path.basename(t.file)), ['bgm.wav', 'sfx.wav']);
   fs.rmSync(outDir, { recursive: true, force: true });
 });

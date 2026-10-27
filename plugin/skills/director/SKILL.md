@@ -229,8 +229,8 @@ edge-tts 的中文普通话音色：
 
 **7. 声轨制作（声音先行：先定声轨，再做画面）**
 - 人声写进 `film.json` 的 `audio.voices`，每条给一个同步点名（如 `"cue": "第二句"`），**各条不能重名**（重名时 `wka soundtrack` 报错）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
-- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。风格带录音音效清单（`style.json` 的 `sfx`，如 keynote）的，音效用 `sfx.place(buf, 名字, { at })` 放录音，按该风格的 `SFX.md` 选；下载前先 `wka sfx <片> --list` 请用户确认。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。
-- `wka soundtrack`：接入用户录音或合成 AI 配音，把每条人声的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。
+- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。风格带录音音效清单（`style.json` 的 `sfx`，如 keynote）的，音效用 `sfx.place(buf, 名字, { at })` 放录音，按该风格的 `SFX.md` 选；下载前先 `wka sfx <片> --list` 请用户确认。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。有人声的片子，背景音乐的返回音轨标 `duck: true` 就随人声闪避（说话时压到 0.48 倍）。
+- `wka soundtrack`：接入用户录音或合成 AI 配音，把每条人声的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。声轨按风格 `style.json` 的 `loudness`（缺省 -18 LUFS）两遍标准化，日志打出复测响度；用了录音音效的片子还会打出「音效听感审计」，有被盖住的音效时把这几行转给用户，由用户定调高、挪位还是换音效。
 - 把审听用的声轨 `films/<片>/review/声轨.m4a`（按 `wka soundtrack` 日志里的绝对路径写成可点击路径）交给用户审听，请用户确认人声效果、配乐、音效和整体节奏。不要交 `.cache/mix.wav`：它在隐藏目录里，WAV 体积大，在聊天里播放会卡。有意见就改 `audio/build.mjs` 或人声后重新 `wka soundtrack`，再提交审听。
 - **没有任何声轨**（无人声、无配乐、无音效）时，`wka soundtrack` 不生成 `mix.wav`。也要停下请用户确认"本片无声"，签批后继续；第 8 道的动态分镜随之无声，只审画面节奏。
 - 此后镜头代码一律用 `s.cueIn('名')` / `s.cueOut('名')` 读取同步点，**不写死时间码**。

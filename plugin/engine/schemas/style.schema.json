@@ -114,6 +114,12 @@
         ]
       }
     },
+    "loudness": {
+      "type": "number",
+      "minimum": -30,
+      "maximum": -8,
+      "description": "声轨整体响度目标（LUFS），wka soundtrack 两遍 loudnorm 标准化到这个值；缺省 -18"
+    },
     "sfx": {
       "type": "string",
       "description": "录音音效清单（相对风格目录），如 sfx.json；音频按需下载到 ~/.wukong-animation/cache/sfx/"

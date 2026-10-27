@@ -5,6 +5,7 @@
 //   synth.qin(buf, { at: 0.5, note: 'D3', dur: 6 });     // 古琴式拨弦（带吟揉）
 //   synth.water(buf, { from: 0, to: 15, gain: 0.25 });   // 流水环境声
 //   synth.knock(buf, { at: 14.1 });                      // 印章落下"笃"
+//   synth.bed(buf, { from: 0, to: 15, gain: 0.5 });     // 口播片的铺底背景音乐
 //   synth.reverb(buf, { mix: 0.3, size: 0.8 });
 //   synth.writeWav(buf, 'audio/generated/score.wav');
 import fs from 'node:fs';
@@ -149,6 +150,102 @@ export function knock(buf, o) {
     const body = Math.sin(2 * Math.PI * (150 - t * 160) * t) * Math.exp(-t * 28);
     const click = t < 0.006 ? (r() * 2 - 1) * (1 - t / 0.006) : 0;
     add(buf, s + i, (body * 0.8 + click * 0.4) * gain, o.pan ?? 0);
+  }
+}
+
+// ---------- 铺底音乐（移植自 wk-motion-graphics 的 make_sounds.py） ----------
+// 96 BPM，Fmaj7 Em7 Dm7 Cmaj7 循环；前 4 小节只有 pad + bass，之后 8 小节一循环（加鼓和琶音）。
+const BED_BAR = (4 * 60) / 96;
+const BED_CHORDS = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]];
+const BED_ROOTS = [41, 40, 38, 36];
+const BED_PEAK = 0.8 * 0.89; // 源脚本每段 gain 0.8 × 0.89 / 峰值
+const midi = (m) => 440 * 2 ** ((m - 69) / 12);
+
+/** 生成 bars 小节铺底音乐（单声道），峰值归一到 BED_PEAK。 */
+function bedSection(bars, { drums, arp }, sr, r) {
+  const TAU = 2 * Math.PI;
+  const beat = BED_BAR / 4;
+  const n = (sec) => Math.floor(sec * sr);
+  const out = new Float32Array(n(bars * BED_BAR));
+  const put = (start, len, fn) => {
+    for (let i = 0; i < len && start + i < out.length; i++) out[start + i] += fn(i, i / sr);
+  };
+  for (let b = 0; b < bars; b++) {
+    const chord = BED_CHORDS[b % 4];
+    const bar0 = b * BED_BAR;
+    // pad：正弦叠加 + 轻微失谐，缓起缓收
+    const padLen = n(BED_BAR + 0.4);
+    const padSec = padLen / sr;
+    for (const m of chord) {
+      const f = midi(m);
+      put(n(bar0), padLen, (i, t) => (Math.sin(TAU * f * t) + Math.sin(TAU * (f + 0.6) * t) * 0.7 + 0.18 * Math.sin(TAU * 2 * f * t)) * Math.min(1, t / 0.6) * Math.min(1, (padSec - t) / 0.5) * 0.06);
+    }
+    // bass：第 1、2.5、3 拍
+    const fb = midi(BED_ROOTS[b % 4]);
+    for (const at of [0, 1.5, 2]) {
+      put(n(bar0 + at * beat), n(beat * (at === 0 ? 1.4 : 0.9)), (i, t) => Math.tanh(Math.sin(TAU * fb * t) * 1.4) * Math.exp(-t * 2.2) * Math.min(1, t / 0.01) * 0.22);
+    }
+    if (drums) {
+      for (const at of [0, 2, 2.5]) {
+        let ph = 0;
+        put(n(bar0 + at * beat), n(0.35), (i, t) => {
+          ph += (TAU * (45 + 75 * Math.exp(-t * 28))) / sr;
+          return Math.sin(ph) * Math.exp(-t * 9) * 0.45;
+        });
+      }
+      for (const at of [1, 3]) {
+        // 军鼓：两个一阶低通相减得到带通噪声
+        const lo = 1 - Math.exp((-TAU * 1200) / sr), hi = 1 - Math.exp((-TAU * 4500) / sr);
+        let ylo = 0, yhi = 0;
+        put(n(bar0 + at * beat), n(0.2), (i, t) => {
+          const x = r() * 2 - 1;
+          ylo += lo * (x - ylo);
+          yhi += hi * (x - yhi);
+          return (yhi - ylo) * Math.exp(-t * 22) * 0.5;
+        });
+      }
+      for (let e = 0; e < 8; e++) {
+        // 踩镲：一阶高通噪声
+        const a = 1 - Math.exp((-TAU * 7000) / sr);
+        const amp = e % 2 ? 0.07 : 0.04;
+        let y = 0;
+        put(n(bar0 + (e * beat) / 2), n(0.05), (i, t) => {
+          const x = r() * 2 - 1;
+          y += a * (x - y);
+          return (x - y) * Math.exp(-t * 70) * amp;
+        });
+      }
+    }
+    if (arp) {
+      [0, 2, 1, 3, 2, 1, 3, 2].forEach((idx, k) => {
+        const f = midi(chord[idx] + 12);
+        put(n(bar0 + (k * beat) / 2), n(0.5), (i, t) => (Math.sin(TAU * f * t) + 0.25 * Math.sin(TAU * 3 * f * t)) * Math.exp(-t * 7) * 0.05);
+      });
+    }
+  }
+  let p = 1e-9;
+  for (const v of out) p = Math.max(p, Math.abs(v));
+  for (let i = 0; i < out.length; i++) out[i] *= BED_PEAK / p;
+  return out;
+}
+
+/**
+ * 铺底背景音乐（口播片用，可随人声闪避：返回音轨时标 duck: true）。
+ * 写在 from–to 之间：开头淡入 1.5 秒，结尾淡出 3 秒，峰值约 0.71 × gain。
+ */
+export function bed(buf, { from = 0, to = buf.seconds, gain = 1, seed = 7 } = {}) {
+  const sr = buf.sr;
+  const r = rng(seed);
+  const intro = bedSection(4, { drums: false, arp: false }, sr, r);
+  const loop = bedSection(8, { drums: true, arp: true }, sr, r);
+  const s0 = Math.floor(from * sr);
+  const len = Math.min(Math.floor(to * sr), buf.L.length) - s0;
+  const fadeIn = 1.5 * sr, fadeOut = 3 * sr;
+  for (let i = 0; i < len; i++) {
+    const v = i < intro.length ? intro[i] : loop[(i - intro.length) % loop.length];
+    const env = Math.min(1, i / fadeIn, (len - i) / fadeOut);
+    buf.L[s0 + i] += v * env * gain;
+    buf.R[s0 + i] += v * env * gain;
   }
 }
 

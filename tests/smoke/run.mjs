@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 冒烟测试：每个风格的示范片，用固定种子在 3 个时间点渲染预览静帧，
-//   1) 同一帧渲染两次必须逐像素一致（确定性）
+//   1) 同一帧渲染两次必须一致（确定性）：允许个别像素的抗锯齿抖动（CI 上的 Chromium 偶尔会有），
+//      但不允许任何像素明显变化，也不允许平均差超过 DET_MEAN_MAX
 //   2) 与基准图比对：平均像素差 ≤ MEAN_MAX，且明显变化的像素占比 ≤ CHANGED_MAX
 //      （水墨这类大面积留白的画面，局部改坏了平均差也很小，所以要看占比）
 // 基准图按平台分目录（baseline/<darwin|linux>/）：fallback 字体与光栅化在不同系统上不一样。
@@ -19,6 +20,7 @@ const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const MEAN_MAX = 2.0; // 0–255 的平均绝对差
 const PIXEL_TOL = 24; // 灰度差超过它才算"变了"
 const CHANGED_MAX = 0.003; // 变了的像素最多 0.3%（题字挪 40px 约 1.2%）
+const DET_MEAN_MAX = 0.05; // 两次渲染的平均差上限；实测 CI 抖动 < 0.001，真不确定（元素挪位、随机数）远大于它
 const IS_CI = !!process.env.CI;
 process.env.WKA_NO_FONT_DOWNLOAD = '1'; // 统一用 fallback 字体，基准图跨机器可比
 
@@ -63,9 +65,9 @@ for (const id of fs.readdirSync(skills)) {
     const second = stills(film, points).map(raw);
     const label = `${id}/${name}`;
     first.forEach((a, i) => {
-      const { mean } = compare(a, second[i]);
-      if (mean !== 0) {
-        console.log(`  ✗ ${label} ${points[i].shot}@${points[i].t}s 两次渲染不一致（差 ${mean.toFixed(3)}）`);
+      const { mean, changed } = compare(a, second[i]);
+      if (mean > DET_MEAN_MAX || changed > 0) {
+        console.log(`  ✗ ${label} ${points[i].shot}@${points[i].t}s 两次渲染不一致（平均差 ${mean.toFixed(4)} · 变化像素 ${(changed * 100).toFixed(3)}%）`);
         fail++;
       }
     });

@@ -55,10 +55,14 @@ function makeFilm({ voices } = {}) {
   return dir;
 }
 
-const wka = (drafts, ...args) =>
+// 本机开着剪映时测试也要能跑：缺省把剪映进程名换成一个不存在的名字
+const NO_JIANYING = 'wka-no-such-process';
+const RUNNING = path.basename(process.execPath); // 当前 node 进程，一定在运行
+const wka = (drafts, ...args) => wkaWith({ WKA_JIANYING_PROCESS: NO_JIANYING }, drafts, ...args);
+const wkaWith = (env, drafts, ...args) =>
   spawnSync(process.execPath, [WKA, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2', WKA_JIANYING_DRAFTS: drafts },
+    env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2', WKA_JIANYING_DRAFTS: drafts, ...env },
   });
 
 const byType = (draft, type) => draft.tracks.filter((t) => t.type === type);
@@ -150,15 +154,30 @@ test('puts overlapping voices and their subtitles on second tracks', opts, () =>
   fs.rmSync(drafts, { recursive: true, force: true });
 });
 
-test('refuses to overwrite an existing draft with the same name', opts, () => {
+test('a draft name already taken in 剪映 exports as name_v2 and leaves the old draft alone', opts, () => {
   const dir = makeFilm();
   const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
   fs.mkdirSync(path.join(drafts, 'jy-it'));
   fs.writeFileSync(path.join(drafts, 'jy-it', 'keep.txt'), 'edited in 剪映');
   const r = wka(drafts, 'final', dir, '--formats', 'jianying');
-  assert.notEqual(r.status, 0);
-  assert.match(r.stderr, /已存在/);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /这次导出为「jy-it_v2」/);
+  assert.ok(r.stdout.includes(path.join(drafts, 'jy-it_v2')));
   assert.deepEqual(fs.readdirSync(path.join(drafts, 'jy-it')), ['keep.txt']);
+  const meta = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it_v2', 'draft_meta_info.json'), 'utf8'));
+  assert.equal(meta.draft_name, 'jy-it_v2');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(drafts, { recursive: true, force: true });
+});
+
+test('refuses to export while 剪映 is running and writes nothing', opts, () => {
+  const dir = makeFilm();
+  const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+  const r = wkaWith({ WKA_JIANYING_PROCESS: RUNNING }, drafts, 'final', dir, '--formats', 'jianying');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /剪映正在运行/);
+  assert.match(r.stderr, /⌘Q/);
+  assert.deepEqual(fs.readdirSync(drafts), []);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });

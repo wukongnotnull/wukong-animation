@@ -78,11 +78,12 @@ const LANDSCAPE: FrameSpec = {
     L01: { phrase: { x: 120, y: 260, w: 1680, h: 440 }, sub: { x: 320, y: 720, w: 1280, h: 140 } },
     L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 300, w: 1440, h: 544 } },
     L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 300, w: 1680, h: 544 } },
-    // L04 image runs to the safe-area edge (spec: 816 wide) so screenshots read; the text column keeps its width
+    // L04 image runs to the safe-area edge (spec: 816 wide) and from the safe-area top down to the
+    // subtitle band (user rule: a video is not a slide deck, don't leave big margins around the image)
     L04: {
-      title: { x: 120, y: 240, w: 560, h: 260 },
-      body: { x: 120, y: 548, w: 560, h: 240 },
-      image: { x: 744, y: 140, w: 1056, h: 704 },
+      title: { x: 120, y: 240, w: 520, h: 260 },
+      body: { x: 120, y: 548, w: 520, h: 240 },
+      image: { x: 680, y: 80, w: 1120, h: 768 },
     },
     L05: {
       number: { x: 200, y: 180, w: 1520, h: 400 },

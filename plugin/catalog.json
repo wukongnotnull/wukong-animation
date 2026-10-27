@@ -1,7 +1,7 @@
 {
   "_generated": "由 tools/build-catalog.mjs 生成，请勿手改",
   "progress": {
-    "done": 1,
+    "done": 2,
     "total": 72
   },
   "categories": {
@@ -902,13 +902,39 @@
       "id": "keynote",
       "order": 70,
       "name": "发布会 Keynote",
+      "name_en": "Keynote Launch",
       "category": "xinxi",
       "categoryName": "信息叙事",
-      "status": "planned",
-      "pipeline": "browser",
-      "kits": [
-        "svg-gsap"
-      ]
+      "status": "available",
+      "pipeline": "remotion",
+      "kits": [],
+      "keywords": [
+        "发布会",
+        "Keynote",
+        "产品讲解",
+        "知识讲解",
+        "口播",
+        "科技",
+        "深色",
+        "网格",
+        "大字",
+        "神奇移动",
+        "keynote",
+        "launch",
+        "explainer"
+      ],
+      "best_for": [
+        "产品发布",
+        "功能讲解",
+        "知识讲解",
+        "口播类信息片",
+        "片头片尾"
+      ],
+      "skill": "skills/keynote",
+      "examples": [
+        "skills/keynote/examples/qishier"
+      ],
+      "still": null
     },
     {
       "id": "doc-subtitle",

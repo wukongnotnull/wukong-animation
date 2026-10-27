@@ -21,6 +21,7 @@ description: 为 wukong-animation 创建自定义动画风格（第 73 变及以
    | 像素 / 低分辨率 | browser | pixel（规划中） |
    | 真 3D | browser | three（规划中） |
    | 矢量排版、动态字体 | browser | svg-gsap（规划中） |
+   | 大量排版、界面重绘、发布会式讲解（React 组件，镜头写 .tsx） | remotion | 无（积木放 scripts/index.ts，见 keynote） |
 
    用到"规划中"的工具包时，告诉用户需要先实现它（`node tools/new-kit.mjs <名>` 生成骨架）。
 

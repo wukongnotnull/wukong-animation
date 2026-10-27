@@ -19,6 +19,9 @@ export const KNOWN_FONTS = {
   'ZCOOL XiaoWei': 'ofl/zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf',
   // 字幕缺省字体；文件名里的方括号要转义，否则 curl 会当成通配符
   'Noto Sans SC': 'ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf',
+  // keynote 的西文与数字、代码字体
+  Inter: 'ofl/inter/Inter%5Bopsz,wght%5D.ttf',
+  'JetBrains Mono': 'ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf',
 };
 
 /**

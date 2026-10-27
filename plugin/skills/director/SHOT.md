@@ -89,3 +89,29 @@ TITLE.forEach(([ch, at, dur], i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * ste
 
 多个镜头画的是"同一幅画的不同阶段"时（例如一幅山水逐渐画成），把场景画法写进 `shots/common.js`，
 在 `film.json` 的 `scripts` 里声明；各镜头只传"画到哪一步"的参数。这样镜头之间天然连续，没有跳变。
+
+## remotion 管线的镜头（shots/sNN.tsx）
+
+风格的 `style.json` 写 `"pipeline": "remotion"`（如 keynote）时，镜头不是 `wk.shot`，而是一个默认导出的 React 组件。`wka init` 会按风格自动生成 `s01.tsx`。
+
+```tsx
+import React from "react";
+import { useCurrentFrame } from "remotion";
+import { Headline, SceneShell, sec } from "@wka/style";   // 风格积木，见风格的 TECH.md
+import type { ShotProps } from "@wka/style";
+
+export default function S01({ dur, s }: ShotProps) {
+  const frame = useCurrentFrame();                  // 本镜内的帧号，0 起
+  const beat = sec(s.cueIn("第一句"), s.fps);        // 同步点（秒，相对本镜）→ 帧
+  return (
+    <SceneShell dur={dur}>
+      <Headline lines={["一句[标题]"]} style="T01" at={beat} />
+    </SceneShell>
+  );
+}
+```
+
+- `dur`：本镜帧数；`s`：`id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名)`。`W/H` 是设计尺寸，小样由管线缩小。
+- 铁律照旧：画面只由帧号决定（不用 `Math.random()`、`Date`、网络）；同步点只用字面量 `s.cueIn('名')`。
+- 片内公共组件写成 `.tsx` 列进 `film.json` 的 `scripts`，镜头里用 `@wka/film/<相对片目录的路径>` 引用。
+- 其余（时长、景别、缓存、字幕、声音）与 `.js` 镜头完全相同。

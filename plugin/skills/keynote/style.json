@@ -1,0 +1,104 @@
+{
+  "$schema": "../../engine/schemas/style.schema.json",
+  "id": "keynote",
+  "name": "发布会 Keynote",
+  "name_en": "Keynote Launch",
+  "category": "xinxi",
+  "order": 70,
+  "engine": ">=0.1.0",
+  "pipeline": "remotion",
+  "kits": {},
+  "libs": [],
+  "scripts": [
+    "scripts/index.ts",
+    "scripts/components/Backdrop.tsx",
+    "scripts/components/Copy.tsx",
+    "scripts/components/Cursor.tsx",
+    "scripts/components/Guides.tsx",
+    "scripts/components/Headline.tsx",
+    "scripts/components/MorphBox.tsx",
+    "scripts/components/SceneShell.tsx",
+    "scripts/components/Shot.tsx",
+    "scripts/frame.tsx",
+    "scripts/lib/anim.ts",
+    "scripts/lib/geo.ts",
+    "scripts/lib/stages.ts",
+    "scripts/shot.tsx",
+    "scripts/theme.ts"
+  ],
+  "fonts": [
+    {
+      "family": "Inter",
+      "fallback": [
+        "SF Pro Display",
+        "Helvetica Neue",
+        "Arial"
+      ]
+    },
+    {
+      "family": "Noto Sans SC",
+      "fallback": [
+        "PingFang SC",
+        "Noto Sans CJK SC",
+        "Microsoft YaHei"
+      ]
+    },
+    {
+      "family": "JetBrains Mono",
+      "fallback": [
+        "SF Mono",
+        "Menlo",
+        "Consolas"
+      ]
+    }
+  ],
+  "fps": 30,
+  "aspects": [
+    "16:9",
+    "9:16"
+  ],
+  "post": [],
+  "keywords": [
+    "发布会",
+    "Keynote",
+    "产品讲解",
+    "知识讲解",
+    "口播",
+    "科技",
+    "深色",
+    "网格",
+    "大字",
+    "神奇移动",
+    "keynote",
+    "launch",
+    "explainer"
+  ],
+  "qc": {
+    "whitespace_min": 0.6,
+    "paper": "#161616",
+    "paper_tol": 24,
+    "accent": "#D97757",
+    "accent_tol": 60,
+    "accent_max": 0.04,
+    "diff_max": 20,
+    "cuts_max": 2,
+    "skip_start": 0.3
+  },
+  "subtitles": {
+    "font": {
+      "family": "Noto Sans SC",
+      "fallback": [
+        "PingFang SC",
+        "Noto Sans CJK SC",
+        "sans-serif"
+      ]
+    },
+    "size": 0.041,
+    "color": "#FFFFFF",
+    "stroke": {
+      "color": "rgba(0,0,0,0.55)",
+      "width": 0.06
+    },
+    "bottom": 0.074
+  }
+}

@@ -8,6 +8,7 @@ import { run, probeDuration } from '../core/ffmpeg.mjs';
 import { loadFilm } from '../core/job.mjs';
 import { charCues, clearCharCues, orphanCharCues } from './char-cues.mjs';
 import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
+import { loadSfxLibrary, createSfx, densityWarnings } from './sfx.mjs';
 
 // 逐字同步点找句中停顿：比剪映切配乐更灵敏，不留前后余量
 const CHAR_SILENCE = { noise: -40, minSilence: 0.15, pad: 0 };
@@ -163,9 +164,13 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
 
   if (audio.build) {
     const mod = await import(pathToFileURL(path.join(ctx.filmDir, audio.build)).href + `?v=${Date.now()}`);
-    const res = await mod.default({ synth, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: ctx.film.cues || {}, log });
+    // 风格有录音音效清单才有 sfx；没有时为 null
+    const lib = loadSfxLibrary(ctx.style);
+    const sfx = lib && createSfx(lib);
+    const res = await mod.default({ synth, sfx, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: ctx.film.cues || {}, log });
     for (const t of res || []) tracks.push({ start: 0, gain: 0, ...t, role: 'build' });
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
+    for (const w of sfx ? densityWarnings(sfx.placements, ctx.shots) : []) log(`  ! 音效太密：${w}`);
   }
   const vo = prepareVoices(ctx, audio, path.join(genDir, 'vo'), log);
   for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, duration: it.duration, gain: 2 });

@@ -12,6 +12,7 @@ description: 发布会 Keynote 风格动画（wukong-animation 第 70 变）：�
 
 1. `STYLE.md` —— 美学规范、禁忌清单、交付前质检。是硬约束。
 2. `TECH.md` —— 镜头写法（`.tsx`）与积木 API（`@wka/style`）。
+3. `SFX.md` —— 录音音效库：按场合选音效、密度规则、下载前先 `wka sfx --list` 给用户确认。
 
 ## 技术声明（style.json）
 
@@ -19,6 +20,7 @@ description: 发布会 Keynote 风格动画（wukong-animation 第 70 变）：�
 - 工具包：无；风格积木在 `scripts/`（`index.ts` 汇总导出），镜头里 `import { … } from '@wka/style'`
 - 镜头文件：`shots/sNN.tsx`（`wka init --style keynote` 会生成 `s01.tsx`）
 - 字体：Inter / Noto Sans SC / JetBrains Mono（按需下载，OFL）
+- 音效：`sfx.json` 里 18 个 Mixkit 录音（`wka sfx` 按需下载，可商用、不可再分发，不进 git）
 - QA 阈值：深色底 ≥ 60%，橙色 ≤ 4%，相邻帧差 ≤ 20，硬切 ≤ 2
 
 ## 许可提醒
@@ -29,5 +31,6 @@ Remotion **个人和不超过 3 人的公司免费，更大的公司需要购买
 
 - **截图 / 界面四周露白边**：`Shot` 的自然尺寸和图位比例不一致时会留边；把自然尺寸改成与图位同比例，或给 `Shot` 传 `style={{ background: color.container }}`。
 - **续镜闪一下**：前镜 `exit="hold"`、后镜 `enter="hold"`，后镜第 0 帧要与前镜最后一帧完全相同（镜头位置、推进量、叠加层都要接上）；逐帧比对接缝两帧。
+- **`wka soundtrack` 报音效"还没下载"**：先 `wka sfx <片目录> --list` 把来源和大小给用户确认，同意后 `wka sfx <片目录>`。
 - **改一句人声，全片都重渲**：镜头里只用字面量 `s.cueIn('名')`，不要 `s.cueIn(变量)`，也不要直接读 `s.cues`。
 - **标题折行**：竖屏超过约 8 个汉字的标题给 `portrait` 断行；横屏标题宽度别超过 1440（右上留给出镜小窗）。

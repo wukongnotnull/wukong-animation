@@ -29,6 +29,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka brief <片名>` | 建占位片目录 `films/<片名>/` 和简报空白稿 `brief.md`（第 2 道） |
 | `wka init <片名> --style <id> [--aspect 9:16]` | 在占位片目录上补齐工程模板（第 3 道） |
 | `wka signoff <片目录> "<审片结论>" --step N` | 记录进度 + git 定版存档 |
+| `wka sfx <片目录> [--list]` | 风格带录音音效清单时用：`--list` 只列来源与大小给用户确认，不带参数则下载并处理到本机缓存 |
 | `wka soundtrack <片目录>` | 合成配乐、接入用户自供录音或合成 AI 配音，写入声音同步点，输出声轨 `.cache/mix.wav` 和审听用的 `review/声轨.m4a`；不要求镜头文件已写好 |
 | `wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]` | 音色试听：同一句（缺省为第一条人声）用几个音色各合成一遍，输出 `review/试听-<n>-<音色>.m4a`（第 6 道） |
 | `wka still <片目录> [--frames N] [--at s02:1.5]` | 渲染静帧 + 接触表 |
@@ -228,7 +229,7 @@ edge-tts 的中文普通话音色：
 
 **7. 声轨制作（声音先行：先定声轨，再做画面）**
 - 人声写进 `film.json` 的 `audio.voices`，每条给一个同步点名（如 `"cue": "第二句"`），**各条不能重名**（重名时 `wka soundtrack` 报错）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
-- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。
+- 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。风格带录音音效清单（`style.json` 的 `sfx`，如 keynote）的，音效用 `sfx.place(buf, 名字, { at })` 放录音，按该风格的 `SFX.md` 选；下载前先 `wka sfx <片> --list` 请用户确认。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。
 - `wka soundtrack`：接入用户录音或合成 AI 配音，把每条人声的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。
 - 把审听用的声轨 `films/<片>/review/声轨.m4a`（按 `wka soundtrack` 日志里的绝对路径写成可点击路径）交给用户审听，请用户确认人声效果、配乐、音效和整体节奏。不要交 `.cache/mix.wav`：它在隐藏目录里，WAV 体积大，在聊天里播放会卡。有意见就改 `audio/build.mjs` 或人声后重新 `wka soundtrack`，再提交审听。
 - **没有任何声轨**（无人声、无配乐、无音效）时，`wka soundtrack` 不生成 `mix.wav`。也要停下请用户确认"本片无声"，签批后继续；第 8 道的动态分镜随之无声，只审画面节奏。
@@ -299,5 +300,5 @@ edge-tts 的中文普通话音色：
 - 每个审片节点都要真的停下来等用户签批，11 个节点没有自动通过的例外；用户没回应就不推进下一道工序。
 - 制作进度以 `.wka/state.json` 和 git 为准；开工前先 `wka status`。v0.4.0 及以前的进度（13 道工序）会在读取时自动换算成新编号：原第 11–13 道变为第 12–14 道。
 - 风格的美术规格书 `STYLE.md` 是硬约束，`禁忌清单` 一条都不能犯。
-- 只用开源授权字体与自行合成的声音素材；不模仿特定画家、工作室或作品的具体画面。
+- 只用开源授权字体；声音用自行合成的，或风格音效清单里明确可商用、按需下载的录音（不拷进片目录、不进 git）；不模仿特定画家、工作室或作品的具体画面。
 - 不改插件安装目录里的任何文件（风格 `style.json`、积木脚本、引擎）：片子级的调整写在片目录里（如字幕样式写 `film.json` 的 `subtitles.style`）。发现插件本身的问题，记下来，交付时告诉用户。

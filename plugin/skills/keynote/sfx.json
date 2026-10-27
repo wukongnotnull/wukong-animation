@@ -1,0 +1,150 @@
+{
+  "license": "Mixkit Sound Effects Free License (https://mixkit.co/license/#sfxFree): free for commercial and non-commercial video, no attribution; the files themselves may not be redistributed, so they are downloaded locally and kept out of git.",
+  "base": "https://assets.mixkit.co/active_storage/sfx",
+  "sounds": {
+    "drop": {
+      "id": 3179,
+      "ext": "wav",
+      "title": "Water drop splashes in cave",
+      "role": "开场",
+      "maxSeconds": 1.6,
+      "level": 0.9
+    },
+    "ding": {
+      "id": 931,
+      "ext": "wav",
+      "title": "Service bell",
+      "role": "说观点",
+      "maxSeconds": 1.5,
+      "level": 0.37
+    },
+    "tap": {
+      "id": 197,
+      "ext": "wav",
+      "title": "Knocking on a thick wooden door",
+      "role": "悬疑",
+      "maxSeconds": 1.2,
+      "level": 0.42
+    },
+    "spring": {
+      "id": 2617,
+      "ext": "wav",
+      "title": "UI zoom in",
+      "role": "要放大",
+      "maxSeconds": 0.7,
+      "level": 0.29
+    },
+    "swish": {
+      "id": 166,
+      "ext": "wav",
+      "title": "Fast small sweep transition",
+      "role": "切镜",
+      "maxSeconds": 0.8,
+      "level": 0.25
+    },
+    "coins": {
+      "id": 1993,
+      "ext": "wav",
+      "title": "Clinking coins",
+      "role": "数字类",
+      "maxSeconds": 1.2,
+      "level": 0.32
+    },
+    "punch": {
+      "id": 2155,
+      "ext": "mp3",
+      "title": "Impact of a strong punch",
+      "role": "划重点",
+      "maxSeconds": 0.6,
+      "level": 0.45
+    },
+    "blade": {
+      "id": 1506,
+      "ext": "wav",
+      "title": "Sword blade swish",
+      "role": "惊讶",
+      "maxSeconds": 0.9,
+      "level": 0.32
+    },
+    "subtype": {
+      "id": 2534,
+      "ext": "wav",
+      "title": "Keyboard key presses",
+      "role": "出字幕",
+      "maxSeconds": 0.35,
+      "level": 0.11
+    },
+    "bleep": {
+      "id": 1082,
+      "ext": "wav",
+      "title": "Censorship beep",
+      "role": "爆粗口",
+      "maxSeconds": 0.6,
+      "level": 0.5
+    },
+    "click": {
+      "id": 1113,
+      "ext": "wav",
+      "title": "Mouse click close",
+      "role": "鼠标单击",
+      "maxSeconds": 0.25,
+      "level": 0.6
+    },
+    "pop": {
+      "id": 2354,
+      "ext": "mp3",
+      "title": "Message pop alert",
+      "role": "发消息",
+      "maxSeconds": 0.5,
+      "level": 0.35
+    },
+    "typing": {
+      "id": 1376,
+      "ext": "wav",
+      "title": "Typing on an electronic device",
+      "role": "打出地址/技能名",
+      "maxSeconds": 1.5,
+      "level": 0.4
+    },
+    "appear": {
+      "id": 3005,
+      "ext": "wav",
+      "title": "Explainer video pops whoosh light pop",
+      "role": "东西出现",
+      "maxSeconds": 0.6,
+      "level": 0.35
+    },
+    "dudong": {
+      "id": 2866,
+      "ext": "wav",
+      "title": "Digital quick tone",
+      "role": "嘟咚提示",
+      "maxSeconds": 0.6,
+      "level": 0.35
+    },
+    "cute": {
+      "id": 937,
+      "ext": "wav",
+      "title": "Happy bells notification",
+      "role": "可爱提示",
+      "maxSeconds": 1.2,
+      "level": 0.4
+    },
+    "success": {
+      "id": 2870,
+      "ext": "wav",
+      "title": "Correct answer tone",
+      "role": "任务完成",
+      "maxSeconds": 1.0,
+      "level": 0.4
+    },
+    "swipe": {
+      "id": 2627,
+      "ext": "wav",
+      "title": "Fast swipe zoom",
+      "role": "唰/滑动",
+      "maxSeconds": 0.5,
+      "level": 0.3
+    }
+  }
+}

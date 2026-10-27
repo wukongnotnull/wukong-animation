@@ -6,9 +6,9 @@
 |---|---|---|
 | 大量排版、界面重绘、对象移动缩放 | remotion 管线（React + DOM） | 文字排版、圆角阴影、SVG 描边都是 DOM 的强项；组件可复用，横竖两版共用一套镜头 |
 | 背景、字体 | `ShotRoot` + 引擎字体 | 背景按片内时间推进，跨镜连续；字体走引擎的按需下载与子集化 |
-| 声音、字幕 | 引擎 | `audio/build.mjs` + 同步点；字幕层由引擎叠加 |
+| 声音、字幕 | 引擎 | `audio/build.mjs` + 同步点；音效用录音音效库 `sfx.json`（`sfx.place`，见 `SFX.md`）；字幕层由引擎叠加 |
 
-组件移植自用户的 wk-motion-graphics（Remotion 工程），去掉了音效组件（声音归 `audio/build.mjs`）、字幕和出镜组件（引擎负责 / 本次不做），节拍从"按字幕句子"改成"按帧号"（由同步点换算）。
+组件移植自用户的 wk-motion-graphics（Remotion 工程），去掉了音效组件（声音归 `audio/build.mjs`；同一套录音音效通过 `sfx.json` + `sfx.place` 使用）、字幕和出镜组件（引擎负责 / 本次不做），节拍从"按字幕句子"改成"按帧号"（由同步点换算）。
 
 ## 镜头写法
 
@@ -74,10 +74,10 @@ export default function S02({ dur, s }: ShotProps) {
 
 - `<Shot src? natW natH width height camera? push? radius style>` —— 截图（`src` 走 `staticFile`）或矢量界面（children 按自然像素画）通过可移动的镜头显示；children 的坐标是自然像素，跟着缩放走。
 - `<Highlight x y w h progress spotlight?>` —— 在 `Shot` 里描出的高亮框，`spotlight` 压暗四周。
-- `<Cursor path clicks appearAt>` —— 鼠标沿路径移动，`clicks` 帧上出点击波纹（点击声写在 `audio/build.mjs`）。
+- `<Cursor path clicks appearAt>` —— 鼠标沿路径移动，`clicks` 帧上出点击波纹（点击声在 `audio/build.mjs` 里 `sfx.place(buf, 'click', …)`）。
 - `focusOn(region, view, nat, pad = 60, maxZoom = 2.2): Camera` —— 把自然像素区域框进视口，夹紧在内容内。
 - `useStages(beats, stages, from?)` —— 讲解走查：第 n 个节拍（本镜帧号，`beats[0]` 为 0）到达第 n 个 `{cam, box}`，慢进慢出；`from` 是续镜时上一镜的终点。
-- `zoomInFrames(beats, stages)` —— 第一次推近的帧（放"要放大"音效的位置）。
+- `zoomInFrames(beats, stages)` —— 第一次推近的帧（放"要放大"音效 `spring` 的位置）。
 - `shotToScreen(slot, nat, cam, rect)`、`travel(frame, start, a, b, dur)`、`mid(rect)` —— 自然像素 ↔ 画面坐标，物体移动。
 
 ### 形态变化（`MorphBox.tsx`）

@@ -87,3 +87,14 @@ test('Windows 的 headless shell 带 .exe', () => {
   const fsLike = { readdirSync: (d) => { if (!fake[d]) throw new Error('ENOENT'); return fake[d]; } };
   assert.equal(headlessShellFrom(exe, fsLike, sep), 'C:\\pw\\chromium_headless_shell-1248\\chrome-headless-shell-win64\\chrome-headless-shell.exe');
 });
+
+test('check()：缺任一 remotion 依赖或 ffmpeg 时不可用，并列出缺失项', async () => {
+  const { check } = await import('../../plugin/engine/pipelines/remotion/index.mjs');
+  const r = await check({ has: (n) => n !== '@remotion/renderer', ffmpeg: () => true });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.missing, ['@remotion/renderer']);
+  assert.match(r.hint, /setup/);
+  const r2 = await check({ has: () => true, ffmpeg: () => false });
+  assert.deepEqual(r2.missing, ['ffmpeg']);
+  assert.equal((await check({ has: () => true, ffmpeg: () => true })).ok, true);
+});

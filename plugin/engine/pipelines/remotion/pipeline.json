@@ -1,9 +1,8 @@
 {
   "name": "remotion",
-  "version": "0.0.1",
-  "description": "调用 Remotion（React）渲染字幕密集、模板化的镜头，直接输出视频片段。注意 Remotion 对较大规模的公司需要商业授权。",
+  "version": "0.1.0",
+  "description": "调用 Remotion（React）渲染字幕密集、模板化的镜头：每镜一个 Composition，打包一次后逐镜输出无声 H.264 片段。注意 Remotion 对较大规模的公司需要商业授权。",
   "entry": "index.mjs",
-  "status": "planned",
-  "requires": ["node", "remotion", "ffmpeg"],
-  "optional": true
+  "status": "experimental",
+  "requires": ["node", "ffmpeg", "remotion"]
 }

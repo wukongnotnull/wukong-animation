@@ -27,3 +27,23 @@ export function hasDep(name) {
     return false;
   }
 }
+
+/** 依赖包的根目录（与 requireDep 同样的查找顺序）。打包器要靠它把 react 等钉成同一份。 */
+export function resolveDep(name) {
+  for (const r of roots) {
+    if (!fs.existsSync(path.dirname(r))) continue;
+    try {
+      return packageRoot(createRequire(r).resolve(name), name);
+    } catch {
+      /* 试下一个位置 */
+    }
+  }
+  return packageRoot(createRequire(import.meta.url).resolve(name), name);
+}
+
+/** 从入口文件往上找到 node_modules/<name> 这一级。 */
+function packageRoot(entry, name) {
+  const marker = path.join('node_modules', ...name.split('/'));
+  const i = entry.lastIndexOf(marker + path.sep);
+  return i < 0 ? path.dirname(entry) : entry.slice(0, i + marker.length);
+}

@@ -44,8 +44,8 @@ plugin/skills/keynote/
   └─ examples/<示范片>/
 ```
 
-- 新文件：`pipelines/remotion/entry.mjs`、`plugin/skills/keynote/**`、`tests/unit/remotion-entry.test.mjs`、`tests/integration/remotion.test.mjs`。
-- 改动文件：`pipelines/remotion/{index.mjs, pipeline.json, README.md}`、`engine/package.json`（加依赖）、`core/fonts.mjs`（`KNOWN_FONTS` 加两行）、`bin/wka.mjs`（`init` 按管线选镜头模板，见 3.5）、`skills/director/templates/film/shots/s01.tsx`（新增）、`skills/director/SHOT.md`（加 remotion 镜头写法一节）、`tools/plan72.json`、`plugin/catalog.json`（由脚本生成）、`README.md`、`docs/ARCHITECTURE.md`（插槽表、依赖、许可说明）。
+- 新文件：`pipelines/remotion/entry.mjs`、`pipelines/remotion/WkaShot.jsx`（每镜外壳：字体与 ShotRoot）、`plugin/skills/keynote/**`、`tests/unit/remotion-entry.test.mjs`、`tests/integration/remotion.test.mjs`。
+- 改动文件：`core/deps.mjs`（加 `resolveDep`，把 react 等钉成同一份）、`pipelines/remotion/{index.mjs, pipeline.json, README.md}`、`engine/package.json`（加依赖）、`core/fonts.mjs`（`KNOWN_FONTS` 加两行）、`bin/wka.mjs`（`init` 按管线选镜头模板，见 3.5）、`skills/director/templates/film/shots/s01.tsx`（新增）、`skills/director/SHOT.md`（加 remotion 镜头写法一节）、`tools/plan72.json`、`plugin/catalog.json`（由脚本生成）、`README.md`、`docs/ARCHITECTURE.md`（插槽表、依赖、许可说明）。
 - browser 管线、工具包、导出器、字幕层、音频模块不改。
 
 ## 3. 接口、数据与行为

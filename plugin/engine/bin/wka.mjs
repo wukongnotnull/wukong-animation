@@ -27,9 +27,11 @@ import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
+import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 
+const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
 const argv = process.argv.slice(2);
 const cmd = argv[0];
 const pos = argv.slice(1).filter((a, i, arr) => !a.startsWith('--') && !(arr[i - 1] || '').match(/^--(style|dir|aspect|frames|at|only|formats|step|voices|text|rate|pitch)$/));
@@ -247,8 +249,15 @@ async function main() {
       if (!pos[0] || !pos[1]) fail('用法：wka signoff <片目录> "<审片结论>" [--step N]');
       const step = opt('step') ? Number(opt('step')) : null;
       if (step && !PRODUCTION_STEPS[step]) fail(`--step 取 1–${LAST_STEP}`);
-      recordProgress(pos[0], { step, note: pos[1] });
-      const sha = commitSnapshot(pos[0], pos[1], { log });
+      let note = pos[1];
+      // 第 5 道分镜签批前检查景别；确实要这样拍可以 --force，问题会附在签批记录里
+      if (step === SHOT_SIZE_STEP) {
+        const problems = checkShotSizes(loadFilm(pos[0], { requireShots: false }).film.shots);
+        if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
+        if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
+      }
+      recordProgress(pos[0], { step, note });
+      const sha = commitSnapshot(pos[0], note, { log });
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
       void sha;
       return;

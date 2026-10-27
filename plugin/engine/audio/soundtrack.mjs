@@ -6,6 +6,11 @@ import * as synth from './synth.mjs';
 import { synthesizeVoiceOver } from './tts.mjs';
 import { run, probeDuration } from '../core/ffmpeg.mjs';
 import { loadFilm } from '../core/job.mjs';
+import { charCues, clearCharCues } from './char-cues.mjs';
+import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
+
+// 逐字同步点找句中停顿：比剪映切配乐更灵敏，不留前后余量
+const CHAR_SILENCE = { noise: -40, minSilence: 0.15, pad: 0 };
 
 /**
  * 决定每条人声从哪来：via 'recording' 用挂接的录音，'tts' 走 AI 配音。
@@ -81,6 +86,12 @@ function writeVoiceCues(ctx, lines, vo, log) {
     const next = lines[i + 1];
     const overlap = next && l.at + dur > next.at ? `  ! 与下一条人声重叠 ${(l.at + dur - next.at).toFixed(2)}s` : '';
     log(`    ${name.padEnd(8)} ${l.at.toFixed(2)}s → ${(l.at + dur).toFixed(2)}s  (${dur.toFixed(2)}s${measured ? '' : ' 估算'})${over}${overlap}`);
+    film.cues = clearCharCues(film.cues, name);
+    if (l.chars) {
+      const ranges = vo[i]?.file ? detectSoundRanges(vo[i].file, dur, CHAR_SILENCE) : null;
+      Object.assign(film.cues, charCues(l.text, name, { at: l.at, duration: dur, ranges }));
+      log(`             逐字同步点 ${name}#1…（${ranges ? '按人声实测' : '估算'}）`);
+    }
   });
   // 同步点没变就不动 film.json，免得无谓地改动文件、触发重渲
   if (JSON.stringify(film.cues) === before) return log('  · 声音同步点未变化');

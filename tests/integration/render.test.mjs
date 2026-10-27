@@ -30,6 +30,7 @@ function makeFilm(shots, extra = {}) {
 }
 
 const wka = (...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2' } });
+const wkaEnv = (env, ...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2', ...env } });
 const segments = (dir) => {
   const seg = path.join(dir, '.cache', 'segments');
   return fs.existsSync(seg) ? fs.readdirSync(seg) : [];
@@ -78,9 +79,9 @@ test('changing a cue only re-renders the shots that use it', opts, () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** 读 png 某个像素的 RGB。 */
+/** 读图片（png / jpg）某个像素的 RGB。先转 rgb24：jpg 的色度是隔行采样的，直接裁 1×1 会失败。 */
 function pixel(png, x, y) {
-  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', png, '-vf', `crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { encoding: 'buffer' });
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', png, '-vf', `format=rgb24,crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { encoding: 'buffer' });
   return [...r.stdout];
 }
 
@@ -137,5 +138,42 @@ test('wka animatic puts the animatic and its contact sheet in review/', opts, ()
   assert.ok(r.stdout.includes(`接触表：${sheet}`));
   assert.ok(!fs.existsSync(path.join(dir, 'animatic.mp4')));
   assert.ok(fs.existsSync(path.join(dir, 'stills', 'sheet.jpg')), 'stills/sheet.jpg is still written for the director');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('voices with chars: true get per-character cues that shots read with s.cueChars', opts, () => {
+  // 第一个字一出现就把整幅画面涂黑：读不到逐字同步点时镜头会报错，读到了画面就是黑的
+  const body = "const c = s.cueChars('一'); if (c.length !== 4) throw new Error('chars ' + c.length); if (t >= c[0].in) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, s.W, s.H); }";
+  const dir = makeFilm({ s01: SHOT(body), s02: SHOT('') });
+  const f = path.join(dir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(f, 'utf8'));
+  fs.mkdirSync(path.join(dir, 'audio'));
+  // 0.4s 有声 + 0.5s 静音 + 0.4s 有声，对应「春眠，不觉」两个分句
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=1.3', '-af', "volume='if(between(t,0.4,0.9),0,1)':eval=frame", path.join(dir, 'audio', 'vo.wav')]);
+  film.audio = { voice_source: 'user', voices: [{ text: '春眠，不觉', at: 0.1, cue: '一', chars: true, file: 'audio/vo.wav' }] };
+  fs.writeFileSync(f, JSON.stringify(film));
+  const r = wka('soundtrack', dir);
+  assert.equal(r.status, 0, r.stderr);
+  const cues = JSON.parse(fs.readFileSync(f, 'utf8')).cues;
+  assert.deepEqual(Object.keys(cues).filter((k) => k.startsWith('一#')), ['一#1', '一#2', '一#3', '一#4']);
+  assert.ok(cues['一#3'][0] >= 0.9, `second clause starts after the pause: ${cues['一#3']}`);
+  const st = wka('still', dir, '--at', 's01:0.8');
+  assert.equal(st.status, 0, st.stderr);
+  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((x) => x.startsWith('s01-')));
+  assert.ok(pixel(png, 5, 5)[0] < 40);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('without drawtext the contact sheet and animatic still carry shot labels (drawn by Chromium)', opts, () => {
+  const dir = makeFilm({ s01: SHOT(''), s02: SHOT('') });
+  const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout + r.stderr, /不加文字标注/);
+  const sheet = path.join(dir, 'review', '接触表.jpg');
+  assert.ok(pixel(sheet, 12, 38)[0] < 200, 'label box in the top-left of the first tile');
+  assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest of the tile is still paper');
+  const frame = path.join(dir, 'frame.png');
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-ss', '0.5', '-i', path.join(dir, 'review', '动态分镜.mp4'), '-frames:v', '1', frame]);
+  assert.ok(pixel(frame, 23, 58)[0] < 200, 'label box in the animatic frame');
   fs.rmSync(dir, { recursive: true, force: true });
 });

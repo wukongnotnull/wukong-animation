@@ -1,9 +1,11 @@
 // 静态找出镜头用到了哪些声音同步点（cue），让镜头缓存只随这些 cue 失效。
-// 只认字面量写法 s.cueIn('名') / s.cueOut("名")；
+// 只认字面量写法 s.cueIn('名') / s.cueOut("名") / s.cueChars('名')（逐字同步点 名#1、名#2……）；
 // 一旦出现动态参数（s.cueIn(name)）或直接读 cues 对象，就无法静态确定，返回 null 表示"全部 cue 都算"。
 import fs from 'node:fs';
 
-const CALL = /\bcue(?:In|Out)\s*\(\s*([^)]*?)\s*\)/g;
+const CALL = /\bcue(In|Out|Chars)\s*\(\s*([^)]*?)\s*\)/g;
+// cueChars('名') 记成这个标记，pickCues 再展开成所有 名#n
+const CHARS_MARK = '#*';
 const LITERAL = /^(['"`])([^'"`\\$]*)\1$/;
 const RAW_ACCESS = /\bcues\b/;
 
@@ -16,9 +18,9 @@ export function usedCueNames(sources) {
   for (const src of sources) {
     if (RAW_ACCESS.test(src)) return null;
     for (const m of src.matchAll(CALL)) {
-      const lit = m[1].match(LITERAL);
+      const lit = m[2].match(LITERAL);
       if (!lit) return null;
-      names.add(lit[2]);
+      names.add(m[1] === 'Chars' ? lit[2] + CHARS_MARK : lit[2]);
     }
   }
   return names;
@@ -27,6 +29,9 @@ export function usedCueNames(sources) {
 /** 从 cues 里挑出镜头用到的那部分（键排好序，保证哈希稳定）。 */
 export function pickCues(cues = {}, files) {
   const names = usedCueNames(files.filter((f) => fs.existsSync(f)).map((f) => fs.readFileSync(f, 'utf8')));
-  const keys = names ? [...names] : Object.keys(cues);
+  const isCharOf = (base) => (k) => k.startsWith(`${base}#`) && /^\d+$/.test(k.slice(base.length + 1));
+  const keys = names
+    ? [...names].flatMap((n) => (n.endsWith(CHARS_MARK) ? Object.keys(cues).filter(isCharOf(n.slice(0, -CHARS_MARK.length))) : [n]))
+    : Object.keys(cues);
   return Object.fromEntries(keys.sort().map((k) => [k, cues[k] ?? null]));
 }

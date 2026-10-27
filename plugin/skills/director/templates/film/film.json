@@ -6,7 +6,7 @@
   "seed": 72,
   "scripts": [],
   "shots": [
-    { "id": "s01", "file": "shots/s01.js", "duration": 4, "note": "开场" }
+    { "id": "s01", "file": "shots/s01.js", "duration": 4, "size": "远景", "note": "开场" }
   ],
   "audio": {
     "build": "audio/build.mjs",

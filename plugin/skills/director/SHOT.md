@@ -34,7 +34,16 @@ wk.shot({
 屏幕文字（题字、标题、诗句）和某条人声说的是同一句话时，文字要跟着人声出现，观众才会觉得"念到哪、写到哪"：
 
 - 从这条人声的 `s.cueIn('名')` 开始，不另加延迟。
-- 逐字写出的，把每个字的起笔时刻对到人声里念到这个字的时刻：用 `ffmpeg -i <人声文件> -af silencedetect=noise=-35dB:d=0.08 -f null -` 量出句中停顿，按停顿把字分组；量不出停顿就按字数比例把字分配到 `[cueIn, cueOut]`。不用固定字速（如"每字 0.6 秒"）。
+- 逐字写出的，先在 `film.json` 这条人声上加 `"chars": true`，`wka soundtrack` 会写出每个字的同步点，镜头里用 `s.cueChars('名')` 取：
+
+```js
+// 「花落知多少」：每个字在人声念到它时起笔（s.cueChars 不含标点，一个字一项）
+const chars = s.cueChars('第四句');
+[...'花落知多少'].forEach((ch, i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * step, size, progress: wk.seg(t, chars[i].in, chars[i].out) }));
+```
+
+  逐字同步点是近似值：按句中停顿分句、每句里按字数均分。念得快慢不均、需要更准时，再用下面的手工办法。
+- 手工办法（没有逐字同步点时的备用）：把每个字的起笔时刻对到人声里念到这个字的时刻：用 `ffmpeg -i <人声文件> -af silencedetect=noise=-35dB:d=0.08 -f null -` 量出句中停顿，按停顿把字分组；量不出停顿就按字数比例把字分配到 `[cueIn, cueOut]`。不用固定字速（如"每字 0.6 秒"）。
 - 每个字相对 `cueIn` 的时间写成常量表放在镜头文件开头，注明"从人声实测得出，换配音要重量"。
 
 ```js
@@ -57,6 +66,7 @@ TITLE.forEach(([ch, at, dur], i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * ste
 | `s.rng` | 本帧的种子随机数（`r()`、`r.range(a,b)`、`r.int`、`r.pick`、`r.gauss`） |
 | `s.state` | `setup` 的返回值 |
 | `s.cueIn(名)` `s.cueOut(名)` | 声音同步点在本镜头内的入点 / 出点 |
+| `s.cueChars(名)` | 逐字同步点 `[{ in, out }, …]`（本镜头内时间，一个字一项，不含标点）；要在 `voices[].chars` 设 `true` 并运行 `wka soundtrack` |
 | `s.seed` | 本镜头的种子 |
 
 ## 运行时工具（所有风格可用）

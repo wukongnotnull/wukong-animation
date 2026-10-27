@@ -69,6 +69,11 @@
           },
           "note": {
             "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": ["大远景", "远景", "全景", "中景", "近景", "特写", "大特写"],
+            "description": "景别（画面框多大），与 storyboard.md 的景别栏一致。第 5 道签批时 wka 检查：每镜都写、4 镜及以上至少 3 种、相邻两镜不同"
           }
         }
       }
@@ -123,6 +128,10 @@
                 "type": "string",
                 "pattern": "^[+-]\\d{1,3}Hz$",
                 "description": "AI 配音音高，如 -4Hz（更低）。只对 edge-tts 生效，挂接录音的条目忽略"
+              },
+              "chars": {
+                "type": "boolean",
+                "description": "true 时 wka soundtrack 给这一句的每个字写同步点 <cue>#1、<cue>#2……，镜头里用 s.cueChars('<cue>') 读（题字逐字跟着人声）"
               },
               "cue": {
                 "type": "string",

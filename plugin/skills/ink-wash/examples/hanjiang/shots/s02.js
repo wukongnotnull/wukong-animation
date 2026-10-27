@@ -1,12 +1,10 @@
-// s02 —— 水、小舟。江面几笔水纹写出，一叶小舟随之写成，停住
+// s02 —— 雾、水、小舟。中景：雾散开，江面水纹写出，一叶小舟随之写成，停住后雾遮
 wk.shot({
   render(ctx, t, s) {
-    wk.hj.scene(ctx, s, {
-      far: 1,
-      mid: 1,
-      rock: 1,
-      ripples: wk.seg(t, 0.3, 1.8),
-      boat: wk.seg(t, 1.0, 3.0),
+    wk.hj.boatScene(ctx, s, {
+      ripples: wk.seg(t, 0.6, 1.8),
+      boat: wk.seg(t, 0.8, 2.3),
     });
+    wk.hj.veil(ctx, s, 1 - wk.seg(t, 0, 0.8) + wk.seg(t, 3.4, 4.0));
   },
 });

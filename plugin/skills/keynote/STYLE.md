@@ -110,6 +110,7 @@
 - 音效用录音音效库（`sfx.json`，按场合命名：说观点 `ding`、切镜 `swish`、推近 `spring`、单击 `click`…），场合表、电平、获取与许可见 `SFX.md`。
 - 音效要稀：每镜最多一个"叮"；鼠标点击只放一个单击声，不叠别的；同一拍不叠两个强调音；切镜嗖声只给 `fade` 接缝。推近时可放一声 `spring`，拉远不放。
 - 音效和配乐写在片子的 `audio/build.mjs`（`sfx.place(buf, 名字, { at })`），时间点与镜头里的同步点（`s.cueIn('名')`）对齐。
+- 背景音乐用 `synth.bed` 铺底，返回音轨标 `duck: true` 随人声闪避；声轨响度 -14 LUFS（`style.json` 的 `loudness`）。`wka soundtrack` 打出的音效听感审计里有被盖住的，交给用户定怎么改。见 `SFX.md`。
 - 旁白按 director 的旁白环节走（自己的录音或 AI 配音）。
 
 ## 8. 禁忌清单

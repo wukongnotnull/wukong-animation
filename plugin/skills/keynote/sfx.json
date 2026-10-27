@@ -72,7 +72,8 @@
       "title": "Keyboard key presses",
       "role": "出字幕",
       "maxSeconds": 0.35,
-      "level": 0.11
+      "level": 0.11,
+      "quiet": true
     },
     "bleep": {
       "id": 1082,

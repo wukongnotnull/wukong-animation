@@ -9,6 +9,13 @@ import { loadFilm } from '../core/job.mjs';
 import { charCues, clearCharCues, orphanCharCues } from './char-cues.mjs';
 import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
 import { loadSfxLibrary, createSfx, densityWarnings } from './sfx.mjs';
+import { duckFile } from './duck.mjs';
+import { normalizeLoudness } from './loudness.mjs';
+import { frameDb, judgeSfx, formatAudit } from './audit.mjs';
+
+// 风格没写 style.json 的 loudness 时，声轨标准化到的整体响度（LUFS）
+const DEFAULT_LOUDNESS = -18;
+const SFX_TRACK = 'sfx.wav'; // 听感审计按这个文件名认音效轨
 
 // 逐字同步点找句中停顿：比剪映切配乐更灵敏，不留前后余量
 const CHAR_SILENCE = { noise: -40, minSilence: 0.15, pad: 0 };
@@ -161,12 +168,14 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const genDir = path.join(ctx.filmDir, 'audio', 'generated');
   fs.mkdirSync(genDir, { recursive: true });
   const tracks = [];
+  let lib = null;
+  let sfx = null;
 
   if (audio.build) {
     const mod = await import(pathToFileURL(path.join(ctx.filmDir, audio.build)).href + `?v=${Date.now()}`);
     // 风格有录音音效清单才有 sfx；没有时为 null
-    const lib = loadSfxLibrary(ctx.style);
-    const sfx = lib && createSfx(lib);
+    lib = loadSfxLibrary(ctx.style);
+    sfx = lib && createSfx(lib);
     const res = await mod.default({ synth, sfx, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: ctx.film.cues || {}, log });
     for (const t of res || []) tracks.push({ start: 0, gain: 0, ...t, role: 'build' });
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
@@ -188,7 +197,22 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   }
   for (const t of tracks) if (!fs.existsSync(t.file)) throw new Error(`音轨不存在：${t.file}`);
 
+  duckTracks(tracks, voices, path.join(genDir, 'ducked'), log);
   const D = ctx.totalDuration;
+  const cache = path.join(ctx.filmDir, '.cache');
+  fs.mkdirSync(cache, { recursive: true });
+  const premix = await mixTracks(tracks, D, path.join(cache, 'premix.wav'));
+  const out = path.join(cache, 'mix.wav');
+  const target = ctx.style.loudness ?? DEFAULT_LOUDNESS;
+  const { output } = await normalizeLoudness(premix, out, target);
+  log(`  ✓ 混音完成（${tracks.length} 条音轨）`);
+  log(output === null ? '  · 声轨没有可测响度，未做响度标准化' : `  ✓ 响度 ${output.toFixed(1)} LUFS（目标 ${target}）`);
+  if (sfx?.placements.length) await auditSfx({ tracks, D, cache, sfx, lib, shots: ctx.shots, log });
+  return { mix: out, tracks, voices };
+}
+
+/** 各音轨按起点和增益混成一条（末尾淡出），不做响度标准化。 */
+async function mixTracks(tracks, D, out) {
   const inputs = tracks.flatMap((t) => ['-i', t.file]);
   const chains = tracks.map((t, i) => {
     const ms = Math.round((t.start || 0) * 1000);
@@ -198,10 +222,45 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const filter =
     chains.join(';') +
     `;${tracks.map((_, i) => `[a${i}]`).join('')}amix=inputs=${tracks.length}:normalize=0,apad,atrim=0:${D},` +
-    `afade=t=out:st=${(D - fadeOut).toFixed(3)}:d=${fadeOut.toFixed(3)},loudnorm=I=-18:TP=-1.5:LRA=11[out]`;
-  fs.mkdirSync(path.join(ctx.filmDir, '.cache'), { recursive: true });
-  const out = path.join(ctx.filmDir, '.cache', 'mix.wav');
-  await run([...inputs, '-filter_complex', filter, '-map', '[out]', '-ar', '48000', out]);
-  log(`  ✓ 混音完成（${tracks.length} 条音轨）`);
-  return { mix: out, tracks, voices };
+    `afade=t=out:st=${(D - fadeOut).toFixed(3)}:d=${fadeOut.toFixed(3)}[out]`;
+  // 32 位浮点：多轨叠加会超过 0 dBFS，16 位会在测响度之前就削波
+  await run([...inputs, '-filter_complex', filter, '-map', '[out]', '-ar', '48000', '-c:a', 'pcm_f32le', out]).catch((e) => {
+    throw new Error(`混音失败：${e.message}`);
+  });
+  return out;
+}
+
+/**
+ * 标了 duck 的音轨（背景音乐）按人声闪避：换成 ducked/ 下同名的处理后文件，混音和剪映草稿都用它。原地改 tracks 里的 file。
+ */
+function duckTracks(tracks, voices, dir, log) {
+  const toDuck = tracks.filter((t) => t.duck && t.role !== 'voice');
+  if (!toDuck.length) return;
+  if (!voices.length) return log('  · 没有人声，背景音乐不闪避');
+  const intervals = voices.map((v) => [v.at, v.at + v.duration]);
+  const used = new Set();
+  for (const t of toDuck) {
+    // 文件名不变（剪映草稿按文件名起轨道名）；重名时放进子目录，免得互相覆盖
+    const name = path.basename(t.file);
+    let dest = path.join(dir, name);
+    for (let n = 2; used.has(dest); n++) dest = path.join(dir, String(n), name);
+    used.add(dest);
+    t.file = duckFile(t.file, dest, intervals, { start: t.start || 0 });
+    log(`  ✓ ${path.basename(t.file)} 随人声闪避`);
+  }
+}
+
+/** 听感审计：音效轨（sfx.wav）和其余音轨分开混，在每个音效起点比电平。 */
+async function auditSfx({ tracks, D, cache, sfx, lib, shots, log }) {
+  const isSfx = (t) => t.role !== 'voice' && path.basename(t.file) === SFX_TRACK;
+  const fx = tracks.filter(isSfx);
+  const bed = tracks.filter((t) => !isSfx(t));
+  if (!fx.length) return log(`  · 音效没有单独写成 ${SFX_TRACK}，跳过听感审计`);
+  if (!bed.length) return log('  · 没有人声和音乐，音效不会被盖住，跳过听感审计');
+  const fxDb = frameDb(await mixTracks(fx, D, path.join(cache, 'audit-sfx.wav')));
+  const bedDb = frameDb(await mixTracks(bed, D, path.join(cache, 'audit-bed.wav')));
+  const quiet = new Set(Object.entries(lib.sounds).filter(([, s]) => s.quiet).map(([n]) => n));
+  if (fx.length > 1) log(`  ! 有 ${fx.length} 条 ${SFX_TRACK}，听感审计按第一条的起点换算时间`);
+  const rows = judgeSfx(sfx.placements, fxDb, bedDb, { quiet, offset: fx[0].start || 0 });
+  for (const line of formatAudit(rows, shots, quiet)) log(line);
 }

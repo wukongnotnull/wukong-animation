@@ -29,11 +29,11 @@ description: 为 wukong-animation 创建自定义动画风格（第 73 变及以
    ```
    ~/.wukong-animation/styles/<id>/
    ├── SKILL.md      # 触发描述一句话 + "流程按 director 执行"
-   ├── STYLE.md      # 九段：本质 / 色彩 / 构图 / 技法 / 运动 / 声音 / 禁忌 / 示范片 / 质检
+   ├── STYLE.md      # 固定 10 节：本质 / 色彩 / 文字 / 构图 / 技法 / 运动语言 / 声音 / 禁忌 / 示范片 / 质检
    ├── TECH.md       # 选型理由 + 积木 API
    ├── style.json    # category 用 "custom"，order 从 101 起
    └── scripts/      # 风格积木，挂到 wk.<短名>
    ```
 4. **写 style.json 的 qc 阈值**：留白、点缀色、帧差、硬切——让 `wka qc` 能替你把关。
-5. **做一支 10–15 秒的示范片**：按 director 的快速通道走，放进 `examples/`。
+5. **做一支 10–15 秒的示范片**：按 director 的快速通道走，放进 `examples/`，附按分镜格式写的 `storyboard.md`（景别、转场等只用 STYLE.md 里写过的取值），STYLE.md「9. 示范片」链接它。
 6. **校验**：`wka list styles` 能看到且不标"不可用"；示范片 `wka qc` 全部通过。

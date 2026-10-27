@@ -1,4 +1,4 @@
-// s04 —— 表达"多"用图形不用大数字：72 个格子逐个弹出，已修成的 2 个上强调色
+// s04 —— 标题。表达"多"用图形不用大数字：72 个格子逐个弹出，已修成的 2 个上强调色
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { Headline, SceneShell, color, pop, useFrame } from "@wka/style";

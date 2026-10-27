@@ -25,6 +25,8 @@ export interface Layouts {
   L04: { title: Rect; body: Rect; image: Rect };
   L05: { number: Rect; claim: Rect; note: Rect };
   L06: { title: Rect; labelA: Rect; labelB: Rect; imageA: Rect; imageB: Rect; note: Rect };
+  /** summary page: four cards, reading order (landscape 2×2, portrait one column) */
+  L07: { cards: [Rect, Rect, Rect, Rect] };
 }
 
 /** Per-project scene geometry that differs by shape (see FrameSpec.scene). */
@@ -76,8 +78,9 @@ const LANDSCAPE: FrameSpec = {
   },
   layout: {
     L01: { phrase: { x: 120, y: 260, w: 1680, h: 440 }, sub: { x: 320, y: 720, w: 1280, h: 140 } },
-    L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 300, w: 1440, h: 544 } },
-    L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 300, w: 1680, h: 544 } },
+    // L02 / L03 images take everything under the title down to the subtitle band (a video is not a slide deck)
+    L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 264, w: 1440, h: 584 } },
+    L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 264, w: 1680, h: 584 } },
     // L04 image runs to the safe-area edge (spec: 816 wide) and from the safe-area top down to the
     // subtitle band (user rule: a video is not a slide deck, don't leave big margins around the image)
     L04: {
@@ -97,6 +100,14 @@ const LANDSCAPE: FrameSpec = {
       imageA: { x: 120, y: 396, w: 808, h: 392 },
       imageB: { x: 992, y: 396, w: 808, h: 392 },
       note: { x: 120, y: 800, w: 1680, h: 44 },
+    },
+    L07: {
+      cards: [
+        { x: 120, y: 120, w: 816, h: 320 },
+        { x: 984, y: 120, w: 816, h: 320 },
+        { x: 120, y: 488, w: 816, h: 320 },
+        { x: 984, y: 488, w: 816, h: 320 },
+      ],
     },
   },
   subtitle: { bottom: 1000, size: 44, maxWidth: 1560 },
@@ -125,8 +136,8 @@ const PORTRAIT: FrameSpec = {
   },
   layout: {
     L01: { phrase: { x: 72, y: 560, w: 936, h: 520 }, sub: { x: 72, y: 1120, w: 936, h: 160 } },
-    L02: { title: { x: 72, y: 230, w: 700, h: 200 }, image: { x: 72, y: 470, w: 936, h: 820 } },
-    L03: { title: { x: 72, y: 230, w: 700, h: 200 }, image: { x: 72, y: 470, w: 936, h: 820 } },
+    L02: { title: { x: 72, y: 230, w: 700, h: 200 }, image: { x: 72, y: 470, w: 936, h: 888 } },
+    L03: { title: { x: 72, y: 230, w: 700, h: 200 }, image: { x: 72, y: 470, w: 936, h: 888 } },
     L04: {
       title: { x: 72, y: 230, w: 700, h: 200 },
       image: { x: 72, y: 460, w: 936, h: 600 },
@@ -144,6 +155,14 @@ const PORTRAIT: FrameSpec = {
       labelB: { x: 72, y: 878, w: 936, h: 60 },
       imageB: { x: 72, y: 944, w: 936, h: 340 },
       note: { x: 72, y: 1300, w: 936, h: 44 },
+    },
+    L07: {
+      cards: [
+        { x: 72, y: 243, w: 936, h: 250 },
+        { x: 72, y: 517, w: 936, h: 250 },
+        { x: 72, y: 791, w: 936, h: 250 },
+        { x: 72, y: 1065, w: 936, h: 250 },
+      ],
     },
   },
   subtitle: { bottom: 1500, size: 40, maxWidth: 960 },

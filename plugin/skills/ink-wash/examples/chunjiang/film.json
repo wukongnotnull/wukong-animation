@@ -7,14 +7,149 @@
   ],
   "fps": 30,
   "seed": 72,
-  "scripts": [],
+  "scripts": [
+    "shots/common.js"
+  ],
   "shots": [
     {
       "id": "s01",
       "file": "shots/s01.js",
       "duration": 4,
+      "size": "近景",
+      "note": "题字「春江花月夜」，雾遮"
+    },
+    {
+      "id": "s02",
+      "file": "shots/s02.js",
+      "duration": 6.8,
       "size": "远景",
-      "note": "开场"
+      "note": "平远江海，潮纹写出，月从潮生"
+    },
+    {
+      "id": "s03",
+      "file": "shots/s03.js",
+      "duration": 6.8,
+      "size": "中景",
+      "note": "江面月光碎影铺向远处"
+    },
+    {
+      "id": "s04",
+      "file": "shots/s04.js",
+      "duration": 6.8,
+      "size": "全景",
+      "note": "江流绕芳甸，花林碎点"
+    },
+    {
+      "id": "s05",
+      "file": "shots/s05.js",
+      "duration": 6.8,
+      "size": "中景",
+      "note": "花林局部，流霜、白沙淡去"
+    },
+    {
+      "id": "s06",
+      "file": "shots/s06.js",
+      "duration": 6.8,
+      "size": "远景",
+      "note": "江天一色，孤月轮"
+    },
+    {
+      "id": "s07",
+      "file": "shots/s07.js",
+      "duration": 6.8,
+      "size": "全景",
+      "note": "江畔岸石，小人影望月"
+    },
+    {
+      "id": "s08",
+      "file": "shots/s08.js",
+      "duration": 6.8,
+      "size": "中景",
+      "note": "人影背对、与月相望"
+    },
+    {
+      "id": "s09",
+      "file": "shots/s09.js",
+      "duration": 6.8,
+      "size": "大远景",
+      "note": "长江横贯送流水"
+    },
+    {
+      "id": "s10",
+      "file": "shots/s10.js",
+      "duration": 6.8,
+      "size": "远景",
+      "note": "白云飘过青枫浦"
+    },
+    {
+      "id": "s11",
+      "file": "shots/s11.js",
+      "duration": 6.8,
+      "size": "中景",
+      "note": "扁舟，远处小楼剪影"
+    },
+    {
+      "id": "s12",
+      "file": "shots/s12.js",
+      "duration": 6.8,
+      "size": "全景",
+      "note": "明月楼，月徘徊"
+    },
+    {
+      "id": "s13",
+      "file": "shots/s13.js",
+      "duration": 6.8,
+      "size": "近景",
+      "note": "帘、捣衣砧，月光拂还来"
+    },
+    {
+      "id": "s14",
+      "file": "shots/s14.js",
+      "duration": 6.8,
+      "size": "远景",
+      "note": "楼与舟相望，月华流照"
+    },
+    {
+      "id": "s15",
+      "file": "shots/s15.js",
+      "duration": 6.8,
+      "size": "中景",
+      "note": "鸿雁飞、鱼跃水成文"
+    },
+    {
+      "id": "s16",
+      "file": "shots/s16.js",
+      "duration": 6.8,
+      "size": "近景",
+      "note": "闲潭落花、月影"
+    },
+    {
+      "id": "s17",
+      "file": "shots/s17.js",
+      "duration": 6.8,
+      "size": "远景",
+      "note": "江水流春，落月西斜"
+    },
+    {
+      "id": "s18",
+      "file": "shots/s18.js",
+      "duration": 6.8,
+      "size": "大远景",
+      "note": "斜月沉海雾，碣石潇湘"
+    },
+    {
+      "id": "s19",
+      "file": "shots/s19.js",
+      "duration": 6.8,
+      "size": "远景",
+      "note": "江树摇影，题字逐字跟人声"
+    },
+    {
+      "id": "s20",
+      "file": "shots/s20.js",
+      "duration": 6.6,
+      "size": "近景",
+      "note": "题字连同落印「春江」，淡成纸面"
     }
   ],
   "audio": {

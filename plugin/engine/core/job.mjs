@@ -14,7 +14,10 @@ import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
 
-export function loadFilm(filmDir) {
+/**
+ * @param {{requireShots?: boolean}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）
+ */
+export function loadFilm(filmDir, { requireShots = true } = {}) {
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);
@@ -32,7 +35,7 @@ export function loadFilm(filmDir) {
   let t = 0;
   const shots = film.shots.map((s) => {
     const shot = { ...s, start: t, path: path.join(filmDir, s.file) };
-    if (!fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
+    if (requireShots && !fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
     t += s.duration;
     return shot;
   });

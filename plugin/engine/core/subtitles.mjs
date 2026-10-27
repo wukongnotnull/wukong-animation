@@ -7,6 +7,8 @@ const NOT_COUNTED = /[\s，。！？、；：,.!?;:…“”‘’"'（）()《�
 const BREAK_AFTER = /[，。！？、；：,.!?;:]/u;
 /** 条目结尾要去掉的标点；？！… 保留 */
 const TRAILING = /[。，、；：,.;:]+$/u;
+// 句中的这些标点在字幕里换成一个全角空格；？！… 和书名号、引号保留
+const INNER_PAUSE = /[。，、；：,.;:]+/gu;
 
 const MAX_CHARS_BY_ASPECT = { landscape: 18, portrait: 12, square: 14 };
 const SHORTEST = 0.6;
@@ -97,7 +99,7 @@ export function buildSubtitles(voices, cues, { maxChars }) {
     return pieces.map((p) => {
       const from = start + ((end - start) * done) / total;
       done += countChars(p);
-      return { start: ms(from), end: ms(start + ((end - start) * done) / total), text: p.replace(TRAILING, '') };
+      return { start: ms(from), end: ms(start + ((end - start) * done) / total), text: p.replace(TRAILING, '').replace(INNER_PAUSE, '　') };
     });
   });
   return subs.sort((a, b) => a.start - b.start).map((s, i) => ({ index: i + 1, ...s }));

@@ -103,7 +103,7 @@ canvas2d 工具包 —— 挂在 wk.c2d 下。
 | `[o.fade]` | `number[]` | [yStart, yEnd]：从 yStart 到 yEnd 渐隐到透明 |
 | `[o.fadeLeft]` | `number[]` | [x0, x1]：左端从透明渐显 |
 | `[o.fadeRight]` | `number[]` | [x0, x1]：右端渐隐到透明 |
-| `[o.bounds]` | `number[]` | [x, y, w, h] 离屏层范围，默认整幅画布 |
+| `[o.bounds]` | `number[]` | [x, y, w, h] 离屏层范围，默认是当前变换下整幅画布覆盖的区域 |
 
 ### `c2d.ridge(o)`
 

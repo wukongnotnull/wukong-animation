@@ -18,7 +18,7 @@ test('default cue names are vo1, vo2…', () => {
 test('a long line splits at punctuation, merged greedily up to maxChars', () => {
   const text = '江水不回头，山也不回头，只有回声，一遍一遍地回来。';
   const subs = buildSubtitles([{ text, at: 0 }], { vo1: [0, 10] }, { maxChars: 10 });
-  assert.deepEqual(texts(subs), ['江水不回头，山也不回头', '只有回声', '一遍一遍地回来']);
+  assert.deepEqual(texts(subs), ['江水不回头　山也不回头', '只有回声', '一遍一遍地回来']);
 });
 
 test('a segment with no punctuation is hard-split at maxChars', () => {
@@ -126,4 +126,11 @@ test('subtitleStyle fills engine defaults under the merged style', () => {
   assert.equal(s.color, '#000000');
   assert.equal(s.font.family, 'Noto Sans SC');
   assert.deepEqual(s.stroke, { color: 'rgba(0,0,0,0.65)', width: 0.08 });
+});
+
+test('sentence punctuation inside a subtitle becomes one full-width space; ？！ are kept', () => {
+  const cues = { a: [0, 3], b: [4, 7] };
+  const subs = buildSubtitles([{ text: '春晓。孟浩然。', at: 0, cue: 'a' }, { text: '何处？春归，。', at: 4, cue: 'b' }], cues, { maxChars: 16 });
+  assert.equal(subs[0].text, '春晓　孟浩然');
+  assert.equal(subs[1].text, '何处？春归');
 });

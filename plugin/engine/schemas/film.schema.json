@@ -114,6 +114,16 @@
               "voice": {
                 "type": "string"
               },
+              "rate": {
+                "type": "string",
+                "pattern": "^[+-]\\d{1,3}%$",
+                "description": "AI 配音语速，如 -30%（更慢）、+10%（更快）。只对 edge-tts 生效，挂接录音的条目忽略"
+              },
+              "pitch": {
+                "type": "string",
+                "pattern": "^[+-]\\d{1,3}Hz$",
+                "description": "AI 配音音高，如 -4Hz（更低）。只对 edge-tts 生效，挂接录音的条目忽略"
+              },
               "cue": {
                 "type": "string",
                 "pattern": "^[\\w\\u4e00-\\u9fa5-]+$"

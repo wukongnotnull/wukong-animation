@@ -340,12 +340,11 @@
    * @param {number[]} [o.fade]        [yStart, yEnd]：从 yStart 到 yEnd 渐隐到透明
    * @param {number[]} [o.fadeLeft]    [x0, x1]：左端从透明渐显
    * @param {number[]} [o.fadeRight]   [x0, x1]：右端渐隐到透明
-   * @param {number[]} [o.bounds]      [x, y, w, h] 离屏层范围，默认整幅画布
+   * @param {number[]} [o.bounds]      [x, y, w, h] 离屏层范围，默认是当前变换下整幅画布覆盖的区域
    */
   c2d.wash = function (ctx, shape, o = {}) {
     const color = o.color || '#4d4d4d';
-    const cw = ctx.canvas.width, ch = ctx.canvas.height;
-    const [bx, by, bw, bh] = o.bounds || [0, 0, cw, ch];
+    const [bx, by, bw, bh] = o.bounds || canvasBounds(ctx);
     const s = scratch(bw, bh, 1);
     const g = s.ctx;
     g.translate(-bx, -by);
@@ -383,6 +382,19 @@
     ctx.drawImage(s.canvas, 0, 0, bw, bh, bx, by, bw, bh);
     ctx.restore();
   };
+
+  // 整幅画布在当前变换下的坐标范围 [x, y, w, h]（向外取整）。
+  // 镜头先 translate 再围绕原点画时，形状坐标有负数，不能直接用 [0, 0, 画布宽, 画布高]。
+  function canvasBounds(ctx) {
+    const cw = ctx.canvas.width, ch = ctx.canvas.height;
+    const inv = ctx.getTransform().inverse();
+    const pts = [[0, 0], [cw, 0], [0, ch], [cw, ch]].map(([x, y]) => inv.transformPoint(new DOMPoint(x, y)));
+    const x0 = Math.floor(Math.min(...pts.map((p) => p.x)));
+    const y0 = Math.floor(Math.min(...pts.map((p) => p.y)));
+    const x1 = Math.ceil(Math.max(...pts.map((p) => p.x)));
+    const y1 = Math.ceil(Math.max(...pts.map((p) => p.y)));
+    return [x0, y0, x1 - x0, y1 - y0];
+  }
 
   function polyPath(pts, close) {
     const p = new Path2D();

@@ -55,3 +55,9 @@ test('voice_source none drops every line', () => {
   assert.equal(plan.source, 'none');
   assert.deepEqual(plan.lines, []);
 });
+
+test('schema accepts rate and pitch on a voice line and rejects free-form values', () => {
+  assert.deepEqual(validate('film', film([{ text: '春眠', at: 0, rate: '-30%', pitch: '-4Hz' }])), []);
+  assert.equal(validate('film', film([{ text: '春眠', at: 0, rate: 'slow' }])).length, 1);
+  assert.equal(validate('film', film([{ text: '春眠', at: 0, pitch: '-4' }])).length, 1);
+});

@@ -77,3 +77,40 @@ test('changing a cue only re-renders the shots that use it', opts, () => {
   assert.match(out, /s02 缓存命中/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+/** 读 png 某个像素的 RGB。 */
+function pixel(png, x, y) {
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', png, '-vf', `crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { encoding: 'buffer' });
+  return [...r.stdout];
+}
+
+test('c2d.wash after translate is not clipped to the untransformed canvas', opts, () => {
+  // 先把原点移到画面中心，再画一个盖满整幅画布的多边形：四个角都应该被墨色压暗
+  const body = "ctx.save(); ctx.translate(s.W / 2, s.H / 2);"
+    + " wk.c2d.wash(ctx, [[-s.W, -s.H], [s.W, -s.H], [s.W, s.H], [-s.W, s.H]], { color: '#000000', alpha: 0.8, blur: 0, edge: 0 });"
+    + ' ctx.restore();';
+  const dir = makeFilm({ s01: SHOT(body) });
+  const r = wka('still', dir, '--at', 's01:0.5');
+  assert.equal(r.status, 0, r.stderr);
+  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((f) => f.startsWith('s01-')));
+  for (const [x, y] of [[2, 2], [317, 2], [2, 177], [317, 177]]) {
+    const [red] = pixel(png, x, y);
+    assert.ok(red < 120, `corner ${x},${y} should be inked, got ${red}`);
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('wka soundtrack works before the shots are drawn (only s01.js exists)', () => {
+  const dir = makeFilm({ s01: SHOT('') });
+  const f = path.join(dir, 'film.json');
+  const film = JSON.parse(fs.readFileSync(f, 'utf8'));
+  film.shots.push({ id: 's02', file: 'shots/s02.js', duration: 1 }, { id: 's03', file: 'shots/s03.js', duration: 1 });
+  fs.mkdirSync(path.join(dir, 'audio'));
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=3', path.join(dir, 'audio', 'tone.wav')]);
+  film.audio = { tracks: [{ file: 'audio/tone.wav' }] };
+  fs.writeFileSync(f, JSON.stringify(film));
+  const r = wka('soundtrack', dir);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(fs.existsSync(path.join(dir, '.cache', 'mix.wav')));
+  fs.rmSync(dir, { recursive: true, force: true });
+});

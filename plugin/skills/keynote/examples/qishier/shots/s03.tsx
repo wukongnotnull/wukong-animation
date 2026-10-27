@@ -1,4 +1,4 @@
-// s03 —— 接 s02（enter="hold"）：面板从 L04 的图位移到细节区并推近 style 一行，高亮框描出来
+// s03 —— 接 s02（enter="hold"）：面板从 L04 的图铺满全屏并推近 style 一行，高亮框描出来
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { Highlight, SceneShell, Shot, color, focusOn, glide, reveal, useFrame } from "@wka/style";
@@ -23,7 +23,7 @@ export default function S03({ dur }: ShotProps) {
   return (
     <SceneShell dur={dur} enter="hold">
       <div style={{ position: "absolute", left: box.x, top: box.y }}>
-        <Shot natW={PANEL.w} natH={PANEL.h} width={box.w} height={box.h} camera={cam} style={{ background: color.container }}>
+        <Shot natW={PANEL.w} natH={PANEL.h} width={box.w} height={box.h} camera={cam} radius={lerp(22, 0)} style={{ background: color.container }}>
           <FilmPanel />
           <Highlight {...line} progress={reveal(frame, MOVE + 4, 18)} spotlight={reveal(frame, MOVE + 4, 18)} />
         </Shot>

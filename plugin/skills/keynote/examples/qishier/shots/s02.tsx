@@ -1,4 +1,4 @@
-// s02 —— L04：左侧观点 + 逐条要点，右侧代码重绘的面板；exit="hold" 把面板交给 s03
+// s02 —— 标题、要点与步骤、界面与截图。L04：左侧观点 + 逐条要点，右侧代码重绘的面板；exit="hold" 把面板交给 s03
 import React from "react";
 import { CuePoint, Headline, SceneShell, Shot, color, useFrame, sec } from "@wka/style";
 import type { ShotProps } from "@wka/style";

@@ -7,7 +7,7 @@
   const C = wk.c2d;
   const ink = (wk.ink = {});
 
-  /** 墨分五色 + 宣纸 + 朱砂（STYLE.md §2） */
+  /** 墨分五色 + 宣纸 + 朱砂（STYLE.md「2. 色彩」） */
   ink.palette = {
     paper: '#F2EDE3',
     jiao: '#141414', // 焦
@@ -29,7 +29,7 @@
     ctx.drawImage(C.paper(s.W, s.H, { color: P.paper, seed }), 0, 0);
   };
 
-  // ───────────── 墨滴晕开（WebGL）§4.3 ─────────────
+  // ───────────── 墨滴（WebGL）· STYLE.md 技法「墨滴」 ─────────────
   const DROP_FRAG = `
 uniform vec2 u_center;
 uniform float u_radius;
@@ -87,7 +87,7 @@ void main() {
     ctx.restore();
   };
 
-  // ───────────── 山 §4.4 ─────────────
+  // ───────────── 山石 · STYLE.md 技法「山石」 ─────────────
 
   /**
    * 一层山：淡墨晕染的山体（山脚入雾）+ 山脊笔线 + 皴擦。
@@ -175,7 +175,7 @@ void main() {
     }
   };
 
-  // ───────────── 水 §4.5 ─────────────
+  // ───────────── 水 · STYLE.md 技法「水」 ─────────────
 
   /**
    * 几笔横向淡墨水纹（水是"留"出来的，别画多）。
@@ -285,7 +285,7 @@ void main() {
     }
   };
 
-  // ───────────── 题字与印章 §4.6 ─────────────
+  // ───────────── 题字与印章 · STYLE.md 技法「题字」「印章」 ─────────────
 
   /** 竖排题字（右起），默认马善政楷书。参数同 wk.c2d.verticalText。 */
   ink.inscribe = function (ctx, text, o) {

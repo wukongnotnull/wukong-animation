@@ -1,4 +1,4 @@
-// s03 —— 接 s02（enter="hold"）：面板从 L04 的图铺满全屏并推近 style 一行，高亮框描出来
+// s03 —— 界面与截图。接 s02（enter="hold"）：面板从 L04 的图铺满全屏并推近 style 一行，高亮框描出来
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { Highlight, SceneShell, Shot, color, focusOn, glide, reveal, useFrame } from "@wka/style";

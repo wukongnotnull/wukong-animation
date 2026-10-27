@@ -15,7 +15,7 @@
 所有长度参数按 1080p 设计，传 `u: s.u` 自动换算。
 
 ### `wk.ink.palette`
-`{ paper, jiao, nong, zhong, dan, qing, zhusha }`，见 STYLE.md §2。
+`{ paper, jiao, nong, zhong, dan, qing, zhusha }`，见 STYLE.md「2. 色彩」。
 
 ### `wk.ink.paper(ctx, s, seed = 72)`
 铺宣纸（缓存）。每帧第一句。

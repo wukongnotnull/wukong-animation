@@ -1,4 +1,4 @@
-// s01 —— L01：单句标题页用 T01 大字撑满
+// s01 —— 标题。L01：单句标题页用 T01 大字撑满
 import React from "react";
 import { Headline, SceneShell, useFrame, color, font, reveal, motion } from "@wka/style";
 import type { ShotProps } from "@wka/style";

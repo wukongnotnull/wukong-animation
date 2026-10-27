@@ -31,4 +31,4 @@ copyTemplate(path.join(ROOT, 'templates/style-skill'), dest, {
   WHEN: '（什么样的片子）',
 });
 console.log(`✓ 已创建 ${dest}（第 ${order} 变）`);
-console.log('  下一步：写 STYLE.md 九段 → TECH.md → scripts/style.js → examples/ 示范片 → node tools/build-catalog.mjs');
+console.log('  下一步：写 STYLE.md 十节 → TECH.md → scripts/style.js → examples/ 示范片 → node tools/build-catalog.mjs');

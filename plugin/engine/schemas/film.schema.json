@@ -74,6 +74,10 @@
             "type": "string",
             "enum": ["大远景", "远景", "全景", "中景", "近景", "特写", "大特写"],
             "description": "景别（画面框多大），与 storyboard.md 的景别栏一致。第 5 道签批时 wka 检查：每镜都写、4 镜及以上至少 3 种、相邻两镜不同"
+          },
+          "full_bleed": {
+            "type": "boolean",
+            "description": "这一镜画面铺满一张图（截图、照片），wka qc 不查这一镜的留白"
           }
         }
       }

@@ -11,7 +11,8 @@ wukong-animation/                          # GitHub 仓库
 │   ├── skills/                    # 只有一层：skills/<id>/SKILL.md
 │   │   ├── director/              # 通用流程 + 片子模板 templates/film/
 │   │   ├── new-style/
-│   │   └── ink-wash/              # SKILL · STYLE · TECH · style.json · scripts/ · examples/
+│   │   ├── ink-wash/              # SKILL · STYLE · TECH · style.json · scripts/ · examples/
+│   │   └── keynote/               # 第 70 变，remotion 管线；scripts/ 是 TSX 组件
 │   ├── commands/                  # film · styles · setup
 │   └── engine/
 │       ├── bin/wka.mjs           # CLI
@@ -73,13 +74,15 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 
 `core/registry.mjs` 启动时扫描三个目录（跳过 `_` 开头），校验清单后注册。
 `status: planned` 的插槽会被列出，但 resolver 拒绝使用。
+
+现有管线：`browser`（Chromium 逐帧 seek，镜头是 `wk.shot` 的 `.js`）、`remotion`（experimental：镜头是 React 组件 `.tsx`，每镜一个 Composition，打包一次后逐镜 `renderMedia` 出无声片段；风格积木用 `@wka/style` 引用；复用 playwright 的 chromium headless shell；Remotion 对 3 人以上公司需商业授权，见 `pipelines/remotion/README.md`）、`manim`（规划中）。
 风格在 `style.json` 里按名字和版本范围引用：`"kits": {"canvas2d": "^0.1"}`。
 
 ## 确定性
 
 - 运行时拦截 `Math.random()`（告警并改用种子随机）。
 - 每帧开始前重置画布状态。
-- `render(ctx, t, s)` 必须是 t 的纯函数；只允许缓存"与 t 无关"的图层。
+- `render(ctx, t, s)` 必须是 t 的纯函数；只允许缓存"与 t 无关"的图层。remotion 镜头同理：只依赖 `useCurrentFrame()` 和 props。
 - 冒烟测试会把同一帧渲染两次，逐像素比对。
 
 ## 性能
@@ -88,3 +91,4 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 - 页面只用一个 WebGL 上下文，按需调整尺寸。
 - 默认 2 个页面并行渲染不同镜头（`WKA_WORKERS` 可调）。
 - 1080p 30fps、15 秒、5 镜的水墨短片：约 80 秒（2 核云主机）。
+- remotion：打包一次约 1–5 秒，1080p 约 20–25 帧/秒；《七十二变》14 秒 4 镜约 27 秒（M 系列 Mac）。

@@ -87,7 +87,7 @@
     ["map-route", "地图路线", "xinxi", "browser", ["d3", "svg-gsap"]],
     ["timeline", "时间线", "xinxi", "browser", ["d3", "svg-gsap"]],
     ["whiteboard", "白板讲解", "xinxi", "browser", ["canvas2d"]],
-    ["keynote", "发布会 Keynote", "xinxi", "browser", ["svg-gsap"]],
+    ["keynote", "发布会 Keynote", "xinxi", "remotion", []],
     ["doc-subtitle", "纪录片字幕", "xinxi", "remotion", []],
     ["vertical-short", "竖屏短视频", "xinxi", "remotion", []]
   ]

@@ -141,3 +141,8 @@ test('decimals, thousands separators and ... survive; ASCII pauses become one fu
   assert.equal(subs[0].text, '增长了3.5亿　达到1,000万');
   assert.equal(subs[1].text, 'Hello　world　等等…');
 });
+
+test('a long line is not split inside a number', () => {
+  const subs = buildSubtitles([{ text: '增长了3.5亿，达到1,000万人次，创下新高', at: 0 }], { vo1: [0, 6] }, { maxChars: 10 });
+  assert.deepEqual(texts(subs), ['增长了3.5亿', '达到1,000万人次', '创下新高']);
+});

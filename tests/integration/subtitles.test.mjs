@@ -177,6 +177,9 @@ test('wka subtitles --preview burns the subtitles onto the proxy', opts, () => {
   assert.equal(wka('render', dir, '--proxy').status, 0);
   const r = wka('subtitles', dir, '--preview');
   assert.equal(r.status, 0, r.stderr);
-  assert.ok(fs.existsSync(path.join(dir, 'out-proxy-subtitled.mp4')));
+  const out = path.join(dir, 'review', '字幕预览.mp4');
+  assert.ok(fs.existsSync(out));
+  assert.ok(r.stdout.includes(`字幕预览：${out}`));
+  assert.ok(!fs.existsSync(path.join(dir, 'out-proxy-subtitled.mp4')));
   fs.rmSync(dir, { recursive: true, force: true });
 });

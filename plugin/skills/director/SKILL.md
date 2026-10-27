@@ -5,7 +5,7 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 
 # wukong-animation · 总导演
 
-> 制作流程版本 **v1.5.1**（流程文档见仓库 `docs/PRODUCTION-WORKFLOW.md`）
+> 制作流程版本 **v1.5.2**（流程文档见仓库 `docs/PRODUCTION-WORKFLOW.md`）
 
 你是导演。用代码逐帧"画"出短片——不调用任何视频生成模型。
 72 种风格各是一个 skill（如 `ink-wash`），它们只负责美术规格与制作技法（"画成什么样、用什么技术画"）；**制作管线只在这里**。
@@ -18,6 +18,8 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 node <插件根目录>/engine/bin/wka.mjs
 ```
 
+在 shell 里先定义一个函数再调用：`wka() { node "<插件根目录>/engine/bin/wka.mjs" "$@"; }`。不要把整条命令存进变量再 `$W check`：zsh 不按空格拆分变量，会报「no such file or directory」。每条 Bash 命令都是新的 shell，函数要在同一条命令里先定义。
+
 | 命令 | 作用 |
 |---|---|
 | `wka check` | 检查制作环境与所有管线 / 工具包 |
@@ -29,7 +31,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka soundtrack <片目录>` | 合成配乐、接入用户自供录音或合成 AI 配音，写入声音同步点，输出声轨 `.cache/mix.wav` 和审听用的 `review/声轨.m4a`；不要求镜头文件已写好 |
 | `wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]` | 音色试听：同一句（缺省为第一条人声）用几个音色各合成一遍，输出 `review/试听-<n>-<音色>.m4a`（第 6 道） |
 | `wka still <片目录> [--frames N] [--at s02:1.5]` | 渲染静帧 + 接触表 |
-| `wka animatic <片目录> [--proxy]` | 动态分镜：每镜关键帧按镜头时长停留、配上声轨，输出 `animatic.mp4` + 接触表 |
+| `wka animatic <片目录> [--proxy]` | 动态分镜：每镜关键帧按镜头时长停留、配上声轨，输出 `review/动态分镜.mp4` + `review/接触表.jpg` |
 | `wka render <片目录> [--proxy] [--only s03]` | 渲染（镜头级缓存）；`--proxy` 另出带声音的小样 `review/小样.mp4` |
 | `wka qc <片目录> [--proxy]` | 量化技术质检（QC） |
 | `wka subtitles <片目录> [--force] [--preview]` | 从人声生成字幕 `subtitles.srt`（已存在时只检查不覆盖，`--force` 重新生成）；`--preview` 烧录到小样上审阅 |
@@ -187,13 +189,13 @@ edge-tts 的中文普通话音色：
 
 ✅ **审片节点⑤ 声轨审听** → `--step 7`
 
-**8. 风格帧与动态分镜（Style Frames & Animatic）** — 每镜先写"最少能看出构图"的代码，然后 `wka animatic <片>`：每镜出一张关键帧拼成接触表（contact sheet），同时按镜头时长排成动态分镜 `animatic.mp4`，配上第 7 道的声轨。
+**8. 风格帧与动态分镜（Style Frames & Animatic）** — 每镜先写"最少能看出构图"的代码，然后 `wka animatic <片>`：每镜出一张关键帧拼成接触表（contact sheet），同时按镜头时长排成动态分镜；交给用户的两样在 `review/动态分镜.mp4` 和 `review/接触表.jpg`，配上第 7 道的声轨。
 **自己先审一遍**：用 Read 打开接触表看构图，明显问题先返修：
 - 每镜至少有主体和环境两个层次（前景 / 中景 / 远景至少占两层），主体之外有陪衬，不能整幅只有一个物件。
 - 风格规格里的留白下限、点缀色上限是边界，不是要贴着的目标：留白远超下限、画面发空时要加层次。
 - 景别和分镜一致，大小有变化。
 
-再把接触表和 `animatic.mp4` 一起提交用户审阅——接触表看构图与视觉效果，动态分镜看节奏与声画对位（第一次提交时按「对用户说话」解释这两个词）。
+再把 `review/接触表.jpg` 和 `review/动态分镜.mp4` 一起提交用户审阅——接触表看构图与视觉效果，动态分镜看节奏与声画对位（第一次提交时按「对用户说话」解释这两个词）。
 ✅ **审片节点⑥ 风格帧与动态分镜** → `--step 8`
 
 **9. 镜头制作** — 在第 8 道写下的镜头代码上继续完成。规范见 `SHOT.md`（屏幕文字和人声说同一句话时，按「屏幕文字与人声对位」逐字跟上人声）。要点：`render(ctx, t, s)` 必须是关于时间 `t` 的纯函数，保证任意帧可确定性重渲；尺寸一律乘以单位系数 `s.u`；随机数用 `s.rng` / 带固定种子的 `wk.rng`；优先调用风格资产库组件（如 `wk.ink.*`）和工具包（`wk.c2d.*`、`wk.gl.*`），不要从零写。
@@ -210,7 +212,7 @@ edge-tts 的中文普通话音色：
 **11. 字幕制作** — 字幕是人声逐句转成的文字，不是屏幕文字。
 - `subtitles.mode` 为 `none`（或没有 `subtitles` 字段）：停下请用户确认"本片不出字幕"，签批后继续。
 - 要字幕：`wka subtitles <片>` 从人声原文和 `cues` 里的实测入出点生成 `subtitles.srt`。一条人声超过 `max_chars` 字（缺省横屏 18、竖屏 12）就在标点处拆开，结尾的句号逗号去掉。有错误（倒序、超片长）必须改；警告（重叠、超长、过短）看情况改，直接编辑 `subtitles.srt` 即可。
-- `wka subtitles <片> --preview` 把字幕烧录到小样上（`<name>-proxy-subtitled.mp4`）。**自己先看一遍**：
+- `wka subtitles <片> --preview` 把字幕烧录到小样上（`review/字幕预览.mp4`）。**自己先看一遍**：
   - 字体和风格搭不搭：风格 `style.json` 没给字幕样式（缺省是黑体白字）而片子风格是国风、手绘这类时，先提一个开源字体方案（`engine/core/fonts.mjs` 的 `KNOWN_FONTS` 里选）。
   - 在不在安全框里：字幕整体在画面中间 90% 的范围内，文字底边离画面底边不少于画高 5%。
   - 有没有压住题字、落款等屏幕文字。

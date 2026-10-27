@@ -30,9 +30,9 @@ export interface Layouts {
 /** Per-project scene geometry that differs by shape (see FrameSpec.scene). */
 export interface SceneGeometry {
   /**
-   * Pages that show screenshot / UI detail: no page title, the shot is as big as it can be
-   * while centred on the canvas both ways and kept above the subtitle band
-   * (user rules: maximise the screenshot, drop the title; a lone image sits dead centre).
+   * Pages that show screenshot / UI detail: no page title, the lone image fills the whole canvas
+   * edge to edge (radius 0) and subtitles sit on top of it, outlined so they stay readable
+   * (user rules: a video is not a slide deck, a lone image fills the screen with no margins).
    */
   detail: Rect;
 }
@@ -102,7 +102,7 @@ const LANDSCAPE: FrameSpec = {
   subtitle: { bottom: 1000, size: 44, maxWidth: 1560 },
   presenter: { x: 1588, y: 80, w: 212, h: 200 },
   scene: {
-    detail: { x: 120, y: 232, w: 1680, h: 616 }, // centre 960,540; bottom 848 clears the subtitle band (top ≈864)
+    detail: { x: 0, y: 0, w: 1920, h: 1080 },
   },
 };
 
@@ -149,7 +149,7 @@ const PORTRAIT: FrameSpec = {
   subtitle: { bottom: 1500, size: 40, maxWidth: 960 },
   presenter: { x: 796, y: 200, w: 212, h: 200 },
   scene: {
-    detail: { x: 72, y: 562, w: 936, h: 796 }, // centre 540,960; bottom 1358 clears the subtitle band (top ≈1374)
+    detail: { x: 0, y: 0, w: 1080, h: 1920 },
   },
 };
 

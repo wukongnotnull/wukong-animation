@@ -6,9 +6,9 @@
   "seed": 72,
   "scripts": ["shots/common.js"],
   "shots": [
-    { "id": "s01", "file": "shots/s01.js", "duration": 4, "size": "远景", "note": "远山淡入，近岸墨石晕开" },
-    { "id": "s02", "file": "shots/s02.js", "duration": 4, "size": "全景", "note": "水纹写出，一叶小舟" },
-    { "id": "s03", "file": "shots/s03.js", "duration": 4, "size": "近景", "note": "题字，落印" }
+    { "id": "s01", "file": "shots/s01.js", "duration": 4, "size": "远景", "note": "远山淡入，近岸墨石晕开；雾遮" },
+    { "id": "s02", "file": "shots/s02.js", "duration": 4, "size": "中景", "note": "雾散，中景小舟写出；雾遮" },
+    { "id": "s03", "file": "shots/s03.js", "duration": 4, "size": "远景", "note": "雾散回到整幅画，题字，落印" }
   ],
   "audio": {
     "build": "audio/build.mjs",

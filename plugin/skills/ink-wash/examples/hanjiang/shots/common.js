@@ -1,11 +1,15 @@
-/* 《寒江》全片共用一幅画：各镜头只传"画到哪一步"，镜头之间天然连续。
- * 构图：平远。远山、近岸在左上，大片江面留白，小舟在右下黄金分割点附近，题字落在右上。
+/* 《寒江》两幅画：
+ * - scene：远景，平远。远山、近岸在左上，大片江面留白，小舟在右下黄金分割点附近，题字落在右上（s01、s03）。
+ * - boatScene：中景，小舟放大到画面中部，远山只剩一抹（s02）。
+ * 换画用 veil 雾遮：宣纸色整片盖住再散开，接缝两边都是纯纸面，不算硬切。
+ * 各镜头只传"画到哪一步"。
  */
 (function () {
   'use strict';
   const P = wk.ink.palette;
   const PAN_SPEED = 0.008; // 每秒画宽的 0.8%，像缓缓展开长卷
   const PAN_STOP = 8; // 第 8 秒（全片时间）停住，留给题字
+  const BOAT_MID = 4; // 中景小舟的大小倍数：连同钓竿约占画宽 6 成
 
   /**
    * @param {CanvasRenderingContext2D} ctx
@@ -64,5 +68,38 @@
     if (k.seal > 0) wk.ink.seal(ctx, { x: tx, y: ty + size * 5.6 + 40 * u, size: 54 * u, text: '寒江', progress: k.seal, seed: 8 });
   }
 
-  wk.hj = { scene };
+  /**
+   * 中景：一叶小舟占画面中部，水纹放大，远山只剩一抹清墨。
+   * @param {object} k 各元素进度 0..1：ripples 水纹、boat 小舟
+   */
+  function boatScene(ctx, s, k) {
+    const { W, H, u } = s;
+    wk.ink.paper(ctx, s);
+    const far = wk.c2d.cached(`hj:far2:${W}x${H}`, W, H, (g) =>
+      wk.ink.mountain(g, { x0: 0.5 * W, x1: 1.05 * W, y: 0.38 * H, amp: 90 * u, peaks: [[0.4, 80 * u, 0.25]], tone: P.qing, alpha: 0.35, line: 0, cun: 0, u, seed: 11 })
+    );
+    ctx.drawImage(far, 0, 0);
+    wk.ink.mist(ctx, { y: 0.4 * H, h: 60 * u, x0: -0.1 * W, x1: 1.1 * W, alpha: 0.7, t: s.gt, seed: 12 });
+    if (k.ripples > 0) {
+      wk.ink.ripples(ctx, { x: 0.47 * W, y: 0.74 * H, w: 900 * u, n: 5, progress: k.ripples, t: s.gt, u: 2 * u, seed: 13 });
+    }
+    if (k.boat > 0) {
+      const bob = Math.sin(s.gt * 0.9) * 6 * u;
+      wk.ink.boat(ctx, { x: 0.4 * W, y: 0.68 * H + bob, size: BOAT_MID, progress: k.boat, u, seed: 5 });
+    }
+  }
+
+  /** 雾遮：k = 0 不遮，k = 1 整片纸面。先漫过一层雾带，再整片铺满。 */
+  function veil(ctx, s, k) {
+    if (k <= 0) return;
+    const { W, H, u } = s;
+    ctx.save();
+    ctx.globalAlpha = wk.clamp(k * 1.6, 0, 1);
+    wk.ink.mist(ctx, { y: 0.5 * H, h: 260 * u, x0: -0.2 * W, x1: 1.2 * W, alpha: 0.9, t: s.gt, seed: 14 });
+    ctx.globalAlpha = wk.ease.sineInOut(k);
+    wk.ink.paper(ctx, s);
+    ctx.restore();
+  }
+
+  wk.hj = { scene, boatScene, veil };
 })();

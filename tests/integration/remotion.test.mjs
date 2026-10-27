@@ -108,7 +108,34 @@ test('镜头组件出错：报错带镜头 id，不留半成品', opts, () => {
   assert.match(r.stderr, /s02/);
   assert.match(r.stderr, /boom at 5/);
   const segs = segments(dir);
-  assert.equal(segs.filter((f) => f.endsWith('.part')).length, 0, `leftover: ${segs}`);
+  assert.equal(segs.filter((f) => f.includes('.part')).length, 0, `leftover: ${segs}`);
   assert.equal(segs.filter((f) => f.startsWith('s02-')).length, 0);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('风格 assets/ 变了，镜头缓存失效', opts, () => {
+  const assets = path.join(HOME, 'styles', 'rm-test', 'assets');
+  fs.mkdirSync(assets, { recursive: true });
+  fs.writeFileSync(path.join(assets, 'bg.txt'), 'v1');
+  const dir = makeFilm({ s01: SHOT('#111111') });
+  assert.equal(wka('render', dir).status, 0);
+  assert.match(wka('render', dir).stdout, /s01 缓存命中/);
+  fs.writeFileSync(path.join(assets, 'bg.txt'), 'v2');
+  const r = wka('render', dir);
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /s01 缓存命中/);
+  fs.rmSync(assets, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('小样尺寸与 job 一致：宽高比例不同的取整也不出错', opts, () => {
+  const dir = makeFilm({ s01: SHOT('#111111') });
+  const f = path.join(dir, 'film.json');
+  fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), size: [1000, 562] }));
+  const r = wka('render', dir, '--proxy');
+  assert.equal(r.status, 0, r.stderr);
+  const seg = segments(dir).find((x) => x.endsWith('.mp4'));
+  const st = probe(path.join(segDir(dir), seg));
+  assert.deepEqual([st.width, st.height], [500, 282]);
   fs.rmSync(dir, { recursive: true, force: true });
 });

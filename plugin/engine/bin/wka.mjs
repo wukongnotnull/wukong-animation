@@ -140,7 +140,7 @@ function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
   Object.assign(film, { title: name, style: st.id, size, fps: st.fps });
   // 模板里两种镜头写法都有：remotion 管线用 React 组件（.tsx），其余用 wk.shot（.js）
   const ext = st.pipeline === 'remotion' ? 'tsx' : 'js';
-  fs.rmSync(path.join(filmDir, 'shots', ext === 'tsx' ? 's01.js' : 's01.tsx'));
+  fs.rmSync(path.join(filmDir, 'shots', ext === 'tsx' ? 's01.js' : 's01.tsx'), { force: true });
   film.shots = film.shots.map((s) => ({ ...s, file: s.file.replace(/\.js$/, `.${ext}`) }));
   fs.writeFileSync(path.join(filmDir, 'film.json'), JSON.stringify(film, null, 2) + '\n');
   log(`✓ 已创建 ${path.relative(process.cwd(), filmDir) || '.'}（风格 ${st.name} · ${size.join('×')} @${st.fps}fps）`);

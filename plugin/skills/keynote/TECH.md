@@ -39,7 +39,7 @@ export default function S02({ dur, s }: ShotProps) {
 
 - `ShotProps`：`dur` 本镜帧数；`s` 有 `id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名)`（秒，相对本镜）。`W/H` 是设计尺寸，小样由管线缩小，镜头里不用管。
 - 镜头只能依赖 `useCurrentFrame()` 和 props；不要用 `Math.random()`、`Date`、网络请求。
-- 用到的图片放片目录下并用 `@wka/film/…` import，或放风格 `assets/` 用 `staticFile('assets/…')`。
+- 镜头经 `@wka/film/…` import 的片目录文件（公共组件、数据、图片）**都要列进 `film.json` 的 `scripts`**：镜头缓存只认这里列出的文件，漏列的文件改了不会触发重渲。风格通用的图片放风格 `assets/`，用 `staticFile('assets/…')`（已进缓存哈希）。
 
 ## 积木 API（`scripts/index.ts` → `@wka/style`）
 

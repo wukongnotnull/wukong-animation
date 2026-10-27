@@ -88,7 +88,13 @@ async function withBrowser(job, fn) {
   const { serveUrl, browserExecutable: exe } = await prepare(job);
   const browser = await r.openBrowser('chrome', { browserExecutable: exe, logLevel: 'error' });
   try {
-    return await fn({ r, serveUrl, puppeteerInstance: browser, browserExecutable: exe });
+    // 同一镜头的 composition 只求一次（每次 selectComposition 都要开页面、跑一遍打包结果）
+    const cache = new Map();
+    const compositionOf = (id) => {
+      if (!cache.has(id)) cache.set(id, r.selectComposition({ serveUrl, id, puppeteerInstance: browser, browserExecutable: exe, logLevel: 'error' }));
+      return cache.get(id);
+    };
+    return await fn({ r, serveUrl, puppeteerInstance: browser, browserExecutable: exe, compositionOf });
   } finally {
     await browser.close({ silent: true }).catch(() => {});
   }
@@ -106,26 +112,37 @@ export async function renderShots(job, todo, { onDone } = {}) {
   });
 }
 
-/** 渲染一个镜头到 out。先写 .part.mp4，成功才改名；小样再用 ffmpeg 降到 job.fps。失败删半成品。 */
-async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, browserExecutable: exe }, concurrency) {
+/**
+ * Remotion 只能按一个比例缩放：宽高都能精确缩到 job.W×job.H 时直接用它，否则按设计尺寸渲染、交给 ffmpeg 缩
+ * （小样的宽高各自取偶数，比例可能与设计尺寸差一点，直接缩会得到奇数高度）。
+ */
+export function renderScale(job) {
+  const k = job.W / job.designW;
+  return job.designH * k === job.H ? k : 1;
+}
+
+/** 渲染一个镜头到 out。先写 .part.mp4，成功才改名；帧率或尺寸对不上时再用 ffmpeg 转。失败删半成品。 */
+async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, browserExecutable: exe, compositionOf }, concurrency) {
   const part = out.replace(/\.mp4$/, '') + '.part.mp4';
-  const raw = job.fps === job.film.fps ? part : part.replace(/\.part\.mp4$/, '.raw.part.mp4');
+  const scale = renderScale(job);
+  const post = job.fps !== job.film.fps || scale === 1 && job.W !== job.designW;
+  const raw = post ? part.replace(/\.part\.mp4$/, '.raw.part.mp4') : part;
   try {
-    const composition = await r.selectComposition({ serveUrl, id: shot.id, puppeteerInstance, browserExecutable: exe, logLevel: 'error' });
+    const composition = await compositionOf(shot.id);
     const t0 = Date.now();
     let nextLog = 0.25;
     await r.renderMedia({
       composition, serveUrl, puppeteerInstance, browserExecutable: exe, concurrency, logLevel: 'error',
       codec: 'h264', muted: true, crf: job.proxy ? 23 : 16, pixelFormat: 'yuv420p',
-      scale: job.W / job.designW, outputLocation: raw, overwrite: true,
+      scale, outputLocation: raw, overwrite: true,
       onProgress: ({ progress, renderedFrames }) => {
         if (progress < nextLog) return;
         job.log(`  ${shot.id} ${Math.round(progress * 100)}%  (${renderedFrames}/${composition.durationInFrames} 帧, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
         while (nextLog <= progress) nextLog += 0.25;
       },
     });
-    if (raw !== part) {
-      await run(['-i', raw, '-vf', `fps=${job.fps}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
+    if (post) {
+      await run(['-i', raw, '-vf', `fps=${job.fps},scale=${job.W}:${job.H}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
       fs.rmSync(raw, { force: true });
     }
     fs.renameSync(part, out);
@@ -137,7 +154,7 @@ async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, 
 }
 
 export async function renderStills(job, points, outDir) {
-  return withBrowser(job, async ({ r, serveUrl, puppeteerInstance, browserExecutable: exe }) => {
+  return withBrowser(job, async ({ r, serveUrl, puppeteerInstance, browserExecutable: exe, compositionOf }) => {
     const files = [];
     for (const p of points) {
       const shot = job.shots.find((s) => s.id === p.shot);
@@ -145,7 +162,7 @@ export async function renderStills(job, points, outDir) {
       const t = Math.min(p.t, shot.duration - 1e-3);
       const file = path.join(outDir, `${shot.id}-${t.toFixed(2)}s.png`);
       try {
-        const composition = await r.selectComposition({ serveUrl, id: shot.id, puppeteerInstance, browserExecutable: exe, logLevel: 'error' });
+        const composition = await compositionOf(shot.id);
         const frame = Math.min(composition.durationInFrames - 1, Math.round(t * job.film.fps));
         await r.renderStill({ composition, serveUrl, puppeteerInstance, browserExecutable: exe, logLevel: 'error', frame, output: file, imageFormat: 'png', scale: job.W / job.designW, overwrite: true });
       } catch (e) {

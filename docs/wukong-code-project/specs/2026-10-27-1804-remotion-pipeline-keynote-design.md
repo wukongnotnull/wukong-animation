@@ -128,6 +128,7 @@ export default function S01({ dur, s }: ShotProps) {
 ## 4. 约束、兼容性与非目标
 
 - 不改 `job.mjs` 的调度、缓存、拼接逻辑；不改 browser 管线和水墨风格的任何输出（冒烟基准图不变）。
+- 例外（代码审查后补）：镜头哈希加入管线目录下的代码文件（不含 `.md`）和风格 `assets/` 下的文件。原先改 remotion 的 `WkaShot.jsx` 或 keynote 的背景图不会让缓存失效。这会让所有片子的镜头缓存在升级后重渲一次，画面不变。
 - Remotion 许可写进 `pipelines/remotion/README.md`、keynote 的 `SKILL.md` 和 `README.md`：个人和 3 人以内公司免费，更大的公司需购买授权。
 - 远端 `wk-motion-graphics` 不改，也不删。
 

@@ -82,12 +82,23 @@ function createRenderJob(ctx, { proxy = false, log }) {
   };
 }
 
+/** 目录下所有文件（递归、排好序）；目录不存在时为空。 */
+function filesUnder(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { recursive: true }).sort()
+    .map((f) => path.join(dir, f))
+    .filter((f) => fs.statSync(f).isFile());
+}
+
 function shotHash(job, shot) {
   return hashParts([
     ENGINE_VERSION,
     `${job.pipeline.name}@${job.pipeline.version}`,
     job.kits.map((k) => `${k.name}@${k.version}`).join(','),
     ...fs.readdirSync(job.runtimeDir).map((f) => ({ file: path.join(job.runtimeDir, f) })),
+    // 管线自己的代码（如 remotion 打进页面的 WkaShot）和风格的静态素材也决定画面
+    ...filesUnder(job.pipeline.dir).filter((f) => !f.endsWith('.md')).map((f) => ({ file: f })),
+    ...filesUnder(path.join(job.style.dir, 'assets')).map((f) => ({ file: f })),
     ...job.kits.map((k) => ({ file: k.entryPath })),
     ...job.styleScripts.map((f) => ({ file: f })),
     ...job.filmScripts.map((f) => ({ file: f })),

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildDraftPlan } from './plan.mjs';
+import { freeDraftName, jianyingRunning } from './guards.mjs';
 import { detectSoundRanges } from './silence.mjs';
 import { probeDuration } from '../../core/ffmpeg.mjs';
 
@@ -29,13 +30,18 @@ function checkPython() {
 export async function encodeOutput({ out, proxy, timeline }) {
   if (proxy) throw new Error('剪映草稿用于后期接着剪，不能用预览（--proxy）素材导出，请去掉 --proxy');
   if (!timeline) throw new Error('jianying 导出器需要时间线，请用 wka final 导出');
+  if (jianyingRunning()) {
+    throw new Error('剪映正在运行。剪映退出时会把内存里的旧草稿写回草稿目录，覆盖这次导出的内容。\n  请先完全退出剪映（⌘Q），再重新运行 wka final <片目录> --formats jianying');
+  }
   const root = draftsRoot();
   // 人声本来就是一句一个文件；其余音轨只放有声音的片段
   const tracks = timeline.tracks.map((t) => (t.role === 'voice' ? t : { ...t, ranges: detectSoundRanges(t.file, probeDuration(t.file)) }));
-  const plan = buildDraftPlan({ ...timeline, tracks });
-  const draftDir = path.join(root, plan.name);
-  if (fs.existsSync(draftDir)) throw new Error(`剪映草稿「${plan.name}」已存在：${draftDir}\n  为免覆盖你在剪映里的改动，请先在剪映里删除或改名后再导出`);
+  const base = buildDraftPlan({ ...timeline, tracks });
   checkPython();
+  // 同名草稿已存在时换个新名字，旧草稿和用户在剪映里的改动都不动
+  const plan = { ...base, name: freeDraftName(root, base.name) };
+  const draftDir = path.join(root, plan.name);
+  if (plan.name !== base.name) console.log(`  · 剪映里已有草稿「${base.name}」，这次导出为「${plan.name}」，旧草稿没动`);
 
   const planFile = path.join(path.dirname(out), '.cache', 'work', 'jianying-plan.json');
   fs.mkdirSync(path.dirname(planFile), { recursive: true });

@@ -90,3 +90,32 @@ test('tools/new-style.mjs 按 plan72.json 取规划序号并写到 --dest', () =
   assert.equal(json.order, order);
   assert.equal(json.category, 'shouhui');
 });
+
+test('--order 不是 1–999 的整数时失败，不建目录', () => {
+  const home = tmp();
+  for (const order of ['abc', '0', '1000', '3.5']) {
+    const r = run(WKA, home, 'new', 'style', 'paper-cut', '--name', '剪纸', '--order', order);
+    assert.notEqual(r.status, 0, `--order ${order}`);
+  }
+  assert.equal(fs.existsSync(path.join(home, 'styles')), false);
+});
+
+test('建在插件外：$schema 指向 GitHub 上的 schema；建在 plugin/skills 下：保持相对路径', () => {
+  const home = tmp();
+  assert.equal(run(WKA, home, 'new', 'style', 'paper-cut', '--name', '剪纸').status, 0);
+  assert.equal(
+    styleJson(path.join(home, 'styles', 'paper-cut')).$schema,
+    'https://raw.githubusercontent.com/wukongnotnull/wukong-animation/main/plugin/engine/schemas/style.schema.json'
+  );
+  const skills = path.join(ROOT, 'plugin/skills');
+  const id = 'zz-schema-test';
+  try {
+    assert.equal(run(WKA, home, 'new', 'style', id, '--name', '测试', '--dest', skills).status, 0);
+    const dir = path.join(skills, id);
+    const schema = styleJson(dir).$schema;
+    assert.equal(schema, '../../engine/schemas/style.schema.json');
+    assert.ok(fs.existsSync(path.resolve(dir, schema)));
+  } finally {
+    fs.rmSync(path.join(skills, id), { recursive: true, force: true });
+  }
+});

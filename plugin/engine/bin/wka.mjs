@@ -44,6 +44,10 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+const STYLE_SCHEMA = path.join(ENGINE_ROOT, 'schemas', 'style.schema.json');
+// 插件外的风格（用户目录等）找不到插件里的 schema，编辑器改用仓库 main 分支上的这份
+const STYLE_SCHEMA_URL = 'https://raw.githubusercontent.com/wukongnotnull/wukong-animation/main/plugin/engine/schemas/style.schema.json';
+
 const CATS = { dongfang: '东方神韵', shouhui: '手绘绘画', pingmian: '平面排版', katong: '卡通漫画', youxi: '游戏数字', dianying: '电影年代', caizhi: '材质 3D', xinxi: '信息叙事', custom: '自定义' };
 
 async function cmdCheck() {
@@ -168,13 +172,16 @@ function cmdBrief(name, { dir = '.' }) {
 function cmdNew(what, id, { name, category = 'custom', order = 101, dest = USER_STYLES_DIR }) {
   if (what !== 'style') fail('wka new 只支持 style（工具包、管线、导出器要在插件仓库里实现）');
   if (!id || !NAME_RE.test(id) || !name || name === true) fail('用法：wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]（id 只用小写字母、数字和连字符）');
+  if (!/^\d+$/.test(String(order)) || Number(order) < 1 || Number(order) > 999) fail(`--order 要是 1–999 的整数，收到 "${order}"`);
   const dir = path.resolve(dest, id);
   if (fs.existsSync(dir)) fail(`${dir} 已存在`);
+  const inPlugin = !path.relative(PLUGIN_ROOT, dir).startsWith('..');
   copyTemplate(path.join(TEMPLATES_DIR, 'style-skill'), dir, {
     ID: id,
     NAME: name,
     CATEGORY: category,
-    ORDER: order,
+    ORDER: Number(order),
+    SCHEMA: inPlugin ? path.relative(dir, STYLE_SCHEMA).split(path.sep).join('/') : STYLE_SCHEMA_URL,
     GLOBAL: id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()),
     ONE_LINE: '（一句话特征）',
     WHEN: '（什么样的片子）',
@@ -451,7 +458,11 @@ async function main() {
     default: {
       // 帮助：文件开头的注释块（第 1 行是 shebang）
       const lines = fs.readFileSync(new URL(import.meta.url), 'utf8').split('\n');
-      log(lines.slice(1, lines.findIndex((l, i) => i > 0 && !l.startsWith('//'))).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+      const help = lines.slice(1, lines.findIndex((l, i) => i > 0 && !l.startsWith('//'))).map((l) => l.replace(/^\/\/ ?/, '')).join('\n');
+      if (cmd === undefined || cmd === 'help' || cmd === '--help') return log(help);
+      // 打错的命令要以非 0 退出，脚本和 CI 才能发现
+      console.error(`✗ 未知命令 "${cmd}"\n\n${help}`);
+      process.exitCode = 1;
     }
   }
 }

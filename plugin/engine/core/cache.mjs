@@ -23,8 +23,9 @@ export function hashParts(parts) {
 }
 
 export class ShotCache {
-  constructor(filmDir) {
-    this.dir = ensureDir(path.join(filmDir, '.cache'));
+  /** dir：缓存目录，缺省为片目录的 .cache/（副版传 .cache/<画幅后缀>/） */
+  constructor(filmDir, dir = path.join(filmDir, '.cache')) {
+    this.dir = ensureDir(dir);
     this.file = path.join(this.dir, 'manifest.json');
     this.data = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, 'utf8')) : { shots: {} };
     // 上次进程被强杀时留下的半成品

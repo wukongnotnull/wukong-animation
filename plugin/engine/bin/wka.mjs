@@ -9,15 +9,15 @@
 //   wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]   新建风格（默认 ~/.wukong-animation/styles/）
 //   wka status [项目目录]             各片制作进度（恢复在制项目）
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
-//   wka qc <片目录> [--proxy]       量化技术质检（QC）
-//   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy]   静帧 + 接触表
-//   wka animatic <片目录> [--proxy]   动态分镜：代表帧按镜头时长排成粗片并配上声轨
-//   wka render <片目录> [--proxy] [--only s01,s03] [--force]   渲染（--proxy 为小样）
+//   wka qc <片目录> [--proxy] [--aspect 9:16]       量化技术质检（QC）
+//   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy] [--aspect 9:16]   静帧 + 接触表
+//   wka animatic <片目录> [--proxy] [--aspect 9:16]   动态分镜：代表帧按镜头时长排成粗片并配上声轨
+//   wka render <片目录> [--proxy] [--only s01,s03] [--force] [--aspect 9:16]   渲染（--proxy 为小样；--aspect 出副版）
 //   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
 //   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理
 //   wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]   音色试听：同一句用几个音色各合成一遍
-//   wka subtitles <片目录> [--force] [--preview]   字幕制作：从人声生成 subtitles.srt；--preview 烧录到小样上审阅
-//   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif]   终版渲染与终混
+//   wka subtitles <片目录> [--force] [--preview] [--aspect 9:16]   字幕制作：从人声生成 subtitles.srt；--preview 烧录到小样上审阅
+//   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif] [--aspect 9:16|all]   终版渲染与终混
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -43,6 +43,8 @@ const fail = (msg) => {
   console.error(`✗ ${msg}`);
   process.exit(1);
 };
+/** --aspect：要处理的画幅（副版），缺省为主版 */
+const aspectOpt = () => (typeof opt('aspect') === 'string' ? opt('aspect') : null);
 
 const STYLE_SCHEMA = path.join(ENGINE_ROOT, 'schemas', 'style.schema.json');
 // 插件外的风格（用户目录等）找不到插件里的 schema，编辑器改用仓库 main 分支上的这份
@@ -397,13 +399,13 @@ async function main() {
             return { shot, t: parseFloat(t) };
           })
         : null;
-      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), log });
+      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), log });
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       return;
     }
     case 'animatic': {
       if (!pos[0]) fail('用法：wka animatic <片目录> [--proxy]');
-      const r = await animatic(pos[0], { proxy: !!opt('proxy'), log });
+      const r = await animatic(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       log(`动态分镜：${r.file}`);
       return;
@@ -411,14 +413,14 @@ async function main() {
     case 'render': {
       if (!pos[0]) fail('用法：wka render <片目录>');
       const proxy = !!opt('proxy');
-      const { video } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), log });
+      const { video, job } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), aspect: aspectOpt(), log });
       if (!proxy) return;
       // 小样配上声轨，放进 review/ 交给用户审阅
       const mix = path.join(path.resolve(pos[0]), '.cache', 'mix.wav');
       const hasMix = fs.existsSync(mix);
       if (!hasMix) log('  ! 没有 .cache/mix.wav，小样不带声音（先运行 wka soundtrack）');
       const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : ['-i', video, '-c', 'copy'];
-      log(`小样：${await writeReview(pos[0], '小样.mp4', [...args, '-movflags', '+faststart'])}`);
+      log(`小样：${await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart'])}`);
       return;
     }
     case 'soundtrack': {

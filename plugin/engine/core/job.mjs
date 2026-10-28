@@ -71,7 +71,7 @@ export function outputSize(film, proxy = false) {
 function createRenderJob(ctx, { proxy = false, log }) {
   const [W0, H0] = ctx.film.size;
   const { W, H, fps } = outputSize(ctx.film, proxy);
-  const workDir = ensureDir(path.join(ctx.filmDir, '.cache', 'work'));
+  const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
   return {
@@ -126,13 +126,13 @@ async function pipelineModule(job) {
 }
 
 /** 渲染所有（或指定）镜头并拼接成一条无声视频，返回其路径。 */
-export async function render(filmDir, { proxy = false, only = null, force = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
+export async function render(filmDir, { proxy = false, only = null, force = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { proxy, log });
-  log(`《${ctx.film.title}》风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
+  log(`《${ctx.film.title}》${ctx.variant.isMain ? '' : `${ctx.variant.aspect} 副版 · `}风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
   for (const r of job.fonts.report) log(`  字体 ${r}`);
 
-  const cache = new ShotCache(ctx.filmDir);
+  const cache = new ShotCache(ctx.filmDir, ctx.variant.cacheDir);
   const keyOf = (s) => (proxy ? `${s.id}-proxy` : s.id);
   const todo = [];
   const segments = [];
@@ -160,7 +160,7 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');
   fs.writeFileSync(list, segments.map((s) => `file '${s}'`).join('\n'));
-  const video = path.join(ctx.filmDir, '.cache', proxy ? 'video-proxy.mp4' : 'video.mp4');
+  const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
   const shotSegments = ctx.shots.map((s, i) => ({ id: s.id, start: s.start, duration: s.duration, file: segments[i] }));
@@ -179,8 +179,8 @@ export async function writeReview(filmDir, file, args) {
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
  * contactSheet: 把所有静帧拼成一张接触表，方便一次看完
  */
-export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
+export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { proxy, log });
   const mod = await pipelineModule(job);
   let points = at;
@@ -193,9 +193,9 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
       }
     }
   }
-  const outDir = ensureDir(path.join(ctx.filmDir, 'stills'));
+  const outDir = ensureDir(ctx.variant.stillsDir);
   const files = await mod.renderStills(job, points, outDir);
-  log(`  静帧 ${files.length} 张 → stills/`);
+  log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {
     const cols = Math.min(files.length, frames > 1 ? frames : 3);
@@ -229,11 +229,11 @@ const ANIMATIC_FPS = 12;
  * 动态分镜：每镜一张代表帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
  * 交给用户审的两样都放进 review/：动态分镜.mp4 和接触表.jpg（stills/sheet.jpg 照旧生成）。
  */
-export async function animatic(filmDir, { proxy = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
-  const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, log });
+export async function animatic(filmDir, { proxy = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, aspect, log });
   const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
-  const contactSheet = sheet ? path.join(reviewDir, '接触表.jpg') : null;
+  const contactSheet = sheet ? path.join(reviewDir, ctx.variant.review('接触表.jpg')) : null;
   if (sheet) fs.copyFileSync(sheet, contactSheet);
   const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String(ctx.shots[i].duration), '-i', f]);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
@@ -241,7 +241,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
   if (hasAudio) inputs.push('-i', audio);
   else log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
   // 标注 PNG 排在图片和声轨之后，声轨的输入序号（files.length）不变
-  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.filmDir, '.cache', 'work'), log, what: '动态分镜' });
+  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.variant.cacheDir, 'work'), log, what: '动态分镜' });
   const labelBase = files.length + (hasAudio ? 1 : 0);
   if (labels) inputs.push(...labels.flatMap((f) => ['-i', f]));
   const frame = (i) => (labels
@@ -249,7 +249,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
     : `[${i}:v]format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);
   const filter = files.map((_, i) => frame(i)).join(';') + `;${files.map((_, i) => `[v${i}]`).join('')}concat=n=${files.length}:v=1:a=0[v]`;
   const audioArgs = hasAudio ? ['-map', `${files.length}:a`, '-c:a', 'aac', '-b:a', '192k'] : [];
-  const out = path.join(reviewDir, '动态分镜.mp4');
+  const out = path.join(reviewDir, ctx.variant.review('动态分镜.mp4'));
   await run([...inputs, '-filter_complex', filter, '-map', '[v]', ...audioArgs, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', out]);
   log(`  动态分镜 → ${path.relative(ctx.filmDir, out)}（${files.length} 镜 · ${ctx.totalDuration.toFixed(1)}s${hasAudio ? ' · 含声轨' : ''}）`);
   return { file: out, contactSheet, hasAudio };

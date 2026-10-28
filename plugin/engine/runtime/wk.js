@@ -1,7 +1,7 @@
 /* wukong-animation 页面运行时：命名空间、镜头注册、逐帧调度。
  * 由浏览器类管线最先注入。所有工具包都挂在 window.wk 下。
  *
- * 镜头文件写法（详见 skills/director/SHOT.md）：
+ * 镜头文件写法（详见 skills/director/specs/SHOT.md）：
  *   wk.shot({
  *     setup(s)            { return { ...只依赖种子的预计算... } },   // 可选，每镜只跑一次
  *     render(ctx, t, s)   { ...只依赖 t 和 s 画出这一帧... }          // 必须是 t 的纯函数

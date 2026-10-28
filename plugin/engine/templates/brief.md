@@ -1,4 +1,4 @@
-<!-- 写法见 skills/director/BRIEF.md -->
+<!-- 写法见 skills/director/specs/BRIEF.md -->
 # 《<片名>》制作简报
 
 ## 一、目的与受众

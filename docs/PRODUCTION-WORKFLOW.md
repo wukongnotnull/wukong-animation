@@ -56,10 +56,10 @@
 | # | 工序 | 概要 | 交付物 | 审片节点 |
 |---|---|---|---|---|
 | 1 | 制作环境、工程初始化、恢复在制项目 | • `wka check` 检查 Node、ffmpeg、Chromium、git、字体工具、TTS 和 pyJianYingDraft，缺依赖时运行 `/wukong-animation:setup`<br>• `wka init-project`：工程目录还没纳入版本管理时执行 `git init`、写入 `.gitignore` 并做初始存档<br>• `wka status` 列出在制项目，向客户汇报推进到第几道、下一步是什么，用选择卡片确认恢复哪支片还是新建 | 可用的制作环境、纳入 git 的工程目录 | — |
-| 2 | 制作简报（Brief）确认 | • 按决策树分轮追问客户，每题给推荐答案，客户答「是」即采纳；不用选择卡片<br>• 第一轮就定片名，定下即 `wka brief <片名>` 建占位片目录<br>• 各项怎么填、推荐答案见 `director/BRIEF.md`<br>• 客户确认达成共识后写 `brief.md` 交客户签批 | 占位片目录 `films/<片名>/`、制作简报 `brief.md` | ✅ ① 制作简报 `--step 2` |
+| 2 | 制作简报（Brief）确认 | • 按决策树分轮追问客户，每题给推荐答案，客户答「是」即采纳；不用选择卡片<br>• 第一轮就定片名，定下即 `wka brief <片名>` 建占位片目录<br>• 各项怎么填、推荐答案见 `director/specs/BRIEF.md`<br>• 客户确认达成共识后写 `brief.md` 交客户签批 | 占位片目录 `films/<片名>/`、制作简报 `brief.md` | ✅ ① 制作简报 `--step 2` |
 | 3 | 美术定调（Look Development） | • 读风格库 `catalog.json`，只用可直接开拍（`available`）的风格；不足 3 种时用同一风格的不同处理方式凑足<br>• 提报前先读候选风格的 `STYLE.md`，方案描述不违反禁忌清单<br>• 用选择卡片提报 3 套视觉方案，每套附一句提案理由，另有「换一批」；有参考样图就附上<br>• 客户选定后 `wka init <片名> --style <id> --aspect <画幅>` 在占位片目录上补齐工程，按 `brief.md` 把字幕方式写进 `film.json`<br>• 通读该风格的美术规格书 `STYLE.md` 和技术规格书 `TECH.md` | 片目录 `films/<片名>/`（`film.json`、`story.md`、`storyboard.md`、`audio/build.mjs`、`shots/` 的空白模板） | ✅ ② 美术定调 `--step 3` |
-| 4 | 文学脚本撰写 | • 在 `wka init` 带出的空白稿上按 `director/STORY.md` 填写<br>• 导演按自查清单过一遍，再把完整原文交客户，就基调、段落节奏、文案、人声时长四点征询意见<br>• 返修一次，版本号加 1 | `story.md`（v1、v2……） | ✅ ③ 文学脚本 `--step 4` |
-| 5 | 分镜脚本（Storyboard） | • 按文学脚本的段落拆镜头，默认单镜 3–8 秒、动作完成后至少停 1 秒（风格另有规定的以风格为准）<br>• 按 `director/STORYBOARD.md` 写分镜表和声音铺底；取决于风格的栏到风格 `STYLE.md` 查取值<br>• 附一行景别序列；景别同时写进 `film.json` 的 `shots[].size`，`wka signoff --step 5` 不合规会拒绝<br>• 同时写好给引擎渲染的 `film.json`，与分镜表逐镜对应 | `storyboard.md`（给客户审）+ `film.json`（给引擎） | ✅ ④ 分镜 `--step 5` |
+| 4 | 文学脚本撰写 | • 在 `wka init` 带出的空白稿上按 `director/specs/STORY.md` 填写<br>• 导演按自查清单过一遍，再把完整原文交客户，就基调、段落节奏、文案、人声时长四点征询意见<br>• 返修一次，版本号加 1 | `story.md`（v1、v2……） | ✅ ③ 文学脚本 `--step 4` |
+| 5 | 分镜脚本（Storyboard） | • 按文学脚本的段落拆镜头，默认单镜 3–8 秒、动作完成后至少停 1 秒（风格另有规定的以风格为准）<br>• 按 `director/specs/STORYBOARD.md` 写分镜表和声音铺底；取决于风格的栏到风格 `STYLE.md` 查取值<br>• 附一行景别序列；景别同时写进 `film.json` 的 `shots[].size`，`wka signoff --step 5` 不合规会拒绝<br>• 同时写好给引擎渲染的 `film.json`，与分镜表逐镜对应 | `storyboard.md`（给客户审）+ `film.json`（给引擎） | ✅ ④ 分镜 `--step 5` |
 | 6 | 人声素材来源 | • 用选择卡片请客户在三种方式里选定：<br>&emsp;◦ 自供录音：放进 `audio/voice/`，在 `voices[].file` 逐条挂接<br>&emsp;◦ AI 配音：用 edge-tts / kokoro 合成，没装 TTS 时可先按字数预估时长；选定前用 `wka audition` 试听 2–3 个音色<br>&emsp;◦ 本片不用人声<br>• 同期声是现场原声，AI 配不出来，必须由客户提供录音<br>• 文学脚本写了无人声，也要停下请客户确认 | `film.json` 的 `audio.voice_source`（`user` / `ai` / `none`），客户自供的录音文件 | ✅ ⑤ 人声素材来源 `--step 6` |
 | 7 | 声轨制作（声音先行 / Pre-scoring） | • 用 `audio/build.mjs` 合成配乐、环境声、音效，各出一个文件<br>• 按第 6 道定的来源接入人声，逐条标类型（画外音 / 对白 / OS / 同期）<br>• `wka soundtrack` 实测每条人声的入出点写入同步点，标出超出镜头时长或互相重叠的人声，据此回调镜头时长<br>• 审听副本 `review/声轨.m4a` 交客户审听人声、配乐、音效和整体节奏<br>• 此后画面一律按同步点对位，不写死时间码 | `bgm.wav` / `ambience.wav` / `sfx.wav`、混音声轨 `.cache/mix.wav`、审听副本 `review/声轨.m4a`、`film.json` 的 `cues` 与回调后的镜头时长 | ✅ ⑥ 声轨审听 `--step 7` |
 | 8 | 风格帧与动态分镜（Style Frames & Animatic） | • 每镜先写最少能看出构图的代码<br>• `wka animatic` 每镜出一张关键帧拼成接触表，再按镜头时长排成动态分镜、配上第 7 道的声轨<br>• 导演先看接触表，明显问题先改<br>• 两样一起交客户：接触表看构图与视觉效果，动态分镜看节奏与声画对位 | `review/接触表.jpg`、`review/动态分镜.mp4`、每镜初版 `shots/sNN.js` | ✅ ⑦ 风格帧与动态分镜 `--step 8` |
@@ -91,13 +91,13 @@
 
 第一轮就问片名（导演按故事拟一个工作片名作推荐答案），片名定下即 `wka brief <片名>` 建占位片目录 `films/<片名>/` 和简报空白稿 `brief.md`。客户已经说清的项不再问。以客户的选择为准：选了故事里还没有的人声（比如选了对白，故事里却没有说话的角色），简报里说明第 4 道会补出说话的角色和人声文案。
 
-**简报各项怎么填**：见 [`plugin/skills/director/BRIEF.md`](../plugin/skills/director/BRIEF.md)，包括各项的推荐答案（即默认规格）、「（推断）」标注、字幕方式与交付形式的取值。模板 `plugin/engine/templates/brief.md`。
+**简报各项怎么填**：见 [`plugin/skills/director/specs/BRIEF.md`](../plugin/skills/director/specs/BRIEF.md)，包括各项的推荐答案（即默认规格）、「（推断）」标注、字幕方式与交付形式的取值。模板 `plugin/engine/templates/brief.md`。
 
 **签批 ①**：写好 `brief.md` 后按审片节点三步提交（可点击路径 + 原文 → 审什么 → 签批卡片），签批后 `wka signoff films/<片名> "<结论>" --step 2`。要返修时可选的方面：目的与受众 / 内容与基调 / 制作规格 / 交付。第 3 道起各工序以签批过的 `brief.md` 为制作规格的依据。
 
 ### 第 4 道工序：文学脚本撰写
 
-**怎么写**：见 [`plugin/skills/director/STORY.md`](../plugin/skills/director/STORY.md)：文学脚本是什么、不是什么，输入，逐部分写法，示例，签批前自查清单。
+**怎么写**：见 [`plugin/skills/director/specs/STORY.md`](../plugin/skills/director/specs/STORY.md)：文学脚本是什么、不是什么，输入，逐部分写法，示例，签批前自查清单。
 
 **产出**：`films/<片名>/story.md`。`wka init` 建工程时已经从模板 `plugin/engine/templates/film/story.md` 带出空白稿，在上面填写。
 
@@ -120,7 +120,7 @@ wka signoff films/寒江 "文学脚本 v2 签批：去掉 VO，改为古琴 + �
 
 ### 第 5 道工序：分镜脚本
 
-按 [`plugin/skills/director/STORYBOARD.md`](../plugin/skills/director/STORYBOARD.md) 写：表头、逐镜各栏、声音铺底，以及取决于风格的栏到 `STYLE.md` 哪一节查。模板 `plugin/engine/templates/film/storyboard.md`。`storyboard.md` 给客户审阅，`film.json` 给引擎渲染，两者逐镜对应。
+按 [`plugin/skills/director/specs/STORYBOARD.md`](../plugin/skills/director/specs/STORYBOARD.md) 写：表头、逐镜各栏、声音铺底，以及取决于风格的栏到 `STYLE.md` 哪一节查。模板 `plugin/engine/templates/film/storyboard.md`。`storyboard.md` 给客户审阅，`film.json` 给引擎渲染，两者逐镜对应。
 
 ### 第 6 道工序：人声素材来源
 
@@ -149,7 +149,7 @@ wka signoff films/寒江 "文学脚本 v2 签批：去掉 VO，改为古琴 + �
 
 ### 第 9 道工序：镜头制作
 
-在第 8 道写下的镜头代码上继续完成：`render(ctx, t, s)` 必须是关于时间 `t` 的纯函数，保证任意帧可确定性重渲；尺寸一律乘以单位系数 `s.u`；随机数使用固定种子；优先调用风格资产库的现成组件。屏幕文字和某条人声说的是同一句话时（如题字跟着旁白），从这条人声的入点开始、逐字对到人声里念到这个字的时刻，不用固定字速：给这条人声设 `"chars": true`，`wka soundtrack` 写出逐字同步点，镜头里用 `s.cueChars('名')` 取，做法见 `plugin/skills/director/SHOT.md`「屏幕文字与人声对位」。
+在第 8 道写下的镜头代码上继续完成：`render(ctx, t, s)` 必须是关于时间 `t` 的纯函数，保证任意帧可确定性重渲；尺寸一律乘以单位系数 `s.u`；随机数使用固定种子；优先调用风格资产库的现成组件。屏幕文字和某条人声说的是同一句话时（如题字跟着旁白），从这条人声的入点开始、逐字对到人声里念到这个字的时刻，不用固定字速：给这条人声设 `"chars": true`，`wka soundtrack` 写出逐字同步点，镜头里用 `s.cueChars('名')` 取，做法见 `plugin/skills/director/specs/SHOT.md`「屏幕文字与人声对位」。
 
 ### 第 10 道工序：小样渲染与技术质检
 
@@ -170,7 +170,7 @@ wka signoff films/寒江 "文学脚本 v2 签批：去掉 VO，改为古琴 + �
 wka signoff films/寒江 "本片无人声，不出字幕" --step 11
 ```
 
-**生成**：`film.json` 写好 `subtitles`（取值见 [`director/BRIEF.md`](../plugin/skills/director/BRIEF.md) 字幕方式），然后 `wka subtitles <片目录>`：
+**生成**：`film.json` 写好 `subtitles`（取值见 [`director/specs/BRIEF.md`](../plugin/skills/director/specs/BRIEF.md) 字幕方式），然后 `wka subtitles <片目录>`：
 
 | 规则 | 说明 |
 |---|---|

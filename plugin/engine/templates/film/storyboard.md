@@ -1,4 +1,4 @@
-<!-- 写法见 skills/director/STORYBOARD.md -->
+<!-- 写法见 skills/director/specs/STORYBOARD.md -->
 # 《片名》分镜
 
 总长 ?s · 16:9 · 1920×1080 @30fps · 风格 <id> · 种子 <seed> · 文学脚本 v1

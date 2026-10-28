@@ -218,7 +218,7 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
 const ANIMATIC_FPS = 12;
 
 /**
- * 动态分镜：每镜一张关键帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
+ * 动态分镜：每镜一张代表帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
  * 交给用户审的两样都放进 review/：动态分镜.mp4 和接触表.jpg（stills/sheet.jpg 照旧生成）。
  */
 export async function animatic(filmDir, { proxy = false, log = console.log } = {}) {

@@ -2,7 +2,7 @@
 
 > 镜头文件是画面的代码，引擎逐帧调用它出画。
 
-- **工序**：第 8 道写关键帧，第 9 道完成镜头
+- **工序**：第 8 道写到能出代表帧，第 9 道完成镜头
 - **模板**：`engine/templates/film/shots/s01.js`（remotion 管线用 `s01.tsx`），`wka init` 按风格带出
 - **流程**：见 `../SKILL.md` 第 8、9 道
 - **示例**：各风格的示范片，如 `ink-wash/examples/hanjiang/shots/`

@@ -32,6 +32,7 @@ test('14 steps: subtitles is step 11, the JianYing draft delivery is the last on
   assert.equal(PRODUCTION_STEPS[11], '字幕制作');
   assert.equal(PRODUCTION_STEPS[12], '终版渲染与终混');
   assert.equal(PRODUCTION_STEPS[13], '终检与交付');
+  assert.equal(PRODUCTION_STEPS[4], '剧本撰写');
   assert.equal(PRODUCTION_STEPS[14], '剪映草稿交付');
 });
 
@@ -40,6 +41,7 @@ test('11 review gates: ① brief, ⑨ subtitles, ⑩ final approval, ⑪ JianYin
   assert.equal(REVIEW_GATES[1], undefined);
   assert.equal(REVIEW_GATES[2], '①制作简报');
   assert.equal(REVIEW_GATES[3], '②美术定调');
+  assert.equal(REVIEW_GATES[4], '③剧本');
   assert.equal(REVIEW_GATES[10], '⑧小样');
   assert.equal(REVIEW_GATES[11], '⑨字幕');
   assert.equal(REVIEW_GATES[12], undefined);
@@ -77,7 +79,7 @@ test('migrateProgress relabels the gates of a flow 2 file without moving steps',
   assert.equal(state.step, 4);
   assert.deepEqual(state.history.map((h) => [h.step, h.gate, h.note]), [
     [3, '②美术定调', '选定水墨'],
-    [4, '③文学脚本', 'v2 签批'],
+    [4, '③剧本', 'v2 签批'],
   ]);
   assert.equal(flow2.history[0].gate, '①美术定调', '不改入参');
 });

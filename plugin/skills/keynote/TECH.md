@@ -82,7 +82,7 @@ export default function S02({ dur, s }: ShotProps) {
 
 ### 形态变化（`MorphBox.tsx`）
 
-- `<MorphBox from to t outgoing={(w,h)=>…} incoming={(w,h)=>…}>` —— 盒子移动缩放，旧内容在 t 0.25–0.75 溶解成新内容。
+- `<MorphBox from to t outgoing={(w,h)=>…} incoming={(w,h)=>…}>` —— 盒子移动缩放，旧内容在 t 0.25–0.75 叠化成新内容。
 
 ### 调试（`Guides.tsx`）
 

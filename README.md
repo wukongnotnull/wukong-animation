@@ -158,5 +158,5 @@ Claude 会带你走一遍完整的制作流程，在下面 12 个节点停下来
 想了解实现原理或参与贡献：
 
 - 架构说明：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 完整制作流程（14 道工序）：[plugin/skills/director/SKILL.md](plugin/skills/director/SKILL.md)
+- 完整制作流程（15 道工序）：[plugin/skills/director/SKILL.md](plugin/skills/director/SKILL.md)
 - 贡献新风格：[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)

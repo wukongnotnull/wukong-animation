@@ -39,11 +39,15 @@ function compare(a, b) {
   }
   return { mean: s / a.length, changed: n / a.length };
 }
-function stills(film, points) {
-  fs.rmSync(path.join(film, 'stills'), { recursive: true, force: true });
-  const r = spawnSync(process.execPath, [WK, 'still', film, '--proxy', '--at', points.map((p) => `${p.shot}:${p.t}`).join(',')], { encoding: 'utf8' });
+/** 渲染静帧；aspect 为副版画幅时出副版（静帧在 stills/<后缀>/）。 */
+function stills(film, points, aspect = null) {
+  const suffix = aspect ? aspect.replace(':', 'x') : null;
+  const dir = suffix ? path.join(film, 'stills', suffix) : path.join(film, 'stills');
+  fs.rmSync(dir, { recursive: true, force: true });
+  const args = [WK, 'still', film, '--proxy', '--at', points.map((p) => `${p.shot}:${p.t}`).join(','), ...(aspect ? ['--aspect', aspect] : [])];
+  const r = spawnSync(process.execPath, args, { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(r.stderr || r.stdout);
-  return points.map((p) => path.join(film, 'stills', `${p.shot}-${p.t.toFixed(2)}s.png`));
+  return points.map((p) => path.join(dir, `${p.shot}-${p.t.toFixed(2)}s.png`));
 }
 
 let fail = 0;
@@ -61,38 +65,42 @@ for (const id of fs.readdirSync(skills)) {
     const fj = JSON.parse(fs.readFileSync(path.join(film, 'film.json'), 'utf8'));
     const pick = [fj.shots[0], fj.shots[Math.floor(fj.shots.length / 2)], fj.shots[fj.shots.length - 1]];
     const points = pick.map((s) => ({ shot: s.id, t: +(s.duration * 0.7).toFixed(2) }));
-    const first = stills(film, points).map(raw);
-    const second = stills(film, points).map(raw);
-    const label = `${id}/${name}`;
-    first.forEach((a, i) => {
-      const { mean, changed } = compare(a, second[i]);
-      if (mean > DET_MEAN_MAX || changed > 0) {
-        console.log(`  ✗ ${label} ${points[i].shot}@${points[i].t}s 两次渲染不一致（平均差 ${mean.toFixed(4)} · 变化像素 ${(changed * 100).toFixed(3)}%）`);
-        fail++;
-      }
-    });
-    const dir = path.join(BASE, id, name);
-    fs.mkdirSync(dir, { recursive: true });
-    first.forEach((a, i) => {
-      const f = path.join(dir, `${points[i].shot}.gray`);
-      if (!update && !fs.existsSync(f) && IS_CI) {
-        // CI 上缺基准图不能"顺手写一份就算通过"，那样比对永远不会失败
-        console.log(`  ✗ ${label} ${points[i].shot} 缺少 ${process.platform} 基准图：${path.relative(ROOT, f)}（手动运行 smoke workflow 并勾选 update，下载 artifact 后提交）`);
-        fail++;
-        return;
-      }
-      if (update || !fs.existsSync(f)) {
-        fs.writeFileSync(f, a);
-        console.log(`  · ${label} ${points[i].shot} 已写入基准（${process.platform}）`);
-        return;
-      }
-      const { mean, changed } = compare(a, fs.readFileSync(f));
-      const ok = mean <= MEAN_MAX && changed <= CHANGED_MAX;
-      if (!ok) fail++;
-      const detail = `平均差 ${mean.toFixed(2)} · 变化像素 ${(changed * 100).toFixed(2)}%`;
-      const limit = `（上限 ${MEAN_MAX} · ${(CHANGED_MAX * 100).toFixed(1)}%）`;
-      console.log(`  ${ok ? '✓' : '✗'} ${label} ${points[i].shot}@${points[i].t}s ${detail}${ok ? '' : ' ' + limit}`);
-    });
+    // 主版，加上 film.json 的 variants 里的每个副版（基准图目录 <片名>-<后缀>）
+    for (const aspect of [null, ...Object.keys(fj.variants || {})]) {
+      const first = stills(film, points, aspect).map(raw);
+      const second = stills(film, points, aspect).map(raw);
+      const suffix = aspect ? `-${aspect.replace(':', 'x')}` : '';
+      const label = `${id}/${name}${suffix}`;
+      first.forEach((a, i) => {
+        const { mean, changed } = compare(a, second[i]);
+        if (mean > DET_MEAN_MAX || changed > 0) {
+          console.log(`  ✗ ${label} ${points[i].shot}@${points[i].t}s 两次渲染不一致（平均差 ${mean.toFixed(4)} · 变化像素 ${(changed * 100).toFixed(3)}%）`);
+          fail++;
+        }
+      });
+      const dir = path.join(BASE, id, `${name}${suffix}`);
+      fs.mkdirSync(dir, { recursive: true });
+      first.forEach((a, i) => {
+        const f = path.join(dir, `${points[i].shot}.gray`);
+        if (!update && !fs.existsSync(f) && IS_CI) {
+          // CI 上缺基准图不能"顺手写一份就算通过"，那样比对永远不会失败
+          console.log(`  ✗ ${label} ${points[i].shot} 缺少 ${process.platform} 基准图：${path.relative(ROOT, f)}（手动运行 smoke workflow 并勾选 update，下载 artifact 后提交）`);
+          fail++;
+          return;
+        }
+        if (update || !fs.existsSync(f)) {
+          fs.writeFileSync(f, a);
+          console.log(`  · ${label} ${points[i].shot} 已写入基准（${process.platform}）`);
+          return;
+        }
+        const { mean, changed } = compare(a, fs.readFileSync(f));
+        const ok = mean <= MEAN_MAX && changed <= CHANGED_MAX;
+        if (!ok) fail++;
+        const detail = `平均差 ${mean.toFixed(2)} · 变化像素 ${(changed * 100).toFixed(2)}%`;
+        const limit = `（上限 ${MEAN_MAX} · ${(CHANGED_MAX * 100).toFixed(1)}%）`;
+        console.log(`  ${ok ? '✓' : '✗'} ${label} ${points[i].shot}@${points[i].t}s ${detail}${ok ? '' : ' ' + limit}`);
+      });
+    }
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }

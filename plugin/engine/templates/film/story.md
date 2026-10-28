@@ -1,4 +1,4 @@
-<!-- 写法见 skills/director/STORY.md -->
+<!-- 写法见 skills/director/specs/STORY.md -->
 # 片名
 
 | 片长 | 画幅 | 风格 | 文学脚本版本 |

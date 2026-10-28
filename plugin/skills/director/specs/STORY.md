@@ -5,7 +5,7 @@
 - **工序**：第 4 道 · 审片节点 ③ 文学脚本
 - **模板**：`engine/templates/film/story.md`，第 3 道 `wka init` 建工程时带出空白稿 `films/<片名>/story.md`
 - **输入**：签批过的 `brief.md`（核心信息、基调、片长、画幅、有无人声、有无配乐）；选定风格的 `STYLE.md`（基调、运动语言、声音、禁忌清单）
-- **流程**：怎么提交、征询哪几点见 `SKILL.md` 第 4 道
+- **流程**：怎么提交、征询哪几点见 `../SKILL.md` 第 4 道
 - **示例**：`ink-wash/examples/hanjiang/story.md`
 
 ## 一、不在这里写的

@@ -81,10 +81,10 @@ for (const t of TEMPLATES) {
   const file = path.join(PLUGIN, t);
   const src = read(file);
   const base = path.basename(t);
-  const spec = src.split('\n')[0].match(/^<!-- 写法见 (skills\/director\/[\w-]+\.md) -->$/)?.[1];
+  const spec = src.split('\n')[0].match(/^<!-- 写法见 (skills\/director\/specs\/[\w-]+\.md) -->$/)?.[1];
 
   test(`${t} 首行注释指向存在的规范文件`, () => {
-    assert.ok(spec, `${t} 第一行应是 <!-- 写法见 skills/director/X.md -->`);
+    assert.ok(spec, `${t} 第一行应是 <!-- 写法见 skills/director/specs/X.md -->`);
     assert.ok(fs.existsSync(path.join(PLUGIN, spec)), `${spec} 不存在`);
   });
 

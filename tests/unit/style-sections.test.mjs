@@ -1,4 +1,4 @@
-// 风格规格书 STYLE.md 的一级章节固定：分镜表各栏到哪一节查取值，所有风格都一样。见 director/STORYBOARD.md。
+// 风格规格书 STYLE.md 的一级章节固定：分镜表各栏到哪一节查取值，所有风格都一样。见 director/specs/STORYBOARD.md。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

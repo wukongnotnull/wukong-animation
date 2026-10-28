@@ -4,7 +4,7 @@
 
 - **工序**：第 2 道 · 审片节点 ① 制作简报
 - **模板**：`engine/templates/brief.md`，由 `wka brief <片名>` 建出空白稿 `films/<片名>/brief.md`
-- **流程**：怎么追问、怎么提交见 `SKILL.md` 第 2 道
+- **流程**：怎么追问、怎么提交见 `../SKILL.md` 第 2 道
 - **示例**：`ink-wash/examples/chunjiang/brief.md`
 
 ## 一、通用规则

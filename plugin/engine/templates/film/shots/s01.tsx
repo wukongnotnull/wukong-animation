@@ -1,4 +1,4 @@
-// s01 —— （本镜用到的技法名，取自 STYLE.md「5. 技法」）。remotion 管线的镜头写法见 director/SHOT.md；风格积木从 '@wka/style' 引用（见风格的 TECH.md）
+// s01 —— （本镜用到的技法名，取自 STYLE.md「5. 技法」）。remotion 管线的镜头写法见 director/specs/SHOT.md；风格积木从 '@wka/style' 引用（见风格的 TECH.md）
 import React from "react";
 import { AbsoluteFill } from "remotion";
 import type { ShotProps } from "@wka/style";

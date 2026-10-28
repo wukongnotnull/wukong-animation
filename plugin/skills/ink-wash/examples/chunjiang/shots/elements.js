@@ -112,7 +112,7 @@
   };
 
   /** 一棵树：干、两三根枝、树冠（碎点或晕染）。sway 让树冠左右摇。 */
-  cj.tree = function (ctx, { x, y, h, lean = 0.1, progress = 1, u = 1, seed = 1, tone = P.zhong, crown = 'dots', crownTone = P.dan, sway = 0 }) {
+  cj.tree = function (ctx, { x, y, h, lean = 0.1, progress = 1, u = 1, seed = 1, tone = P.zhong, crown = 'dots', crownTone = P.dan, sway = 0, density = 1 }) {
     const r = wk.rng(seed);
     const top = [x + lean * h, y - h];
     const mid = [x + lean * h * 0.4 + r.range(-0.04, 0.04) * h, y - h * 0.5];
@@ -131,7 +131,7 @@
     const cx = top[0] + sway;
     const cy = top[1] + h * 0.08;
     if (crown === 'dots') {
-      cj.dots(ctx, { cx, cy, rx: h * 0.42, ry: h * 0.28, n: Math.round((h / u) * 0.9), size: (h * 0.02) / u, progress: kc, seed: seed * 13, u, color: crownTone, alpha: 0.75 });
+      cj.dots(ctx, { cx, cy, rx: h * 0.42, ry: h * 0.28, n: Math.round((h / u) * 0.9 * density), size: (h * 0.02) / u, progress: kc, seed: seed * 13, u, color: crownTone, alpha: 0.75 });
     } else {
       washIn(ctx, kc, blob(cx, cy, h * 0.4, h * 0.26, seed * 17), { color: crownTone, alpha: 0.45, blur: 6 * u, edge: 0.3, edgeWidth: 2 * u });
     }
@@ -145,9 +145,11 @@
     const sh = y - h * 0.8;
     const hw = h * 0.11;
     if (k1 > 0) {
-      washIn(ctx, k1, [[x - hw * 0.7, sh], [x + hw * 0.7, sh], [x + hw * 1.3, y], [x - hw * 1.2, y]], { color: P.dan, alpha: 0.5, blur: 1.5 * u, edge: 0.4, edgeWidth: 1.5 * u });
-      C.brush(ctx, [[x - hw * 0.6, sh], [x - hw * 0.95, y - h * 0.4], [x - hw * 1.25, y]], { width: h * 0.03, color: P.nong, alpha: 0.9, progress: k1, dry: 0.4, taper: [0.1, 0.4], bristles: 8, seed: seed * 3 });
-      C.brush(ctx, [[x + hw * 0.6, sh], [x + hw * 0.9, y - h * 0.45], [x + hw * 1.3, y]], { width: h * 0.025, color: P.nong, alpha: 0.9, progress: k1, dry: 0.45, taper: [0.1, 0.4], bristles: 8, seed: seed * 3 + 1 });
+      const robe = [[x - hw * 0.7, sh], [x - hw * 0.62, y - h * 0.5], [x - hw * 0.95, y - h * 0.2], [x - hw * 1.35, y], [x - hw * 0.5, y - h * 0.015], [x + hw * 0.2, y + h * 0.01], [x + hw * 1.25, y - h * 0.02], [x + hw * 0.9, y - h * 0.25], [x + hw * 0.6, y - h * 0.52], [x + hw * 0.7, sh]];
+      washIn(ctx, k1, robe, { color: P.dan, alpha: 0.42, blur: 2.5 * u, edge: 0.45, edgeWidth: 1.5 * u, fade: [y - h * 0.5, y + h * 0.05] });
+      C.brush(ctx, [[x - hw * 0.6, sh], [x - hw * 0.55, y - h * 0.5], [x - hw * 0.9, y - h * 0.22], [x - hw * 1.35, y]], { width: h * 0.028, color: P.nong, alpha: 0.9, progress: k1, dry: 0.5, pressure: (q) => 0.6 + 0.7 * Math.sin(q * Math.PI), taper: [0.1, 0.5], bristles: 9, seed: seed * 3 });
+      C.brush(ctx, [[x + hw * 0.6, sh], [x + hw * 0.5, y - h * 0.5], [x + hw * 0.85, y - h * 0.26], [x + hw * 1.25, y - h * 0.02]], { width: h * 0.022, color: P.nong, alpha: 0.85, progress: k1, dry: 0.55, pressure: (q) => 0.5 + 0.8 * Math.sin(q * Math.PI), taper: [0.1, 0.5], bristles: 9, seed: seed * 3 + 1 });
+      C.brush(ctx, [[x - hw * 0.6, y - h * 0.52], [x, y - h * 0.5], [x + hw * 0.55, y - h * 0.53]], { width: h * 0.014, color: P.zhong, alpha: 0.8, progress: k1, dry: 0.4, taper: [0.2, 0.2], bristles: 6, seed: seed * 3 + 2 });
     }
     if (k2 > 0) {
       const sd = back ? -1 : 1;
@@ -231,23 +233,34 @@
     const frame = [[[x0, y0], [x1, y0]], [[x0, y0], [x0, y1]], [[x0, y1], [x1, y1]]];
     frame.forEach((pts, i) => {
       const k = wk.stagger(wk.seg(progress, 0, 0.5), i, frame.length, 0, 1, 0.3);
-      if (k > 0) C.brush(ctx, pts, { width: 9 * u, color: P.zhong, alpha: 0.85, progress: k, dry: 0.5, taper: [0.05, 0.15], bristles: 10, seed: seed * 7 + i });
+      if (k > 0) C.brush(ctx, pts, { width: (10 - i * 2) * u, color: P.zhong, alpha: 0.85, progress: k, dry: 0.65, pressure: (q) => 0.6 + 0.6 * Math.abs(Math.sin(q * 5 + i)), taper: [0.05, 0.3], bristles: 12, seed: seed * 7 + i });
     });
     const yb = y0 + (y1 - y0) * roll;
     const n = Math.floor((yb - y0) / (9 * u));
     for (let i = 1; i <= n; i++) {
       const k = wk.stagger(wk.seg(progress, 0.3, 0.9), i - 1, n, 0, 1, 0.5);
-      if (k > 0) C.brush(ctx, [[x0 + 8 * u, y0 + i * 9 * u], [x1 - 4 * u, y0 + i * 9 * u]], { width: 1.6 * u, color: i % 3 ? P.qing : P.dan, alpha: 0.8, progress: k, dry: 0.4, taper: [0.05, 0.1], bristles: 4, seed: seed * 31 + i });
+      const yy = y0 + i * 9 * u;
+      const xa = x0 + (8 + ((i * 37) % 23)) * u;
+      if (k > 0) C.brush(ctx, [[xa, yy], [(xa + x1) / 2, yy + 3 * u], [x1 - 4 * u, yy]], { width: 1.6 * u, color: i % 3 ? P.qing : P.dan, alpha: 0.8, progress: k, dry: 0.4, taper: [0.05, 0.1], bristles: 4, seed: seed * 31 + i });
     }
+    [0.38, 0.7].forEach((f, i) => {
+      const k = wk.seg(progress, 0.6 + i * 0.1, 0.9 + i * 0.05);
+      const xx = x0 + (x1 - x0) * f;
+      if (k > 0) C.brush(ctx, [[xx, yb + 10 * u], [xx + 2 * u, y1]], { width: 4 * u, color: P.dan, alpha: 0.75, progress: k, dry: 0.6, taper: [0.1, 0.2], bristles: 6, seed: seed * 41 + i });
+    });
     const kr = wk.seg(progress, 0.8, 1);
     if (kr > 0) C.brush(ctx, [[x0 + 4 * u, yb], [x1 - 2 * u, yb + 2 * u]], { width: 16 * u, color: P.nong, alpha: 0.85, progress: kr, dry: 0.55, taper: [0.05, 0.1], bristles: 12, seed: seed * 37 });
   };
 
   /** 捣衣砧与木杵。x、y 是砧面中心，w 是砧宽。 */
   cj.anvil = function (ctx, { x, y, w, progress = 1, u = 1, seed = 1 }) {
-    washIn(ctx, wk.seg(progress, 0, 0.5), blob(x, y + w * 0.12, w / 2, w * 0.16, seed, 24, 0.08), { color: P.zhong, alpha: 0.5, blur: 2 * u, edge: 0.5, edgeWidth: 2 * u, fade: [y + w * 0.05, y + w * 0.32] });
+    washIn(ctx, wk.seg(progress, 0, 0.5), blob(x, y + w * 0.12, w / 2, w * 0.16, seed, 24, 0.16), { color: P.zhong, alpha: 0.45, blur: 2 * u, edge: 0.5, edgeWidth: 2 * u, fade: [y + w * 0.05, y + w * 0.32] });
     const k1 = wk.seg(progress, 0.2, 0.6);
     if (k1 > 0) C.brush(ctx, [[x - w * 0.5, y], [x, y - w * 0.03], [x + w * 0.5, y + w * 0.01]], { width: 7 * u, color: P.nong, alpha: 0.9, progress: k1, dry: 0.5, taper: [0.1, 0.3], bristles: 10, seed: seed * 5 });
+    [[-0.3, 0.06], [0.25, 0.1]].forEach(([fx, fy], i) => {
+      const k = wk.seg(progress, 0.35 + i * 0.1, 0.7 + i * 0.1);
+      if (k > 0) C.brush(ctx, [[x + fx * w, y + fy * w], [x + (fx + 0.05) * w, y + (fy + 0.08) * w], [x + (fx + 0.04) * w, y + (fy + 0.16) * w]], { width: 3 * u, color: P.zhong, alpha: 0.6, progress: k, dry: 0.75, taper: [0.2, 0.5], bristles: 5, seed: seed * 13 + i });
+    });
     const k2 = wk.seg(progress, 0.5, 1);
     if (k2 > 0) C.brush(ctx, [[x - w * 0.42, y - w * 0.12], [x, y - w * 0.07], [x + w * 0.28, y - w * 0.04]], { width: w * 0.06, color: P.nong, alpha: 0.9, progress: k2, dry: 0.3, taper: [0.2, 0.2], bristles: 12, seed: seed * 7 });
   };
@@ -266,7 +279,10 @@
     g.globalCompositeOperation = 'source-over';
     g.clearRect(0, 0, W, H);
     g.fillStyle = C.rgba(P.dan, 0.16 * k);
-    g.fillRect(0, 0, W, H);
+    g.filter = `blur(${Math.round(60 * s.u)}px)`;
+    g.beginPath();
+    g.ellipse(0.66 * W, 0.58 * H, 0.42 * W, 0.46 * H, 0, 0, Math.PI * 2);
+    g.fill();
     g.globalCompositeOperation = 'destination-out';
     g.filter = `blur(${Math.round(18 * s.u)}px)`;
     g.beginPath();

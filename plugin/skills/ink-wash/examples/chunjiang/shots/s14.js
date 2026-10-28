@@ -15,7 +15,10 @@ wk.shot({
       wk.cj.waves(g, { x0: 0.3 * W, x1: 0.95 * W, y: 0.76 * H, n: 4, gap: 14, u, seed: 194, tone: P.qing, alpha: 0.8 });
       g.restore();
     });
-    wk.c2d.brush(ctx, [[0.58 * W, 0.22 * H], [0.45 * W, 0.3 * H], [0.32 * W, 0.4 * H], [0.22 * W, 0.47 * H]], { width: 12 * u, color: P.qing, alpha: 0.5, progress: wk.seg(t, b - 3.5, b, 'sineInOut'), dry: 0.75, taper: [0.2, 0.6], bristles: 10, seed: 195 });
+    const flow = wk.seg(t, b - 4, b, 'sineInOut');
+    const PATH = [[0.585 * W, 0.2 * H], [0.5 * W, 0.24 * H], [0.38 * W, 0.33 * H], [0.27 * W, 0.42 * H], [0.2 * W, 0.47 * H]];
+    wk.c2d.brush(ctx, PATH, { width: 30 * u, color: P.qing, alpha: 0.32, progress: flow, dry: 0.85, bleed: 10 * u, taper: [0.3, 0.6], bristles: 16, seed: 195 });
+    wk.c2d.brush(ctx, PATH.map(([x, y]) => [x, y + 14 * u]), { width: 14 * u, color: P.qing, alpha: 0.25, progress: wk.seg(t, b - 3.4, b, 'sineInOut'), dry: 0.9, bleed: 6 * u, taper: [0.4, 0.6], bristles: 10, seed: 196 });
     wk.cj.frame(ctx, t, s, { into: 'mist', out: 'ink' });
   },
 });

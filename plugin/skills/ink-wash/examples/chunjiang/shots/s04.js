@@ -17,10 +17,10 @@ wk.shot({
       const banks = [[[1.15 * W, 0.34 * H], [0.95 * W, 0.42 * H], [0.78 * W, 0.6 * H], [0.8 * W, 0.86 * H], [0.95 * W, 1.02 * H]], [[1.15 * W, 0.42 * H], [1.0 * W, 0.5 * H], [0.9 * W, 0.66 * H], [0.95 * W, 0.84 * H], [1.1 * W, 0.98 * H]]];
       banks.forEach((pts, i) => wk.c2d.brush(g, pts, { width: 3 * u, color: i ? P.qing : P.dan, alpha: 0.75, progress: k, dry: 0.6, taper: [0.2, 0.4], bristles: 7, seed: 61 + i }));
     }, 0.2);
-    const TREES = [[0.16, 190, 0.08], [0.24, 230, -0.05], [0.33, 210, 0.1], [0.42, 170, 0.04], [0.5, 150, -0.06]];
+    const TREES = [[0.12, 230, 0.08], [0.18, 290, -0.05], [0.24, 260, 0.1], [0.3, 310, -0.04], [0.37, 250, 0.06], [0.44, 220, -0.06], [0.5, 180, 0.04]];
     const forest = wk.seg(t, a + 0.6, b);
     wk.cj.layer(ctx, s, 's04:forest', forest, (g, k) => {
-      TREES.forEach(([x, h, lean], i) => wk.cj.tree(g, { x: x * W, y: (0.64 + i * 0.006) * H, h: h * u, lean, progress: wk.stagger(k, i, TREES.length, 0, 1, 0.5), u, seed: 70 + i, tone: P.dan, crownTone: P.qing }));
+      TREES.forEach(([x, h, lean], i) => wk.cj.tree(g, { x: x * W, y: (0.64 + i * 0.006) * H, h: h * u, lean, progress: wk.stagger(k, i, TREES.length, 0, 1, 0.5), u, seed: 70 + i, tone: P.dan, crownTone: i % 3 ? P.qing : P.dan, density: 1.8 }));
     }, 0.2);
     ctx.restore();
     wk.cj.frame(ctx, t, s, { into: 'mist', out: 'ink' });

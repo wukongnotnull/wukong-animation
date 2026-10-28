@@ -123,3 +123,11 @@ test('wka subtitles --aspect writes the variant\'s own srt and English, split fo
   ok(wka('subtitles', dir, '--aspect', '9:16'));
   assert.equal(fs.readFileSync(path.join(dir, 'subtitles.9x16.srt'), 'utf8'), edited);
 });
+
+test('wka qc --aspect checks the variant video and writes its report under .cache/9x16', opts, () => {
+  const dir = makeFilm();
+  ok(wka('render', dir, '--proxy', '--aspect', '9:16'));
+  wka('qc', dir, '--proxy', '--aspect', '9:16');
+  assert.ok(fs.existsSync(path.join(dir, '.cache', '9x16', 'qc.json')));
+  assert.ok(!fs.existsSync(path.join(dir, '.cache', 'qc.json')), '主版质检报告不被写');
+});

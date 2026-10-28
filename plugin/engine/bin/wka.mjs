@@ -400,8 +400,8 @@ async function main() {
       return;
     }
     case 'qc': {
-      if (!pos[0]) fail('用法：wka qc <片目录> [--proxy]');
-      const r = await runQc(pos[0], { proxy: !!opt('proxy'), log });
+      if (!pos[0]) fail('用法：wka qc <片目录> [--proxy] [--aspect 9:16]');
+      const r = await runQc(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });
       process.exitCode = r.ok ? 0 : 2;
       return;
     }

@@ -63,11 +63,17 @@ export function judgeFrames(frames, cfg, { boundaries, fps, fullBleed = new Set(
   return { issues, cuts };
 }
 
-export async function runQc(filmDir, { proxy = false, fps = 10, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
-  const cfg = { ...QC_DEFAULTS, ...(ctx.style.qc || {}) };
-  const video = path.join(ctx.filmDir, '.cache', proxy ? 'video-proxy.mp4' : 'video.mp4');
-  if (!fs.existsSync(video)) throw new Error(`还没有渲染结果：${path.relative(ctx.filmDir, video)}。先运行 wka render${proxy ? ' --proxy' : ''}`);
+/** 质检阈值：缺省值 ← style.json 的 qc ← qc.by_aspect[画幅] */
+export function qcConfig(style, aspect) {
+  const { by_aspect: byAspect = {}, ...qc } = style.qc || {};
+  return { ...QC_DEFAULTS, ...qc, ...(byAspect[aspect] || {}) };
+}
+
+export async function runQc(filmDir, { proxy = false, fps = 10, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const cfg = qcConfig(ctx.style, ctx.variant.aspect);
+  const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
+  if (!fs.existsSync(video)) throw new Error(`还没有渲染结果：${path.relative(ctx.filmDir, video)}。先运行 wka render${proxy ? ' --proxy' : ''}${ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`}`);
 
   const [W0, H0] = ctx.film.size;
   const w = 240, h = Math.round((240 * H0) / W0 / 2) * 2;
@@ -133,11 +139,11 @@ export async function runQc(filmDir, { proxy = false, fps = 10, log = console.lo
   let contactSheet = null;
   const picks = merged.filter((m) => m.t0 !== null).slice(0, 9);
   if (picks.length) {
-    const dir = ensureDir(path.join(ctx.filmDir, 'stills', 'qc'));
+    const dir = ensureDir(path.join(ctx.variant.stillsDir, 'qc'));
     const files = [];
     const texts = picks.map((m) => `${m.shot} ${m.t0}s ${m.kind}`);
     const labels = await labelPngs(texts, {
-      size: 22, workDir: path.join(ctx.filmDir, '.cache', 'work'), log, what: '超标帧接触表', order: '顺序与下方问题列表中带时间点的条目一致',
+      size: 22, workDir: path.join(ctx.variant.cacheDir, 'work'), log, what: '超标帧接触表', order: '顺序与下方问题列表中带时间点的条目一致',
     });
     for (const [i, m] of picks.entries()) {
       const f = path.join(dir, `qc-${i + 1}.jpg`);
@@ -171,7 +177,7 @@ export async function runQc(filmDir, { proxy = false, fps = 10, log = console.lo
     if (contactSheet) lines.push(`  超标帧接触表：${path.relative(process.cwd(), contactSheet)}`);
   } else lines.push('  ✓ 全部通过');
   const report = lines.join('\n');
-  fs.writeFileSync(path.join(ctx.filmDir, '.cache', 'qc.json'), JSON.stringify({ cfg, shots, issues: merged, cuts, frames }, null, 1));
+  fs.writeFileSync(path.join(ctx.variant.cacheDir, 'qc.json'), JSON.stringify({ cfg, shots, issues: merged, cuts, frames }, null, 1));
   log(report);
   return { ok: merged.length === 0, shots, issues: merged, contactSheet, report };
 }

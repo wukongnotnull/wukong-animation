@@ -49,6 +49,7 @@
       ],
       "skill": "skills/ink-wash",
       "examples": [
+        "skills/ink-wash/examples/chunjiang",
         "skills/ink-wash/examples/hanjiang"
       ],
       "still": null

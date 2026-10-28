@@ -43,10 +43,13 @@ wukong-animation/                          # GitHub 仓库
     ├── film.json  story.md  storyboard.md
     ├── shots/sNN.js  shots/common.js
     ├── audio/build.mjs
-    ├── .wka/state.json        # 进度（进 git）
+    ├── .wka/state.json        # 进度、签批时的镜头哈希（进 git）
     ├── .cache/                 # 镜头片段、混音、QA（不进 git）
-    ├── stills/                 # 静帧、接触表（不进 git）
-    └── <name>.mp4              # 成片（不进 git，可用 LFS）
+    │   ├── <后缀>/             # 副版（如 9x16/）的片段、拼接结果、QA
+    │   └── approved/           # 第 13 道终审时的主版定稿快照
+    ├── stills/                 # 静帧、接触表（不进 git）；副版在 stills/<后缀>/
+    ├── subtitles.<后缀>.srt     # 副版字幕（主版是 subtitles.srt）
+    └── <name>.mp4              # 成片（不进 git，可用 LFS）；副版是 <name>-<后缀>.mp4
 ```
 
 仓库里的示范片（`plugin/skills/<id>/examples/<片名>/`）目录结构相同，但**只提交源文件**：`.wka/`、`stills/`、`review/`、生成的配音和字幕、成片都被 `.gitignore` 挡掉。用户项目会把 `.wka/state.json` 提交进 git，用来恢复在制进度；示范片是定稿后的成品，不需要进度文件。
@@ -66,6 +69,12 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 ```
 
 镜头哈希包含：引擎版本、管线与工具包版本、运行时 / 工具包 / 风格脚本 / 公共脚本 / 镜头文件的内容、尺寸、帧率、种子、字体、本镜用到的声音同步点（按 `s.cueIn('名')` 字面量静态识别，识别不了就算全部）。任何一项变了，这一镜才会重渲。
+
+## 主版与副版（横竖双版）
+
+`film.json` 的 `size` 是主版画幅，`variants` 里是副版（如 `"9:16": {}`）。命令加 `--aspect <副版>` 处理副版：`core/variants.mjs` 把画幅解析成尺寸（按主版短边等比推出）、画幅后缀和各类路径，`loadFilm` 换上副版尺寸，镜头有覆盖文件 `sNN.<后缀>.<扩展名>` 时换成它。镜头表、`cues`、声轨两版共用；镜头从 `s.aspect` / `s.orientation` 知道当前画幅。
+
+主版第 13 道签批时，`core/approval.mjs` 把每镜哈希记进 `state.json`、片段存到 `.cache/approved/`；渲染副版前重算主版哈希，变了的镜头重渲后与快照逐帧比 PSNR（> 50 dB 且帧数相同算不变），写 `review/主版不变报告-<后缀>.md`。副版在第 14 道签批时记下当时的主版哈希，主版之后重新签批且哈希变了，副版就过期，`wka final` 拒绝输出。
 
 ## 三类插槽
 

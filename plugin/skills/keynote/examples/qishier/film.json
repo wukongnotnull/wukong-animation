@@ -16,5 +16,6 @@
     "voices": [],
     "tracks": []
   },
+  "variants": { "9:16": {} },
   "export": { "formats": ["mp4"], "name": "qishier" }
 }

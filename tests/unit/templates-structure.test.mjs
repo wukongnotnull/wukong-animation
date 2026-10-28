@@ -66,6 +66,9 @@ function entries(src) {
   return ['基本信息', ...s.filter((x) => x.startsWith('## ')).map((x) => x.slice(3))];
 }
 
+/** 分镜末尾的「副版重排」表是第 14 道改版时才加的（STORYBOARD.md「六、副版重排」），不属于模板骨架。 */
+const withoutVariantAppendix = (src) => src.split(/^## 副版重排/m)[0];
+
 const examples = (base) => {
   const skills = path.join(PLUGIN, 'skills');
   return fs.readdirSync(skills).flatMap((id) => {
@@ -104,7 +107,7 @@ for (const t of TEMPLATES) {
 
   for (const ex of examples(base)) {
     test(`${rel(ex)} 的结构与模板一致`, () => {
-      assert.deepEqual(structure(read(ex)), structure(src));
+      assert.deepEqual(structure(withoutVariantAppendix(read(ex))), structure(src));
     });
   }
 }

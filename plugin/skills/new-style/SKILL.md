@@ -35,5 +35,5 @@ description: 为 wukong-animation 创建自定义动画风格（第 73 变及以
    └── scripts/      # 风格积木，挂到 wk.<短名>
    ```
 4. **写 style.json 的 qc 阈值**：留白、点缀色、帧差、硬切——让 `wka qc` 能替你把关。
-5. **做一支 10–15 秒的示范片**：按 director 的完整流程走（11 个审片节点照常签批），放进 `examples/`，附按分镜格式写的 `storyboard.md`（景别、转场等只用 STYLE.md 里写过的取值），STYLE.md「9. 示范片」链接它。
+5. **做一支 10–15 秒的示范片**：按 director 的完整流程走（12 个审片节点照常签批，没有副版的跳过 ⑪），放进 `examples/`，附按分镜格式写的 `storyboard.md`（景别、转场等只用 STYLE.md 里写过的取值），STYLE.md「9. 示范片」链接它。
 6. **校验**：`wka list styles` 能看到且不标"不可用"；示范片 `wka qc` 全部通过。

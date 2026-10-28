@@ -5,7 +5,7 @@ argument-hint: "[故事 / 主题，可留空]"
 
 用户想拍一支动画短片。故事或主题：$ARGUMENTS
 
-请使用 `director` skill，严格按其中的 14 道工序和 11 个审片节点进行；要用户做选择的地方用选择卡片（`AskUserQuestion`）。
+请使用 `director` skill，严格按其中的 15 道工序和 12 个审片节点进行；要用户做选择的地方用选择卡片（`AskUserQuestion`）。
 引擎命令为：`node "${CLAUDE_PLUGIN_ROOT}/engine/bin/wka.mjs"`。
 
 先执行：

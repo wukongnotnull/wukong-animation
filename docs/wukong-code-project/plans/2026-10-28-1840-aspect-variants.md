@@ -27,7 +27,7 @@
 | `plugin/engine/core/cache.mjs` | `ShotCache` 接缓存目录参数（缺省 `.cache/`） |
 | `plugin/engine/core/subtitles.mjs` | `subtitleSettings(film, variant)`；`splitEnglishForVariant(mainPairs, mainSubs, variantSubs)` |
 | `plugin/engine/core/qc.mjs` | 读 `ctx.variant.cacheDir`；`qcConfig(style, aspect)` 合并 `qc.by_aspect` |
-| `plugin/engine/core/state.mjs` | 工序 15 道、节点 13 个、`FLOW` 3 → 4 迁移；`recordApproval`、`variantStale` |
+| `plugin/engine/core/state.mjs` | 工序 15 道、节点 12 个、`FLOW` 3 → 4 迁移；`recordApproval`、`variantStale` |
 | `plugin/engine/core/approval.mjs`（新） | `snapshotMain(filmDir)`（第 13 道签批）；`checkMainUnchanged(filmDir, { aspect })` → 报告；`psnrMin(a, b)` |
 | `plugin/engine/pipelines/browser/index.mjs`、`plugin/engine/runtime/wk.js` | `cfg.aspect`、`cfg.orientation` → `s.aspect`、`s.orientation` |
 | `plugin/engine/pipelines/remotion/entry.mjs` | `s.aspect`、`s.orientation` |
@@ -100,7 +100,7 @@
 ### 任务 7：进度 15 道与迁移
 
 - 测试 `state.test.mjs`（改现有断言）：
-  - `LAST_STEP` 15；`PRODUCTION_STEPS[14]` = `'改版'`、`[15]` = `'剪映草稿交付'`；`REVIEW_GATES` 13 个，`14` = `'⑫改版审片'`、`15` = `'⑬剪映草稿'`。
+  - `LAST_STEP` 15；`PRODUCTION_STEPS[14]` = `'改版'`、`[15]` = `'剪映草稿交付'`；`REVIEW_GATES` 12 个，`14` = `'⑪改版审片'`、`15` = `'⑫剪映草稿'`。
   - flow 3 进度里 `step: 14`（剪映草稿）迁成 15，节点标签换新；`step: 13` 不变；flow 1 进度一路迁到 flow 4（第 11 道起 +1，再第 14 道起 +1）。
   - `migrateProgress` 不改入参。
 - 实现：`state.mjs` 改常量、`FLOW = 4`、迁移函数按 flow 分段平移。

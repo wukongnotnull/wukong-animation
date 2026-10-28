@@ -24,12 +24,13 @@ import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
 import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
-import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview } from '../core/job.mjs';
+import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
+import { snapshotMain, checkMainUnchanged } from '../core/approval.mjs';
 import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
+import { recordProgress, recordApproval, readProgress, variantStale, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
@@ -37,6 +38,8 @@ import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
+const FINAL_REVIEW_STEP = 13; // 第 13 道「终检与交付」：主版定稿
+const VARIANT_STEP = 14; // 第 14 道「改版」：副版定稿
 const { cmd, pos, opt } = parseArgs(process.argv.slice(2));
 const log = (...a) => console.log(...a);
 const fail = (msg) => {
@@ -258,6 +261,20 @@ function writeVariantEnglish(ctx, settings, subs) {
   log(`✓ 副版英文按主版英文重新拆条 → ${settings.enFile}`);
 }
 
+/**
+ * 签批时记下镜头哈希：第 13 道终审存主版定稿快照；第 14 道改版审片记各副版（与当时的主版定稿对应）。
+ */
+async function recordStepApproval(filmDir, step) {
+  if (step === FINAL_REVIEW_STEP) {
+    const { hashes } = snapshotMain(filmDir, { log });
+    recordApproval(filmDir, { main: hashes });
+  }
+  if (step === VARIANT_STEP) {
+    const { film } = loadFilm(filmDir, { requireShots: false });
+    for (const aspect of Object.keys(film.variants || {})) recordApproval(filmDir, { variant: aspect, shots: shotHashes(filmDir, { aspect }) });
+  }
+}
+
 /** 录音音效（第 7 道声轨制作用）：--list 只列来源与大小给用户确认，不带参数则下载并处理。 */
 async function cmdSfx(filmDir, { list }) {
   if (!filmDir) fail('用法：wka sfx <片目录> [--list]');
@@ -310,7 +327,13 @@ async function cmdSubtitles(filmDir, { force, preview, aspect }) {
 }
 
 async function cmdFinal(filmDir, o) {
-  const ctx = loadFilm(filmDir);
+  const ctx = loadFilm(filmDir, { aspect: o.aspect });
+  if (!ctx.variant.isMain) {
+    if (variantStale(readProgress(filmDir), ctx.variant.aspect)) {
+      fail(`${ctx.variant.aspect} 副版已过期：主版在第 13 道重新签批过，先重做第 14 道「改版」并签批，再出副版成片`);
+    }
+    await checkMainUnchanged(filmDir, { aspect: o.aspect, log });
+  }
   const settings = subtitleSettings(ctx.film);
   const subs = settings.mode === 'none' ? null : withEnglish(ctx, settings, readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles` }));
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
@@ -383,6 +406,7 @@ async function main() {
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
       }
       recordProgress(pos[0], { step, note });
+      await recordStepApproval(pos[0], step);
       const sha = commitSnapshot(pos[0], note, { log });
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
       void sha;
@@ -396,6 +420,7 @@ async function main() {
         if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
+        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 13 道重新签批过，要重做第 14 道「改版」`);
       }
       return;
     }
@@ -413,6 +438,7 @@ async function main() {
             return { shot, t: parseFloat(t) };
           })
         : null;
+      await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
       const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), log });
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       return;
@@ -427,6 +453,7 @@ async function main() {
     case 'render': {
       if (!pos[0]) fail('用法：wka render <片目录>');
       const proxy = !!opt('proxy');
+      await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
       const { video, job } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), aspect: aspectOpt(), log });
       if (!proxy) return;
       // 小样配上声轨，放进 review/ 交给用户审阅
@@ -469,6 +496,7 @@ async function main() {
         only: opt('only') ? String(opt('only')).split(',') : null,
         force: !!opt('force'),
         formats: opt('formats'),
+        aspect: aspectOpt(),
         log,
       });
     default: {

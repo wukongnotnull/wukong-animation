@@ -118,6 +118,13 @@ function shotHash(job, shot) {
   ]);
 }
 
+/** 各镜头当前的缓存哈希 { 镜头 id: 哈希 }（全分辨率），签批时记进进度，用来判断镜头后来有没有动过。 */
+export function shotHashes(filmDir, { aspect = null, log = () => {} } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const job = createRenderJob(ctx, { log });
+  return Object.fromEntries(ctx.shots.map((s) => [s.id, shotHash(job, s)]));
+}
+
 async function pipelineModule(job) {
   const mod = await loadModule(job.pipeline);
   const chk = await mod.check();

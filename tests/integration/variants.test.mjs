@@ -131,3 +131,59 @@ test('wka qc --aspect checks the variant video and writes its report under .cach
   assert.ok(fs.existsSync(path.join(dir, '.cache', '9x16', 'qc.json')));
   assert.ok(!fs.existsSync(path.join(dir, '.cache', 'qc.json')), '主版质检报告不被写');
 });
+
+const report = (dir) => fs.readFileSync(path.join(dir, 'review', '主版不变报告-9x16.md'), 'utf8');
+const rowOf = (text, id) => text.split('\n').find((l) => l.startsWith(`| ${id} `)) || '';
+const state = (dir) => JSON.parse(fs.readFileSync(path.join(dir, '.wka', 'state.json'), 'utf8'));
+
+test('signing off step 13 snapshots the main version; variant renders report whether it changed', opts, () => {
+  const dir = makeFilm();
+  ok(wka('render', dir));
+  ok(wka('signoff', dir, '成片终审通过', '--step', '13'));
+  assert.deepEqual(Object.keys(state(dir).approved.main), ['s01', 's02']);
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.cache', 'approved')).sort(), ['s01.mp4', 's02.mp4']);
+
+  // 没改代码：哈希相同
+  ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
+  assert.match(report(dir), /主版画面没有变化/);
+  assert.match(rowOf(report(dir), 's01'), /哈希相同/);
+
+  // 只改竖屏分支：主版哈希变了，但重渲后画面一致
+  fs.writeFileSync(path.join(dir, 'shots', 's02.js'), BRANCHED.replace('#0000FF', '#00FF00'));
+  ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
+  assert.match(rowOf(report(dir), 's02'), /重渲比对通过/);
+  assert.match(report(dir), /主版画面没有变化/);
+
+  // 改了横屏画面：报告置顶写明，命令仍然成功
+  fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#000000')));
+  ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
+  assert.match(report(dir).split('\n').slice(0, 3).join('\n'), /主版有变化/);
+  assert.match(rowOf(report(dir), 's01'), /画面有变化/);
+
+  // 快照丢了：改为目视复核
+  fs.rmSync(path.join(dir, '.cache', 'approved'), { recursive: true });
+  ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
+  assert.match(rowOf(report(dir), 's01'), /快照缺失/);
+});
+
+test('a variant signed off before the main version changed is stale: final refuses it, status says so', opts, () => {
+  const dir = makeFilm();
+  ok(wka('render', dir));
+  ok(wka('signoff', dir, '终审通过', '--step', '13'));
+  ok(wka('signoff', dir, '副版通过', '--step', '14'));
+  assert.ok(state(dir).approved.variants['9:16'].shots.s01);
+
+  fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#000000')));
+  ok(wka('render', dir));
+  ok(wka('signoff', dir, '返修后终审通过', '--step', '13'));
+  const r = wka('final', dir, '--aspect', '9:16', '--proxy');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr + r.stdout, /第 14 道/);
+
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-project-'));
+  fs.mkdirSync(path.join(projectDir, 'films'));
+  fs.cpSync(dir, path.join(projectDir, 'films', 'it'), { recursive: true });
+  const status = wka('status', projectDir);
+  ok(status);
+  assert.match(status.stdout, /9:16 副版已过期/);
+});

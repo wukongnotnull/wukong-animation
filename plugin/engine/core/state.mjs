@@ -86,6 +86,32 @@ export function recordProgress(filmDir, { step, note = '', sha = null }) {
   return st;
 }
 
+/**
+ * 记录签批时的镜头哈希（进 git，换机器也能判断哪些镜头动过）：
+ * - { main }：第 13 道终审，主版每镜的哈希 → approved.main
+ * - { variant, shots }：第 14 道改版审片，副版每镜的哈希，连同当时的 approved.main → approved.variants[画幅]
+ */
+export function recordApproval(filmDir, { main = null, variant = null, shots = null }) {
+  const st = readProgress(filmDir);
+  const approved = st.approved || {};
+  const next = main
+    ? { ...approved, main }
+    : { ...approved, variants: { ...(approved.variants || {}), [variant]: { shots, main: approved.main || null } } };
+  const out = { ...st, approved: next, updated: new Date().toISOString() };
+  writeState(filmDir, out);
+  return out;
+}
+
+const sameHashes = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+
+/** 副版签批之后主版又在第 13 道签批过、且主版镜头哈希变了：副版过期，要重做第 14 道。没签批过的副版不算过期。 */
+export function variantStale(st, aspect) {
+  const v = st.approved?.variants?.[aspect];
+  return !!v && !sameHashes(v.main, st.approved.main);
+}
+
+export const staleVariants = (st) => Object.keys(st.approved?.variants || {}).filter((a) => variantStale(st, a));
+
 /** 扫描项目里的所有片子，返回每支的进度；migrated 表示这次读取时换算过旧编号。
  *  只有 brief.md 的占位片（第 2 道建、第 3 道才 wka init）也列出，标题取目录名，风格「未定」。 */
 export function listProductions(projectDir = '.') {
@@ -101,6 +127,6 @@ export function listProductions(projectDir = '.') {
       const { state: st, migrated } = loadProgress(dir);
       const last = st.history[st.history.length - 1];
       const next = st.step >= LAST_STEP ? null : st.step + 1;
-      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated, migrated };
+      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated, migrated, staleVariants: staleVariants(st) };
     });
 }

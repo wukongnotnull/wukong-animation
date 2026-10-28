@@ -72,7 +72,15 @@
           },
           "size": {
             "type": "string",
-            "enum": ["大远景", "远景", "全景", "中景", "近景", "特写", "大特写"],
+            "enum": [
+              "大远景",
+              "远景",
+              "全景",
+              "中景",
+              "近景",
+              "特写",
+              "大特写"
+            ],
             "description": "景别（画面框多大），与 storyboard.md 的景别栏一致。第 5 道签批时 wka 检查：每镜都写、4 镜及以上至少 3 种、相邻两镜不同"
           },
           "full_bleed": {
@@ -313,6 +321,105 @@
               "type": "number",
               "minimum": 0,
               "description": "文字底边到画面底边的距离，占画面高度的比例，缺省 0.08"
+            }
+          }
+        }
+      }
+    },
+    "variants": {
+      "type": "object",
+      "description": "副版画幅（主版是 size）：键是画幅（如 \"9:16\"），值是这一版的覆盖项；没有这个字段即只出主版",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "export": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "副版成片名，缺省为主版名加 -<画幅后缀>"
+              }
+            }
+          },
+          "subtitles": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "style": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "这支片的字幕样式，逐项覆盖风格 style.json 的 subtitles 块（font 整体替换，stroke 按字段合并）。改字幕样式写这里，不改插件目录里的 style.json",
+                "properties": {
+                  "font": {
+                    "type": "object",
+                    "required": [
+                      "family"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "family": {
+                        "type": "string"
+                      },
+                      "fallback": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "font_en": {
+                    "description": "英文字幕行的字体（中英双语时用），结构同 font；缺省与 font 相同",
+                    "type": "object",
+                    "required": [
+                      "family"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "family": {
+                        "type": "string"
+                      },
+                      "fallback": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "size": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "description": "字号，占画面高度的比例，缺省 0.045"
+                  },
+                  "color": {
+                    "type": "string",
+                    "description": "文字颜色，缺省 #FFFFFF"
+                  },
+                  "stroke": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "color": {
+                        "type": "string"
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "描边宽度，字号的倍数"
+                      }
+                    },
+                    "description": "描边，缺省 rgba(0,0,0,0.65)、0.08"
+                  },
+                  "bottom": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "文字底边到画面底边的距离，占画面高度的比例，缺省 0.08"
+                  }
+                }
+              }
             }
           }
         }

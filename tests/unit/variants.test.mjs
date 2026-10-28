@@ -117,3 +117,19 @@ test('listAspects lists the main version first, then the variants', () => {
   assert.deepEqual(listAspects(FILM), ['16:9']);
   assert.deepEqual(listAspects({ ...FILM, variants: { '9:16': {} } }), ['16:9', '9:16']);
 });
+
+test('film.schema accepts variants with export name and subtitle style overrides only', async () => {
+  const { validate } = await import('../../plugin/engine/core/validate.mjs');
+  const film = { title: 't', style: 'keynote', size: [1920, 1080], fps: 30, seed: 1, shots: [{ id: 's01', file: 'shots/s01.tsx', duration: 1 }] };
+  assert.deepEqual(validate('film', { ...film, variants: { '9:16': {} } }), []);
+  assert.deepEqual(validate('film', { ...film, variants: { '9:16': { export: { name: 'x' }, subtitles: { style: { size: 0.03 } } } } }), []);
+  assert.notDeepEqual(validate('film', { ...film, variants: { '9:16': { foo: 1 } } }), []);
+  assert.notDeepEqual(validate('film', { ...film, variants: { '9:16': { subtitles: { mode: 'burn' } } } }), []);
+});
+
+test('style.schema accepts qc.by_aspect overrides', async () => {
+  const { validate } = await import('../../plugin/engine/core/validate.mjs');
+  const errs = (qc) => validate('style', { qc }).filter((e) => e.includes('qc'));
+  assert.deepEqual(errs({ accent_max: 0.04, by_aspect: { '9:16': { accent_max: 0.05 } } }), []);
+  assert.notDeepEqual(errs({ by_aspect: { '9:16': { foo: 1 } } }), []);
+});

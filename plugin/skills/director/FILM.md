@@ -1,6 +1,13 @@
-# 工程文件 film.json
+# 工程文件规范（film.json）
 
-`film.json` 给引擎用，`storyboard.md` 给人看（格式见 `STORYBOARD.md`），两者逐镜对应：分镜表的「镜」栏对应 `shots[].id`，「景别」栏对应 `shots[].size`，「时长」栏对应 `shots[].duration`。第 3 道 `wka init` 从模板生成，之后各道工序往里填字段。
+> `film.json` 给引擎用，`storyboard.md` 给人看（写法见 `STORYBOARD.md`），两者逐镜对应：分镜表的「镜」栏对应 `shots[].id`，「景别」栏对应 `shots[].size`，「时长」栏对应 `shots[].duration`。
+
+- **工序**：第 3 道 `wka init` 生成，第 5 道起各道工序往里填字段
+- **模板**：`engine/templates/film/film.json`
+- **完整字段**：`engine/schemas/film.schema.json`，引擎按它校验
+- **示例**：各风格的示范片，如 `ink-wash/examples/hanjiang/film.json`
+
+## 一、结构一览
 
 ```json
 {
@@ -25,6 +32,8 @@
 }
 ```
 
+## 二、常用字段
+
 | 字段 | 说明 |
 |---|---|
 | `seed` | 全片随机种子。换种子 = 换一版"笔迹"，构图不变 |
@@ -41,4 +50,4 @@
 | `export.formats` | 已注册的导出器：`mp4` / `gif` / `png-seq` / `jianying`（剪映草稿，直接写进剪映草稿目录；不写进这里，等 ⑩ 终审定版后在第 14 道用 `wka final <片> --formats jianying` 单独导出） |
 | `subtitles` | 字幕（第 11 道工序，审片节点⑨）：`mode` 为 `none` 不出 / `srt` 外挂 / `burn` 烧录 / `both` 两者；`file` 字幕文件（缺省 `subtitles.srt`，`wka subtitles` 生成，可手改）；`max_chars` 每条最多几个字（缺省横屏 18、竖屏 12、方形 14）；`style` 这支片的字幕样式（字段同 `style.json` 的 `subtitles` 块：`font`、`size`、`color`、`stroke`、`bottom`，逐项覆盖风格的设置）。没有这个字段即不出字幕 |
 
-完整字段见 `engine/schemas/film.schema.json`。旧字段名 `voiceover` / `vo_source` 仍能读取，`wka soundtrack` 会提示改成新名；新旧两个名字同时出现会报错。
+旧字段名 `voiceover` / `vo_source` 仍能读取，`wka soundtrack` 会提示改成新名；新旧两个名字同时出现会报错。

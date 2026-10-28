@@ -1,5 +1,12 @@
 # 镜头文件规范（shots/sNN.js）
 
+> 镜头文件是画面的代码，引擎逐帧调用它出画。
+
+- **工序**：第 8 道写关键帧，第 9 道完成镜头
+- **模板**：`engine/templates/film/shots/s01.js`（remotion 管线用 `s01.tsx`），`wka init` 按风格带出
+- **流程**：见 `SKILL.md` 第 8、9 道
+- **示例**：各风格的示范片，如 `ink-wash/examples/hanjiang/shots/`
+
 每镜一个文件，只做一件事：注册一个镜头。第一行注释写镜号和本镜用到的技法名（风格 STYLE.md「5. 技法」里的名字），写代码时按名字到 STYLE.md 和 TECH.md 对照；分镜表不写技法。
 
 ```js

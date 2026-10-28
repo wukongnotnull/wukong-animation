@@ -49,6 +49,8 @@ wukong-animation/                          # GitHub 仓库
     └── <name>.mp4              # 成片（不进 git，可用 LFS）
 ```
 
+仓库里的示范片（`plugin/skills/<id>/examples/<片名>/`）目录结构相同，但**只提交源文件**：`.wka/`、`stills/`、`review/`、生成的配音和字幕、成片都被 `.gitignore` 挡掉。用户项目会把 `.wka/state.json` 提交进 git，用来恢复在制进度；示范片是定稿后的成品，不需要进度文件。
+
 ## 一次渲染的数据流
 
 ```

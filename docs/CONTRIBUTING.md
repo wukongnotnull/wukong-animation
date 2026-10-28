@@ -25,10 +25,14 @@ node tools/new-style.mjs watercolor --name 水彩晕染 --category shouhui
 3. **scripts/**：把最难写的技法做成积木，挂到 `wk.<名>`。镜头只做编排。
 4. **TECH.md**：选型理由 + 积木 API。
 5. **examples/<片名>/**：10–20 秒示范片，必须 `wka qc` 全部通过。示范长篇旁白等特定做法的示范片可以更长（如 ink-wash 的《春江花月夜》148.8 秒），在风格 STYLE.md「9. 示范片」里写明它示范什么；冒烟测试只渲染首、中、末三张静帧，片长不影响 CI 用时。
-6. `npm run catalog` → `node tools/render-stills.mjs <id> --gif` → `npm run smoke -- <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
+6. `node tools/render-stills.mjs <id>`（画廊图 `docs/gallery/<id>.jpg`，取最短示范片最后一镜 80% 处，只提交 jpg）→ `npm run catalog`（把画廊图写进 catalog.json 和 README）→ `npm run smoke -- <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
 7. `npm run lint` 通过后提 PR。
 
 SKILL.md 的 description 控制在 200 字以内，并写清与相近风格的区别（例如"比工笔更写意"）——72 条描述会常驻上下文。
+
+## 本地试装插件
+
+不要用工作区路径本地安装插件（例如在 Claude Code 里把 marketplace 指向这个仓库目录）。本地安装会复制整个 `plugin/` 目录，包括被 `.gitignore` 挡住、只存在你机器上的示范片成片、配音、静帧和审片文件（一部示范片就可能有几百 MB）。要试装，先推到 GitHub 再从 GitHub 安装；或者 `git clone` 一份干净的副本，用那份副本的路径安装。
 
 ## 新增工具包 / 管线 / 导出器
 

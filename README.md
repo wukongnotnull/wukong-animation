@@ -110,6 +110,10 @@ Claude 会带你走一遍完整的制作流程，在下面 11 个节点停下来
 | 电影年代 | 黑白默片 · 70 年代胶片 · 黑色电影 · 90 年代港片霓虹 · 西部宽银幕 · 老新闻片 · 武侠片 · 科幻片头 · 公路片 |
 | 材质 3D | 玻璃折射 · 液态金属 · 毛毡 · 折纸 · 粒子 · 流体 · 光线行进抽象 · 晶体宝石 · 积木 |
 | 信息叙事 | 数据可视化 · 产品发布 · 科普讲解 · 地图路线 · 时间线 · 白板讲解 · **发布会 Keynote** · 纪录片字幕 · 竖屏短视频 |
+
+<table>
+<tr><td align="center"><img src="docs/gallery/ink-wash.jpg" width="400" alt="水墨写意"><br>水墨写意</td><td align="center"><img src="docs/gallery/keynote.jpg" width="400" alt="发布会 Keynote"><br>发布会 Keynote</td></tr>
+</table>
 <!-- /gallery -->
 
 想看每种风格适合拍什么，输入 `/wukong-animation:styles`；也可以带上关键词让它推荐，比如 `/wukong-animation:styles 古诗`。

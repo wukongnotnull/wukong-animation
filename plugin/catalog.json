@@ -52,7 +52,7 @@
         "skills/ink-wash/examples/chunjiang",
         "skills/ink-wash/examples/hanjiang"
       ],
-      "still": null
+      "still": "docs/gallery/ink-wash.jpg"
     },
     {
       "id": "gongbi",
@@ -935,7 +935,7 @@
       "examples": [
         "skills/keynote/examples/qishier"
       ],
-      "still": null
+      "still": "docs/gallery/keynote.jpg"
     },
     {
       "id": "doc-subtitle",

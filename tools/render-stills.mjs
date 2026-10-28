@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// 为每个风格渲染画廊图：取示范片里最"完整"的一帧（最后一镜的 80% 处），
+// 为每个风格渲染画廊图：取最短的示范片（标准示范片 10–20 秒，更长的是示范特定做法的特例）
+// 里最"完整"的一帧（最后一镜的 80% 处），
 // 输出 docs/gallery/<id>.jpg（1280 宽），可选 --gif 同时输出预览 GIF。
 // 用法：node tools/render-stills.mjs [风格id…] [--gif]
 import fs from 'node:fs';
@@ -20,8 +21,10 @@ for (const id of fs.readdirSync(skills)) {
   if (only.length && !only.includes(id)) continue;
   const ex = path.join(skills, id, 'examples');
   if (!fs.existsSync(path.join(skills, id, 'style.json')) || !fs.existsSync(ex)) continue;
-  const name = fs.readdirSync(ex).find((d) => fs.existsSync(path.join(ex, d, 'film.json')));
-  if (!name) continue;
+  const filmLength = (d) => JSON.parse(fs.readFileSync(path.join(ex, d, 'film.json'), 'utf8')).shots.reduce((t, s) => t + s.duration, 0);
+  const films = fs.readdirSync(ex).filter((d) => fs.existsSync(path.join(ex, d, 'film.json')));
+  if (!films.length) continue;
+  const name = films.reduce((a, b) => (filmLength(b) < filmLength(a) ? b : a));
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-'));
   const film = path.join(tmp, name);
   fs.cpSync(path.join(ex, name), film, { recursive: true });

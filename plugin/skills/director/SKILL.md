@@ -57,7 +57,7 @@ node <插件根目录>/engine/bin/wka.mjs
 **交付文件写成可点击的路径**：每个文件一行 Markdown 链接，链接文字是完整绝对路径，链接地址是相对当前工作目录的路径，用户在对话框里点一下就能打开观看，例如：
 
 ```markdown
-- [/Users/me/动画/films/寒江/review/小样.mp4](films/寒江/review/小样.mp4)
+- [/Users/me/动画/films/春晓/review/小样.mp4](films/春晓/review/小样.mp4)
 ```
 
 - 引擎日志里打印的就是绝对路径，照抄作链接文字，去掉当前工作目录前缀作链接地址。
@@ -297,7 +297,7 @@ node <插件根目录>/engine/bin/wka.mjs
 
 **AI 配音先试听再签批**：用户选「AI 配音」后，先 `wka audition <片>`，用 2–3 个候选音色合成文案第一句，然后按顺序提交：
 
-1. **试听文件**：把 `wka audition` 日志里的每个试听文件写成一行可点击路径（格式见「交付文件写成可点击的路径」），一个音色一行，例如 `- [/Users/me/动画/films/寒江/review/试听-1-Yunxi.m4a](films/寒江/review/试听-1-Yunxi.m4a)`。
+1. **试听文件**：把 `wka audition` 日志里的每个试听文件写成一行可点击路径（格式见「交付文件写成可点击的路径」），一个音色一行，例如 `- [/Users/me/动画/films/春晓/review/试听-1-Yunxi.m4a](films/春晓/review/试听-1-Yunxi.m4a)`。
 2. **听什么**：一两句说推荐哪个音色、为什么。
 3. **选音色卡片**：选项就是这几个音色，各附一句特点，可多给一个「都不合适」。
 

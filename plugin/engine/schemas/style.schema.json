@@ -181,6 +181,57 @@
         "skip_start": {
           "type": "number",
           "minimum": 0
+        },
+        "by_aspect": {
+          "type": "object",
+          "description": "按画幅覆盖上面的阈值，如 { \"9:16\": { \"accent_max\": 0.05 } }",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "whitespace_min": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "paper": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "paper_tol": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "accent": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "accent_tol": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "accent_max": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "diff_max": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "cuts_max": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skip_start": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     },

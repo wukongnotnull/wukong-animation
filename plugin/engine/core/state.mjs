@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** 14 道工序（与 skills/director/SKILL.md 一致） */
+/** 15 道工序（与 skills/director/SKILL.md 一致） */
 export const PRODUCTION_STEPS = {
   1: '制作环境、工程初始化、恢复在制项目',
   2: '制作简报确认',
@@ -18,17 +18,23 @@ export const PRODUCTION_STEPS = {
   11: '字幕制作',
   12: '终版渲染与终混',
   13: '终检与交付',
-  14: '剪映草稿交付',
+  14: '改版',
+  15: '剪映草稿交付',
 };
 /** 最后一道工序；签批到这里即全部完成 */
 export const LAST_STEP = Math.max(...Object.keys(PRODUCTION_STEPS).map(Number));
 /** 审片节点所在的工序 */
-export const REVIEW_GATES = { 2: '①制作简报', 3: '②美术定调', 4: '③剧本', 5: '④分镜', 6: '⑤人声素材来源', 7: '⑥声轨审听', 8: '⑦风格帧与动态分镜', 10: '⑧小样', 11: '⑨字幕', 13: '⑩终审', 14: '⑪剪映草稿' };
+export const REVIEW_GATES = { 2: '①制作简报', 3: '②美术定调', 4: '③剧本', 5: '④分镜', 6: '⑤人声素材来源', 7: '⑥声轨审听', 8: '⑦风格帧与动态分镜', 10: '⑧小样', 11: '⑨字幕', 13: '⑩终审', 14: '⑪改版审片', 15: '⑫剪映草稿' };
 
-/** 进度文件的流程版本：1 = v0.4.0 及以前（没有字幕工序），2 = 第 11 道起为字幕制作，3 = 第 2 道起为审片节点「①制作简报」 */
-const FLOW = 3;
+/**
+ * 进度文件的流程版本：1 = v0.4.0 及以前（没有字幕工序），2 = 第 11 道起为字幕制作，
+ * 3 = 第 2 道起为审片节点「①制作简报」，4 = 第 14 道为改版、剪映草稿挪到第 15 道
+ */
+const FLOW = 4;
 /** flow 1 里第 11 道起的工序，在 flow 2 里都往后挪一位 */
 const FLOW1_SHIFT_FROM = 11;
+/** flow 3 及以前第 14 道起的工序（剪映草稿），在 flow 4 里往后挪一位 */
+const FLOW3_SHIFT_FROM = 14;
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 
@@ -38,8 +44,12 @@ const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json
  */
 export function migrateProgress(st) {
   if (st.flow === FLOW) return { state: st, migrated: false };
-  // flow 2 的工序编号已是新的，只需换节点标签
-  const shift = (step) => ((st.flow || 1) < 2 && step >= FLOW1_SHIFT_FROM ? step + 1 : step);
+  // 按 flow 逐段平移编号：flow 1 → 2 第 11 道起 +1；flow 2 → 3 只换节点标签；flow 3 → 4 第 14 道起 +1
+  const flow = st.flow || 1;
+  const shift = (step) => {
+    const s2 = flow < 2 && step >= FLOW1_SHIFT_FROM ? step + 1 : step;
+    return flow < 4 && s2 >= FLOW3_SHIFT_FROM ? s2 + 1 : s2;
+  };
   const history = (st.history || []).map((h) => {
     const step = shift(h.step);
     return { ...h, step, label: PRODUCTION_STEPS[step] || '', gate: REVIEW_GATES[step] || null };
@@ -76,6 +86,32 @@ export function recordProgress(filmDir, { step, note = '', sha = null }) {
   return st;
 }
 
+/**
+ * 记录签批时的镜头哈希（进 git，换机器也能判断哪些镜头动过）：
+ * - { main }：第 13 道终审，主版每镜的哈希 → approved.main
+ * - { variant, shots }：第 14 道改版审片，副版每镜的哈希，连同当时的 approved.main → approved.variants[画幅]
+ */
+export function recordApproval(filmDir, { main = null, variant = null, shots = null }) {
+  const st = readProgress(filmDir);
+  const approved = st.approved || {};
+  const next = main
+    ? { ...approved, main }
+    : { ...approved, variants: { ...(approved.variants || {}), [variant]: { shots, main: approved.main || null } } };
+  const out = { ...st, approved: next, updated: new Date().toISOString() };
+  writeState(filmDir, out);
+  return out;
+}
+
+const sameHashes = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+
+/** 副版签批之后主版又在第 13 道签批过、且主版镜头哈希变了：副版过期，要重做第 14 道。没签批过的副版不算过期。 */
+export function variantStale(st, aspect) {
+  const v = st.approved?.variants?.[aspect];
+  return !!v && !sameHashes(v.main, st.approved.main);
+}
+
+export const staleVariants = (st) => Object.keys(st.approved?.variants || {}).filter((a) => variantStale(st, a));
+
 /** 扫描项目里的所有片子，返回每支的进度；migrated 表示这次读取时换算过旧编号。
  *  只有 brief.md 的占位片（第 2 道建、第 3 道才 wka init）也列出，标题取目录名，风格「未定」。 */
 export function listProductions(projectDir = '.') {
@@ -91,6 +127,6 @@ export function listProductions(projectDir = '.') {
       const { state: st, migrated } = loadProgress(dir);
       const last = st.history[st.history.length - 1];
       const next = st.step >= LAST_STEP ? null : st.step + 1;
-      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated, migrated };
+      return { name: d.name, dir, title: film.title, style: film.style, step: st.step, next, nextLabel: next ? PRODUCTION_STEPS[next] : '已完成', last, updated: st.updated, migrated, staleVariants: staleVariants(st) };
     });
 }

@@ -117,6 +117,19 @@ test('exports an editable 剪映 draft split by shot, audio source and subtitle'
   fs.rmSync(drafts, { recursive: true, force: true });
 });
 
+test('a variant exports its own draft named after the title plus the aspect suffix', opts, () => {
+  const dir = makeFilm();
+  const f = path.join(dir, 'film.json');
+  fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), variants: { '9:16': {} } }));
+  const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+  const r = wka(drafts, 'final', dir, '--aspect', '9:16', '--formats', 'jianying');
+  assert.equal(r.status, 0, r.stderr);
+  const draft = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it-9x16', 'draft_info.json'), 'utf8'));
+  assert.deepEqual([draft.canvas_config.width, draft.canvas_config.height], [180, 320]);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(drafts, { recursive: true, force: true });
+});
+
 test('gives every exported draft its own id so 剪映 does not reuse a cached timeline', opts, () => {
   const dir = makeFilm();
   const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));

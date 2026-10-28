@@ -11,6 +11,9 @@ export interface ShotInfo {
   H: number;
   designW: number;
   designH: number;
+  /** current aspect, '16:9' / '9:16': the main version and its variants share one shot file */
+  aspect: string;
+  orientation: "landscape" | "portrait" | "square";
   fps: number;
   seed: number;
   /** seconds, film time */
@@ -42,7 +45,8 @@ interface ShotRootProps extends ShotProps {
 
 /** Wraps every keynote shot (the remotion pipeline picks it up from @wka/style): geometry context + backdrop. */
 export function ShotRoot({ dur, s, children }: ShotRootProps) {
-  const orientation = s.designH > s.designW ? "portrait" : "landscape";
+  // 引擎按当前画幅给出（主版 / 副版共用同一镜头）；方形按横屏版式排
+  const orientation = s.orientation === "portrait" ? "portrait" : "landscape";
   return (
     <ShotContext.Provider value={{ dur, s }}>
       <FrameProvider orientation={orientation}>

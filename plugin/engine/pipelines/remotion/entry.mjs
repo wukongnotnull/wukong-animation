@@ -1,6 +1,7 @@
 // remotion 管线的纯函数部分：生成打包入口、改写字体 CSS、推出 headless shell 路径。不碰文件系统（headlessShellFrom 的 fs 由调用方传入）。
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { aspectOf, orientationOf } from '../../core/variants.mjs';
 
 const SHOT_WRAPPER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'WkaShot.jsx');
 
@@ -22,6 +23,7 @@ export function buildEntry(job, fontCss) {
     frames: frames(sh.duration, fps),
     s: {
       id: sh.id, W: job.designW, H: job.designH, designW: job.designW, designH: job.designH,
+      aspect: aspectOf([job.designW, job.designH]), orientation: orientationOf([job.designW, job.designH]),
       fps, seed: job.seed, cues: job.film.cues || {}, duration: sh.duration, start: sh.start,
     },
   }));

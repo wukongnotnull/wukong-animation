@@ -4,7 +4,7 @@ import path from 'node:path';
 import { getRegistry, getStyles, loadModule } from './registry.mjs';
 import { resolveStyle } from './resolver.mjs';
 import { validate } from './validate.mjs';
-import { ShotCache, hashParts } from './cache.mjs';
+import { ShotCache, hashParts, fontCssParts } from './cache.mjs';
 import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
 import { run, drawLabel } from './ffmpeg.mjs';
@@ -12,30 +12,35 @@ import { pickCues } from './cues.mjs';
 import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 import { labelPngs } from './labels.mjs';
+import { resolveVariant, overrideShotPath } from './variants.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
 
 /**
- * @param {{requireShots?: boolean}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）
+ * @param {{requireShots?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
+ *   aspect: 要处理的画幅，缺省为主版。副版换成副版尺寸、优先用覆盖镜头文件 sNN.<后缀>.<扩展名>
  */
-export function loadFilm(filmDir, { requireShots = true } = {}) {
+export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);
-  const { film, renamed: legacyFields } = migrateFilm(JSON.parse(fs.readFileSync(file, 'utf8')));
-  const errs = validate('film', film, 'film.json');
+  const { film: rawFilm, renamed: legacyFields } = migrateFilm(JSON.parse(fs.readFileSync(file, 'utf8')));
+  const errs = validate('film', rawFilm, 'film.json');
   if (errs.length) throw new Error('film.json 校验失败:\n  ' + errs.join('\n  '));
 
   const registry = getRegistry();
   const { styles } = getStyles();
-  const style = styles.get(film.style);
-  if (!style) throw new Error(`film.json 使用的风格 "${film.style}" 不存在。可用: ${[...styles.keys()].join(', ')}`);
+  const style = styles.get(rawFilm.style);
+  if (!style) throw new Error(`film.json 使用的风格 "${rawFilm.style}" 不存在。可用: ${[...styles.keys()].join(', ')}`);
   const resolved = resolveStyle(style, registry);
   if (resolved.errors.length) throw new Error('风格解析失败:\n  ' + resolved.errors.join('\n  '));
 
+  const variant = resolveVariant({ film: rawFilm, style, filmDir }, aspect);
+  const film = variant.isMain ? rawFilm : { ...rawFilm, size: variant.size };
+
   let t = 0;
   const shots = film.shots.map((s) => {
-    const shot = { ...s, start: t, path: path.join(filmDir, s.file) };
+    const shot = { ...s, start: t, path: overrideShotPath(path.join(filmDir, s.file), variant.suffix) };
     if (requireShots && !fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
     t += s.duration;
     return shot;
@@ -43,9 +48,12 @@ export function loadFilm(filmDir, { requireShots = true } = {}) {
 
   const styleScripts = (style.scripts || []).map((p) => path.join(style.dir, p));
   const filmScripts = (film.scripts || []).map((p) => path.join(filmDir, p));
-  // 片子可以单独改字幕样式（film.json 的 subtitles.style），不用动插件目录里的 style.json
-  const filmStyle = film.subtitles?.style ? { ...style, subtitles: mergeSubtitleStyle(style.subtitles, film.subtitles.style) } : style;
-  return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts };
+  // 片子可以单独改字幕样式（film.json 的 subtitles.style），副版还能再覆盖一层；不用动插件目录里的 style.json
+  const subtitleOverrides = [film.subtitles?.style, variant.overrides.subtitles?.style].filter(Boolean);
+  const filmStyle = subtitleOverrides.length
+    ? { ...style, subtitles: subtitleOverrides.reduce((acc, o) => mergeSubtitleStyle(acc, o), style.subtitles) }
+    : style;
+  return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts, variant };
 }
 
 /** 输出画面的尺寸与帧率：小样为半分辨率、半帧率。 */
@@ -63,7 +71,7 @@ export function outputSize(film, proxy = false) {
 function createRenderJob(ctx, { proxy = false, log }) {
   const [W0, H0] = ctx.film.size;
   const { W, H, fps } = outputSize(ctx.film, proxy);
-  const workDir = ensureDir(path.join(ctx.filmDir, '.cache', 'work'));
+  const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
   return {
@@ -104,10 +112,17 @@ function shotHash(job, shot) {
     ...job.filmScripts.map((f) => ({ file: f })),
     { file: shot.path },
     { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id },
-    job.fonts.css,
+    ...fontCssParts(job.fonts.css),
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
   ]);
+}
+
+/** 各镜头当前的缓存哈希 { 镜头 id: 哈希 }（全分辨率），签批时记进进度，用来判断镜头后来有没有动过。 */
+export function shotHashes(filmDir, { aspect = null, log = () => {} } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const job = createRenderJob(ctx, { log });
+  return Object.fromEntries(ctx.shots.map((s) => [s.id, shotHash(job, s)]));
 }
 
 async function pipelineModule(job) {
@@ -118,13 +133,13 @@ async function pipelineModule(job) {
 }
 
 /** 渲染所有（或指定）镜头并拼接成一条无声视频，返回其路径。 */
-export async function render(filmDir, { proxy = false, only = null, force = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
+export async function render(filmDir, { proxy = false, only = null, force = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { proxy, log });
-  log(`《${ctx.film.title}》风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
+  log(`《${ctx.film.title}》${ctx.variant.isMain ? '' : `${ctx.variant.aspect} 副版 · `}风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
   for (const r of job.fonts.report) log(`  字体 ${r}`);
 
-  const cache = new ShotCache(ctx.filmDir);
+  const cache = new ShotCache(ctx.filmDir, ctx.variant.cacheDir);
   const keyOf = (s) => (proxy ? `${s.id}-proxy` : s.id);
   const todo = [];
   const segments = [];
@@ -152,7 +167,7 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');
   fs.writeFileSync(list, segments.map((s) => `file '${s}'`).join('\n'));
-  const video = path.join(ctx.filmDir, '.cache', proxy ? 'video-proxy.mp4' : 'video.mp4');
+  const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
   const shotSegments = ctx.shots.map((s, i) => ({ id: s.id, start: s.start, duration: s.duration, file: segments[i] }));
@@ -171,8 +186,8 @@ export async function writeReview(filmDir, file, args) {
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
  * contactSheet: 把所有静帧拼成一张接触表，方便一次看完
  */
-export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
+export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { proxy, log });
   const mod = await pipelineModule(job);
   let points = at;
@@ -185,9 +200,9 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
       }
     }
   }
-  const outDir = ensureDir(path.join(ctx.filmDir, 'stills'));
+  const outDir = ensureDir(ctx.variant.stillsDir);
   const files = await mod.renderStills(job, points, outDir);
-  log(`  静帧 ${files.length} 张 → stills/`);
+  log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {
     const cols = Math.min(files.length, frames > 1 ? frames : 3);
@@ -221,11 +236,11 @@ const ANIMATIC_FPS = 12;
  * 动态分镜：每镜一张代表帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
  * 交给用户审的两样都放进 review/：动态分镜.mp4 和接触表.jpg（stills/sheet.jpg 照旧生成）。
  */
-export async function animatic(filmDir, { proxy = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir);
-  const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, log });
+export async function animatic(filmDir, { proxy = false, aspect = null, log = console.log } = {}) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, aspect, log });
   const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
-  const contactSheet = sheet ? path.join(reviewDir, '接触表.jpg') : null;
+  const contactSheet = sheet ? path.join(reviewDir, ctx.variant.review('接触表.jpg')) : null;
   if (sheet) fs.copyFileSync(sheet, contactSheet);
   const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String(ctx.shots[i].duration), '-i', f]);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
@@ -233,7 +248,7 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
   if (hasAudio) inputs.push('-i', audio);
   else log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
   // 标注 PNG 排在图片和声轨之后，声轨的输入序号（files.length）不变
-  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.filmDir, '.cache', 'work'), log, what: '动态分镜' });
+  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.variant.cacheDir, 'work'), log, what: '动态分镜' });
   const labelBase = files.length + (hasAudio ? 1 : 0);
   if (labels) inputs.push(...labels.flatMap((f) => ['-i', f]));
   const frame = (i) => (labels
@@ -241,17 +256,17 @@ export async function animatic(filmDir, { proxy = false, log = console.log } = {
     : `[${i}:v]format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);
   const filter = files.map((_, i) => frame(i)).join(';') + `;${files.map((_, i) => `[v${i}]`).join('')}concat=n=${files.length}:v=1:a=0[v]`;
   const audioArgs = hasAudio ? ['-map', `${files.length}:a`, '-c:a', 'aac', '-b:a', '192k'] : [];
-  const out = path.join(reviewDir, '动态分镜.mp4');
+  const out = path.join(reviewDir, ctx.variant.review('动态分镜.mp4'));
   await run([...inputs, '-filter_complex', filter, '-map', '[v]', ...audioArgs, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', out]);
   log(`  动态分镜 → ${path.relative(ctx.filmDir, out)}（${files.length} 镜 · ${ctx.totalDuration.toFixed(1)}s${hasAudio ? ' · 含声轨' : ''}）`);
   return { file: out, contactSheet, hasAudio };
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', log = console.log }) {
-  const ctx = loadFilm(filmDir);
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, log = console.log }) {
+  const ctx = loadFilm(filmDir, { aspect });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
-  const base = ctx.film.export?.name || 'out';
+  const base = ctx.variant.exportName;
   const outputs = [];
   for (const name of wanted) {
     const exp = ctx.registry.exporters.get(name);

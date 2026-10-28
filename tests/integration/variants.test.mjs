@@ -88,6 +88,9 @@ test('an aspect the film does not declare fails with the usable ones', () => {
   const r = wka('render', dir, '--aspect', '4:3');
   assert.notEqual(r.status, 0);
   assert.match(r.stderr + r.stdout, /16:9（主版）、9:16/);
+  const bare = wka('render', dir, '--aspect');
+  assert.notEqual(bare.status, 0, '--aspect 不带值不能默默处理主版');
+  assert.match(bare.stderr + bare.stdout, /--aspect/);
   const bad = wka('render', makeFilm({ variants: undefined }), '--aspect', '9:16');
   assert.notEqual(bad.status, 0);
   assert.match(bad.stderr + bad.stdout, /variants/);
@@ -116,6 +119,15 @@ test('wka subtitles --aspect writes the variant\'s own srt and English, split fo
   assert.equal(vPairs.length, count(srt));
   assert.equal(vPairs.map((p) => p.en).join(' '), english.join(' '), '英文沿用主版，只重新拆条');
   assert.equal(fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8'), mainSrt, '主版字幕不动');
+
+  // 主版英文改过（比副版英文稿新）：副版英文跟着重新拆条
+  const fixed = english.map((e, i) => (i === 0 ? 'Each frame is drawn in code' : e));
+  fs.writeFileSync(enFile, JSON.stringify(pairs.map((p, i) => ({ ...p, en: fixed[i] }))));
+  const later = new Date(Date.now() + 5000);
+  fs.utimesSync(enFile, later, later);
+  ok(wka('subtitles', dir, '--aspect', '9:16'));
+  const refreshed = JSON.parse(fs.readFileSync(path.join(dir, 'subtitles.en.9x16.json'), 'utf8'));
+  assert.equal(refreshed.map((p) => p.en).join(' '), fixed.join(' '));
 
   // 已存在时只检查不覆盖（可能手改过断句）
   const edited = srt.replace('每一帧', '每一帧 ');

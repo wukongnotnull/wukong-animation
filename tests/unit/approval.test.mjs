@@ -52,9 +52,9 @@ test('recordApproval keeps the progress history', () => {
 });
 
 /** 1 秒纯色短片 */
-function clip(dir, name, color) {
+function clip(dir, name, color, seconds = 1) {
   const out = path.join(dir, name);
-  const r = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `color=c=${color}:s=64x36:r=10:d=1`, '-pix_fmt', 'yuv420p', '-y', out]);
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', `color=c=${color}:s=64x36:r=10:d=${seconds}`, '-pix_fmt', 'yuv420p', '-y', out]);
   assert.equal(r.status, 0, String(r.stderr));
   return out;
 }
@@ -66,4 +66,11 @@ test('psnrMin is Infinity for identical clips and low for different ones', async
   const c = clip(dir, 'c.mp4', 'red');
   assert.equal(await psnrMin(a, b), Infinity);
   assert.ok((await psnrMin(a, c)) < 50);
+});
+
+test('psnrMin fails clips of different length even when the shared frames match', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-psnr-'));
+  const a = clip(dir, 'a.mp4', 'white');
+  const longer = clip(dir, 'b.mp4', 'white', 2);
+  assert.ok((await psnrMin(a, longer)) < 50);
 });

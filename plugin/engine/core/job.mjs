@@ -4,7 +4,7 @@ import path from 'node:path';
 import { getRegistry, getStyles, loadModule } from './registry.mjs';
 import { resolveStyle } from './resolver.mjs';
 import { validate } from './validate.mjs';
-import { ShotCache, hashParts } from './cache.mjs';
+import { ShotCache, hashParts, fontCssParts } from './cache.mjs';
 import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
 import { run, drawLabel } from './ffmpeg.mjs';
@@ -112,7 +112,7 @@ function shotHash(job, shot) {
     ...job.filmScripts.map((f) => ({ file: f })),
     { file: shot.path },
     { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id },
-    job.fonts.css,
+    ...fontCssParts(job.fonts.css),
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
   ]);

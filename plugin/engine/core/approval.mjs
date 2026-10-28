@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { run } from './ffmpeg.mjs';
 import { ShotCache } from './cache.mjs';
 import { ensureDir } from './paths.mjs';
@@ -12,8 +13,15 @@ import { readProgress } from './state.mjs';
 /** 逐帧画面差异的下限：每帧 PSNR 都高于它，就算画面没变 */
 export const PSNR_PASS = 50;
 
-/** 两段视频逐帧 PSNR 的最小值（dB）；完全相同为 Infinity。 */
+const frameCount = (file) => {
+  const r = spawnSync('ffprobe', ['-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', file], { encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`读不出帧数：${file}\n${r.stderr}`);
+  return Number.parseInt(r.stdout, 10);
+};
+
+/** 两段视频逐帧 PSNR 的最小值（dB）；完全相同为 Infinity，帧数不同为 0（镜头长度变了，画面一定变了）。 */
 export async function psnrMin(a, b) {
+  if (frameCount(a) !== frameCount(b)) return 0;
   const stats = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wka-psnr-')), 'psnr.log');
   try {
     await run(['-i', a, '-i', b, '-lavfi', `psnr=stats_file=${stats.replace(/[\\:']/g, '\\$&')}`, '-f', 'null', '-']);

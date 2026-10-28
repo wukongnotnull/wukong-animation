@@ -204,6 +204,8 @@ export function splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, vari
   variantSubs.forEach((sub, i) => byVoice.set(voiceOf(sub), [...(byVoice.get(voiceOf(sub)) || []), i]));
   const en = new Array(variantSubs.length).fill('');
   for (const [voice, idx] of byVoice) {
+    // 落在所有人声时间段之外的字幕（手改过 srt、或人声同步点刷新过）对不上人声句，留空待填
+    if (voice === -1) continue;
     const parts = groups.get(voice) || [];
     if (!parts.length || parts.some((p) => !p)) continue;
     splitWords(parts.join(' '), idx.map((i) => countChars(variantSubs[i].text))).forEach((e, k) => (en[idx[k]] = e));

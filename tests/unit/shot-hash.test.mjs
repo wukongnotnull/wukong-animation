@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { hashParts } from '../../plugin/engine/core/cache.mjs';
+import { hashParts, fontCssParts } from '../../plugin/engine/core/cache.mjs';
 
 /** 模拟两个插件版本目录：同样的相对布局，装在不同的绝对路径下。 */
 function install(files) {
@@ -46,4 +46,13 @@ test('文件缺失与存在，哈希不同', () => {
   const at = install(LAYOUT);
   const missing = { file: path.join(path.dirname(at('runtime/a.js').file), 'gone.js') };
   assert.notEqual(hashParts(['opts', missing]), hashParts(['opts', at('runtime/a.js')]));
+});
+
+test('字体 CSS 按字体文件名和内容哈希，不随片目录、用户目录的绝对路径变', () => {
+  const a = install({ 'work/fonts/Inter.woff2': 'font' });
+  const b = install({ 'work/fonts/Inter.woff2': 'font' });
+  const css = (at) => `@font-face{font-family:'Inter';src:url('file://${at('work/fonts/Inter.woff2').file}');font-display:block;}\n`;
+  assert.equal(hashParts(fontCssParts(css(a))), hashParts(fontCssParts(css(b))));
+  const c = install({ 'work/fonts/Inter.woff2': 'other subset' });
+  assert.notEqual(hashParts(fontCssParts(css(a))), hashParts(fontCssParts(css(c))));
 });

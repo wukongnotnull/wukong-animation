@@ -189,3 +189,13 @@ test('splitEnglishForVariant leaves a line blank when its main English is missin
   const pairs = splitEnglishForVariant({ voices, cues, mainSubs, mainPairs: [{ zh: '山不说话', en: '' }], variantSubs: mainSubs });
   assert.deepEqual(pairs, [{ zh: '山不说话', en: '' }]);
 });
+
+test('splitEnglishForVariant leaves subtitles outside every voice range blank instead of merging them', async () => {
+  const { splitEnglishForVariant } = await import('../../plugin/engine/core/subtitles.mjs');
+  const voices = [{ text: '甲', at: 0 }];
+  const cues = { vo1: [0, 4] };
+  const mainSubs = [{ start: 0, end: 4, text: '甲' }, { start: 4.2, end: 4.8, text: '乙' }, { start: 9.5, end: 10, text: '丙' }];
+  const mainPairs = [{ zh: '甲', en: 'A one' }, { zh: '乙', en: 'B two' }, { zh: '丙', en: 'C three' }];
+  const pairs = splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs: mainSubs });
+  assert.deepEqual(pairs.map((p) => p.en), ['A one', '', '']);
+});

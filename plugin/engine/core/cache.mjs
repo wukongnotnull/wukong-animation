@@ -22,6 +22,19 @@ export function hashParts(parts) {
   return h.digest('hex').slice(0, 16);
 }
 
+/**
+ * 字体 CSS 的哈希部件：url('file://…') 换成字体文件本身（按文件名和内容哈希），
+ * 片目录、用户目录挪了位置也得到同样的哈希。签批记录的镜头哈希进 git，不能依赖绝对路径。
+ */
+export function fontCssParts(css) {
+  const files = [];
+  const text = css.replace(/url\('file:\/\/([^']+)'\)/g, (_, file) => {
+    files.push({ file });
+    return `url(${path.basename(file)})`;
+  });
+  return [text, ...files];
+}
+
 export class ShotCache {
   /** dir：缓存目录，缺省为片目录的 .cache/（副版传 .cache/<画幅后缀>/） */
   constructor(filmDir, dir = path.join(filmDir, '.cache')) {

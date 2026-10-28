@@ -48,7 +48,10 @@ const fail = (msg) => {
   process.exit(1);
 };
 /** --aspect：要处理的画幅（副版），缺省为主版 */
-const aspectOpt = () => (typeof opt('aspect') === 'string' ? opt('aspect') : null);
+const aspectOpt = () => {
+  if (opt('aspect') === true) fail('--aspect 后面要写画幅，如 --aspect 9:16（final 还可以写 all）');
+  return typeof opt('aspect') === 'string' ? opt('aspect') : null;
+};
 
 const STYLE_SCHEMA = path.join(ENGINE_ROOT, 'schemas', 'style.schema.json');
 // 插件外的风格（用户目录等）找不到插件里的 schema，编辑器改用仓库 main 分支上的这份
@@ -249,6 +252,16 @@ function reportSubtitleCheck(ctx, settings, subs) {
   if (errors.length) fail(`${settings.file} 有错误：\n  ${errors.join('\n  ')}`);
 }
 
+/** 副版英文稿还没有，或主版英文稿比它新（改过译文）：要按主版重新生成 */
+function variantEnglishOutdated(ctx, settings) {
+  const own = path.join(ctx.filmDir, settings.enFile);
+  if (!fs.existsSync(own)) return true;
+  const main = path.join(ctx.filmDir, subtitleSettings(ctx.film).enFile);
+  if (!fs.existsSync(main) || fs.statSync(main).mtimeMs <= fs.statSync(own).mtimeMs) return false;
+  log(`· 主版英文 ${path.basename(main)} 比 ${settings.enFile} 新，副版英文按主版重新拆条（副版英文的手改会被覆盖）`);
+  return true;
+}
+
 /** 副版英文稿：沿用主版英文，按副版的中文拆条重新切开（不重译）。 */
 function writeVariantEnglish(ctx, settings, subs) {
   const main = loadFilm(ctx.filmDir);
@@ -314,7 +327,7 @@ async function cmdSubtitles(filmDir, { force, preview, aspect }) {
     fs.writeFileSync(file, formatSrt(subs));
     log(`✓ 字幕 ${subs.length} 条 → ${settings.file}`);
   }
-  if (settings.bilingual && !ctx.variant.isMain && (force || !fs.existsSync(path.join(ctx.filmDir, settings.enFile)))) writeVariantEnglish(ctx, settings, subs);
+  if (settings.bilingual && !ctx.variant.isMain && (force || variantEnglishOutdated(ctx, settings))) writeVariantEnglish(ctx, settings, subs);
   if (settings.bilingual) syncEnglishFile(ctx, settings, subs);
   if (!preview) return;
   subs = withEnglish(ctx, settings, subs);

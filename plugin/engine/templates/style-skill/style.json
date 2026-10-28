@@ -1,5 +1,5 @@
 {
-  "$schema": "../../engine/schemas/style.schema.json",
+  "$schema": "__SCHEMA__",
   "id": "__ID__",
   "name": "__NAME__",
   "name_en": "",

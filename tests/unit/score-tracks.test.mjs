@@ -9,7 +9,7 @@ import * as synth from '../../plugin/engine/audio/synth.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SCRIPTS = {
-  'film template': 'plugin/skills/director/templates/film/audio/build.mjs',
+  'film template': 'plugin/engine/templates/film/audio/build.mjs',
   'hanjiang example': 'plugin/skills/ink-wash/examples/hanjiang/audio/build.mjs',
 };
 

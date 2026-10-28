@@ -9,19 +9,19 @@ wukong-animation/                          # GitHub 仓库
 │   ├── .claude-plugin/plugin.json
 │   ├── catalog.json               # 自动生成：72 变索引
 │   ├── skills/                    # 只有一层：skills/<id>/SKILL.md
-│   │   ├── director/              # 通用流程 + 片子模板 templates/film/
+│   │   ├── director/              # 通用流程
 │   │   ├── new-style/
 │   │   ├── ink-wash/              # SKILL · STYLE · TECH · style.json · scripts/ · examples/
 │   │   └── keynote/               # 第 70 变，remotion 管线；scripts/ 是 TSX 组件
 │   ├── commands/                  # film · styles · setup
 │   └── engine/
 │       ├── bin/wka.mjs           # CLI
+│       ├── templates/             # wka 用的模板：film/ · brief.md · style-skill/
 │       ├── core/                  # 扩展时不改动
 │       ├── schemas/               # style / film / pipeline / kit / exporter 的 JSON Schema
 │       ├── runtime/               # 页面运行时（浏览器类管线共用）
 │       ├── pipelines/  kits/  exporters/   # 三类插槽，各有 _template/
 │       └── audio/                 # synth 合成器 · tts · mix
-├── templates/style-skill/         # 新风格模板
 ├── tools/                         # 维护脚本（不分发）
 ├── tests/smoke/                   # 冒烟测试 + 基准图（按平台分目录）
 ├── tests/unit/ tests/integration/ # node --test：cue 解析、AI 配音缓存、渲染失败清理

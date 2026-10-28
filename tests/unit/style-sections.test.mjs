@@ -16,7 +16,7 @@ const sectionsOf = (file) =>
 
 const skillsDir = path.join(ROOT, 'plugin/skills');
 const styleFiles = [
-  path.join(ROOT, 'templates/style-skill/STYLE.md'),
+  path.join(ROOT, 'plugin/engine/templates/style-skill/STYLE.md'),
   ...fs.readdirSync(skillsDir).map((d) => path.join(skillsDir, d, 'STYLE.md')).filter((f) => fs.existsSync(f)),
 ];
 

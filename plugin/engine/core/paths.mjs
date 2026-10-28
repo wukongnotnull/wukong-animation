@@ -10,6 +10,7 @@ export const ENGINE_ROOT = path.resolve(here, '..');
 export const PLUGIN_ROOT = path.resolve(ENGINE_ROOT, '..');
 export const SKILLS_DIR = path.join(PLUGIN_ROOT, 'skills');
 export const CATALOG_FILE = path.join(PLUGIN_ROOT, 'catalog.json');
+export const TEMPLATES_DIR = path.join(ENGINE_ROOT, 'templates');
 
 export const ENGINE_VERSION = JSON.parse(
   fs.readFileSync(path.join(ENGINE_ROOT, 'package.json'), 'utf8')

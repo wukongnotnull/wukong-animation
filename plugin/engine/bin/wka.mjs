@@ -6,6 +6,7 @@
 //   wka init-project [目录]           git 初始化工程（第 1 道工序）
 //   wka brief <片名> [--dir 项目目录]  建占位片目录和简报空白稿（第 2 道工序）
 //   wka init <片名> --style <id> [--dir 项目目录] [--aspect 16:9|9:16]
+//   wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]   新建风格（默认 ~/.wukong-animation/styles/）
 //   wka status [项目目录]             各片制作进度（恢复在制项目）
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
 //   wka qc <片目录> [--proxy]       量化技术质检（QC）
@@ -21,7 +22,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
-import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, ensureDir } from '../core/paths.mjs';
+import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
+import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
 import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview } from '../core/job.mjs';
 import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg } from '../core/ffmpeg.mjs';
@@ -134,7 +136,7 @@ function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
   if (!st) fail(`没有风格 "${style}"。可用：${[...styles.keys()].join(', ')}`);
   const filmDir = path.resolve(dir, 'films', name);
   if (fs.existsSync(path.join(filmDir, 'film.json'))) fail(`${filmDir} 已存在`);
-  const tpl = path.join(PLUGIN_ROOT, 'skills', 'director', 'templates', 'film');
+  const tpl = path.join(TEMPLATES_DIR, 'film');
   fs.cpSync(tpl, filmDir, { recursive: true });
   const size = aspect === '9:16' ? [1080, 1920] : aspect === '1:1' ? [1080, 1080] : [1920, 1080];
   const film = JSON.parse(fs.readFileSync(path.join(filmDir, 'film.json'), 'utf8'));
@@ -155,11 +157,30 @@ function cmdBrief(name, { dir = '.' }) {
   const filmDir = path.resolve(dir, 'films', name);
   const brief = path.join(filmDir, 'brief.md');
   if (fs.existsSync(brief)) fail(`${brief} 已存在`);
-  const tpl = fs.readFileSync(path.join(PLUGIN_ROOT, 'skills', 'director', 'templates', 'brief.md'), 'utf8');
+  const tpl = fs.readFileSync(path.join(TEMPLATES_DIR, 'brief.md'), 'utf8');
   fs.mkdirSync(filmDir, { recursive: true });
   fs.writeFileSync(brief, tpl.replaceAll('<片名>', name));
   recordProgress(filmDir, { step: 1, note: '建立占位片目录' });
   log(`✓ 已创建 ${path.relative(process.cwd(), brief) || brief}`);
+}
+
+/** 新建风格：从引擎模板复制，默认放用户目录（升级插件不覆盖）；维护者用 --dest plugin/skills。 */
+function cmdNew(what, id, { name, category = 'custom', order = 101, dest = USER_STYLES_DIR }) {
+  if (what !== 'style') fail('wka new 只支持 style（工具包、管线、导出器要在插件仓库里实现）');
+  if (!id || !NAME_RE.test(id) || !name || name === true) fail('用法：wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]（id 只用小写字母、数字和连字符）');
+  const dir = path.resolve(dest, id);
+  if (fs.existsSync(dir)) fail(`${dir} 已存在`);
+  copyTemplate(path.join(TEMPLATES_DIR, 'style-skill'), dir, {
+    ID: id,
+    NAME: name,
+    CATEGORY: category,
+    ORDER: order,
+    GLOBAL: id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()),
+    ONE_LINE: '（一句话特征）',
+    WHEN: '（什么样的片子）',
+  });
+  log(`✓ 已创建 ${dir}（第 ${order} 变）`);
+  log('  下一步：写 STYLE.md 十节 → TECH.md → scripts/style.js → examples/ 示范片 → wka list styles 校验');
 }
 
 /** 读字幕文件并检查；有错误就中断，警告打印后继续。 */
@@ -323,6 +344,8 @@ async function main() {
       return;
     case 'brief':
       return cmdBrief(pos[0], { dir: opt('dir', '.') });
+    case 'new':
+      return cmdNew(pos[0], pos[1], { name: opt('name'), category: opt('category', 'custom'), order: opt('order', 101), dest: opt('dest', USER_STYLES_DIR) });
     case 'init':
       return cmdInit(pos[0], { style: opt('style'), dir: opt('dir', '.'), aspect: opt('aspect', '16:9') });
     case 'signoff': {

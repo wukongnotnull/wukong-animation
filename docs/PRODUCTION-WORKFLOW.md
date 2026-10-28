@@ -90,7 +90,7 @@
 
 第一轮就问片名（导演按故事拟一个工作片名作推荐答案），片名定下即 `wka brief <片名>` 建占位片目录 `films/<片名>/` 和简报空白稿 `brief.md`。客户已经说清的项不再问。以客户的选择为准：选了故事里还没有的人声（比如选了对白，故事里却没有说话的角色），简报里说明第 4 道会补出说话的角色和人声文案。
 
-**简报包含哪些项**（模板 `plugin/skills/director/templates/brief.md`）：
+**简报包含哪些项**（模板 `plugin/engine/templates/brief.md`）：
 
 | 部分 | 必填 | 有就写（客户说没有就写「无」） |
 |---|---|---|
@@ -133,7 +133,7 @@
 
 **输入**：第 2 道签批的简报 `brief.md`（核心信息、基调、片长、画幅、有无人声、有无配乐），第 3 道选定风格的 `STYLE.md`（基调、运动语言、声音、禁忌清单）。
 
-**产出**：`films/<片名>/story.md`。`wka init` 建工程时已经从模板 `plugin/skills/director/templates/film/story.md` 带出空白稿，在上面填写。
+**产出**：`films/<片名>/story.md`。`wka init` 建工程时已经从模板 `plugin/engine/templates/film/story.md` 带出空白稿，在上面填写。
 
 **逐部分写法：**
 
@@ -180,7 +180,7 @@ wka signoff films/寒江 "文学脚本 v2 签批：去掉 VO，改为古琴 + �
 
 ### 第 5 道工序：分镜脚本
 
-按模板 `plugin/skills/director/templates/film/storyboard.md` 写，格式规范见 `plugin/skills/director/STORYBOARD.md`。`storyboard.md` 给客户审阅，`film.json` 给引擎渲染，两者逐镜对应。
+按模板 `plugin/engine/templates/film/storyboard.md` 写，格式规范见 `plugin/skills/director/STORYBOARD.md`。`storyboard.md` 给客户审阅，`film.json` 给引擎渲染，两者逐镜对应。
 
 **表头**：总长、画幅、分辨率与帧率、风格、种子、对应的文学脚本版本号。
 

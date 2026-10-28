@@ -6,7 +6,7 @@
 node tools/new-style.mjs watercolor --name 水彩晕染 --category shouhui
 ```
 
-`tools/plan72.json` 里已有的 id 会自动沿用规划的序号。然后：
+`tools/plan72.json` 里已有的 id 会自动沿用规划的序号，模板在 `plugin/engine/templates/style-skill/`（脚本内部调用 `wka new style --dest plugin/skills`；只给自己用的风格直接 `wka new style <id> --name 名称`，建在 `~/.wukong-animation/styles/`）。然后：
 
 1. **STYLE.md**：九段结构（本质 / 色彩 / 构图 / 技法 / 运动 / 声音 / 禁忌 / 示范片 / 质检），lint 会检查。
 2. **style.json**：管线、工具包（带版本范围）、字体、`qc` 阈值。

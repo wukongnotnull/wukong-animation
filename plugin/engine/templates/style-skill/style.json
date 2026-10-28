@@ -15,5 +15,5 @@
   "aspects": ["16:9", "9:16"],
   "post": [],
   "keywords": ["__NAME__"],
-  "qa": { "diff_max": 30, "cuts_max": 4 }
+  "qc": { "diff_max": 30, "cuts_max": 4 }
 }

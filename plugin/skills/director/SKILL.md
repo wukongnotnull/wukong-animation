@@ -5,7 +5,7 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 
 # wukong-animation · 总导演
 
-> 制作流程版本 **v1.6.0**（流程文档见仓库 `docs/PRODUCTION-WORKFLOW.md`）
+> 制作流程版本 **v1.9.0**（流程文档见仓库 `docs/PRODUCTION-WORKFLOW.md`）
 
 你是导演。用代码逐帧"画"出短片——不调用任何视频生成模型。
 72 种风格各是一个 skill（如 `ink-wash`），它们只负责美术规格与制作技法（"画成什么样、用什么技术画"）；**制作管线只在这里**。
@@ -185,7 +185,7 @@ node <插件根目录>/engine/bin/wka.mjs
 
 ✅ **审片节点③ 文学脚本** → `--step 4`
 
-**5. 分镜脚本（Storyboard）** → `storyboard.md`（给人审阅，格式见 `STORYBOARD.md`）+ 工程文件 `film.json`（给引擎）。
+**5. 分镜脚本（Storyboard）** → `storyboard.md`（给人审阅，格式见 `STORYBOARD.md`）+ 工程文件 `film.json`（给引擎，字段见 `FILM.md`）。
 表头写总长、画幅、分辨率与帧率、风格、种子、对应的文学脚本版本号。按文学脚本的段落结构拆镜头，逐镜标注 10 栏：
 镜号、段落（起 / 承 / 转 / 合）、时长、景别（远景 / 全景 / 中景 / 近景 / 特写）、画面内容、运镜 / 动态、人声、音效、屏幕文字、转场。跨镜的 BGM 和环境声写在表下「声音铺底」段。
 **取决于风格的栏到风格 STYLE.md 查取值**（对照表见 `STORYBOARD.md`）：屏幕文字 → 3. 文字，景别、画面 → 4. 构图，运镜、时长、转场 → 6. 运动语言，音效、铺底 → 7. 声音；转场只能用风格转场表里的名称。用到的技法不进分镜表，写在镜头文件第一行注释里（见 `SHOT.md`）。
@@ -229,7 +229,7 @@ edge-tts 的中文普通话音色：
 ✅ **审片节点⑤ 人声素材来源** → `--step 6`
 
 **7. 声轨制作（声音先行：先定声轨，再做画面）**
-- 人声写进 `film.json` 的 `audio.voices`，每条给一个同步点名（如 `"cue": "第二句"`），**各条不能重名**（重名时 `wka soundtrack` 报错）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
+- 人声写进 `film.json` 的 `audio.voices`（`film.json` 各字段见 `FILM.md`），每条给一个同步点名（如 `"cue": "第二句"`），**各条不能重名**（重名时 `wka soundtrack` 报错）。不是画外音的条目按分镜标记写 `kind`（`dialogue` / `os` / `live`）和 `speaker`；同期声（`live`）必须挂接录音 `file`，即使 `voice_source` 是 `ai`。
 - 配乐（Score）写在 `audio/build.mjs`：用 `synth`（qin 拨弦 / water 流水 / knock 打击 / reverb 混响）程序化合成原创音乐；关键音效的时间点放进 `film.json` 的 `cues`。风格带录音音效清单（`style.json` 的 `sfx`，如 keynote）的，音效用 `sfx.place(buf, 名字, { at })` 放录音，按该风格的 `SFX.md` 选；下载前先 `wka sfx <片> --list` 请用户确认。配乐、环境声、音效各建一个 buffer、各写一个文件（`bgm.wav` / `ambience.wav` / `sfx.wav`，某类没有就不写），导出剪映草稿时各占一条轨，后期能分开调。有人声的片子，背景音乐的返回音轨标 `duck: true` 就随人声闪避（说话时压到 0.48 倍）。
 - `wka soundtrack`：接入用户录音或合成 AI 配音，把每条人声的**实测**入出点写回 `cues`，并标出超出镜头时长或互相重叠的条目 → 据此回调 `film.json` 的镜头时长。用户自供录音与文学脚本篇幅出入较大时，告诉用户并以实际录音为准。声轨按风格 `style.json` 的 `loudness`（缺省 -18 LUFS）两遍标准化，日志打出复测响度；用了录音音效的片子还会打出「音效听感审计」，有被盖住的音效时把这几行转给用户，由用户定调高、挪位还是换音效。
 - 把审听用的声轨 `films/<片>/review/声轨.m4a`（按 `wka soundtrack` 日志里的绝对路径写成可点击路径）交给用户审听，请用户确认人声效果、配乐、音效和整体节奏。不要交 `.cache/mix.wav`：它在隐藏目录里，WAV 体积大，在聊天里播放会卡。有意见就改 `audio/build.mjs` 或人声后重新 `wka soundtrack`，再提交审听。

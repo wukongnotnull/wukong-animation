@@ -10,6 +10,7 @@
 
 ## 修订记录
 
+- v1.10.0（2026-10-28）：用户带来现成口播稿时，第 2 道把原文存为片目录的 `口播稿.md`，故事 / 主题、片长、人声从稿子推出；第 4 道以它为素材写剧本，人声文案用原句，画不出来的句子写成改稿建议 `review/改稿建议.md` 随剧本提交，用户同意的才改；工序与审片节点不变（[#87](https://github.com/wukongnotnull/wukong-animation/issues/87)）
 - v1.9.0（2026-10-28）：流程文档 `docs/PRODUCTION-WORKFLOW.md` 并入 `director/SKILL.md`，术语表移到 `references/GLOSSARY.md`，修订记录与未采纳的提案移到本文件；工序与审片节点不变（[#75](https://github.com/wukongnotnull/wukong-animation/issues/75)）
 - v1.9.0（2026-10-28）：分镜表栏目改为按观看顺序排、画面与声音分组：镜 · 段落 · 时长 · 转场 · 景别 · 画面 · 运镜 / 动态 · 屏幕文字 · 人声 · 音效（原来转场在最后、屏幕文字夹在音效和转场之间）；`film.json` 字段说明从 `STORYBOARD.md` 拆到 `plugin/skills/director/FILM.md`（[#68](https://github.com/wukongnotnull/wukong-animation/issues/68)）
 - v1.8.1（2026-10-27）：第 6 道试听选音色也按「试听文件可点击路径 → 推荐理由 → 选音色卡片」三步提交；凡请客户看、听文件处都必须先列可点击路径，不能只说「已生成、可播放」

@@ -73,7 +73,13 @@ const rows = Object.entries(plan.categories).map(([cat, cname]) => {
   const list = entries.filter((e) => e.category === cat).map((e) => (e.status === 'available' ? `**${e.name}**` : e.name));
   return `| ${cname} | ${list.join(' · ')} |`;
 });
-const gallery = ['| 分类 | 风格（加粗 = 已可用） |', '|---|---|', ...rows].join('\n');
+// 有画廊图（node tools/render-stills.mjs）的风格放在表格下方，每行 3 张
+const PER_ROW = 3;
+const cells = entries.filter((e) => e.still).map((e) => `<td align="center"><img src="${e.still}" width="400" alt="${e.name}"><br>${e.name}</td>`);
+const picRows = [];
+for (let i = 0; i < cells.length; i += PER_ROW) picRows.push(`<tr>${cells.slice(i, i + PER_ROW).join('')}</tr>`);
+const pics = picRows.length ? ['', '<table>', ...picRows, '</table>'] : [];
+const gallery = ['| 分类 | 风格（加粗 = 已可用） |', '|---|---|', ...rows, ...pics].join('\n');
 
 const replaceBlock = (src, tag, body) =>
   src.replace(new RegExp(`(<!-- ${tag} -->)[\\s\\S]*?(<!-- /${tag} -->)`), `$1\n${body}\n$2`);

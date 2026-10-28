@@ -1,0 +1,15 @@
+{
+  "name": "wukong-animation-repo",
+  "private": true,
+  "description": "仓库维护命令入口（不分发、无依赖；运行时依赖在 plugin/engine）",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup": "npm ci --prefix plugin/engine --no-audit --no-fund",
+    "test": "node --test tests/unit/*.test.mjs tests/integration/*.test.mjs",
+    "smoke": "node tests/smoke/run.mjs",
+    "lint": "node tools/lint.mjs && node tools/build-docs.mjs --check",
+    "catalog": "node tools/build-catalog.mjs"
+  }
+}

@@ -1,5 +1,17 @@
 # 贡献指南
 
+## 常用命令
+
+在仓库根目录运行（根目录 `package.json` 只放脚本，依赖装在 `plugin/engine/`）：
+
+| 命令 | 做什么 |
+| --- | --- |
+| `npm run setup` | 安装引擎依赖（`plugin/engine/node_modules`） |
+| `npm test` | 单元测试 + 集成测试 |
+| `npm run smoke` | 冒烟测试；`npm run smoke -- <风格id>` 只跑一个风格，`-- --update` 更新基准图 |
+| `npm run lint` | 结构与清单校验 + 工具包文档是否最新 |
+| `npm run catalog` | 重新生成 `plugin/catalog.json` |
+
 ## 新增一种风格
 
 ```bash
@@ -13,8 +25,8 @@ node tools/new-style.mjs watercolor --name 水彩晕染 --category shouhui
 3. **scripts/**：把最难写的技法做成积木，挂到 `wk.<名>`。镜头只做编排。
 4. **TECH.md**：选型理由 + 积木 API。
 5. **examples/<片名>/**：10–20 秒示范片，必须 `wka qc` 全部通过。示范长篇旁白等特定做法的示范片可以更长（如 ink-wash 的《春江花月夜》148.8 秒），在风格 STYLE.md「9. 示范片」里写明它示范什么；冒烟测试只渲染首、中、末三张静帧，片长不影响 CI 用时。
-6. `node tools/build-catalog.mjs` → `node tools/render-stills.mjs <id> --gif` → `node tests/smoke/run.mjs <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
-7. `node tools/lint.mjs` 通过后提 PR。
+6. `npm run catalog` → `node tools/render-stills.mjs <id> --gif` → `npm run smoke -- <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
+7. `npm run lint` 通过后提 PR。
 
 SKILL.md 的 description 控制在 200 字以内，并写清与相近风格的区别（例如"比工笔更写意"）——72 条描述会常驻上下文。
 
@@ -32,7 +44,7 @@ node tools/new-kit.mjs webm-alpha --exporter --ext webm
 2. 工具包每个导出函数都写 JSDoc，`node tools/build-docs.mjs` 生成 README（CI 会检查是否最新）。
 3. 只用传入的 seed 产生随机性；函数必须是纯函数或只读缓存。
 4. 重依赖（Blender、Manim）设为可选：`check()` 缺依赖时给出安装提示，不影响其他管线。
-5. 改了引擎或工具包要跑 `node --test tests/unit/*.test.mjs tests/integration/*.test.mjs` 和 `node tests/smoke/run.mjs`，确认没有把已有风格改坏；确实需要改变画面时用 `--update` 更新基准并在 PR 里说明。
+5. 改了引擎或工具包要跑 `npm test` 和 `npm run smoke`，确认没有把已有风格改坏；确实需要改变画面时用 `--update` 更新基准并在 PR 里说明。
 
 ## 版权
 

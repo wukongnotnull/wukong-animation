@@ -54,8 +54,7 @@ jobs:
           for i in 1 2; do sudo timeout 240 apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk && break; done
           ffmpeg -version > /dev/null
       - name: 安装 npm 依赖
-        working-directory: plugin/engine
-        run: npm ci --no-audit --no-fund
+        run: npm run setup
       - name: 缓存 Chromium
         id: pw-cache
         uses: actions/cache@v4
@@ -89,10 +88,10 @@ jobs:
           key: apt-${{ runner.os }}-deps-${{ steps.apt.outputs.hash }}
       - name: 单元与集成测试
         timeout-minutes: 5
-        run: node --test tests/unit/*.test.mjs tests/integration/*.test.mjs
+        run: npm test
       - name: 冒烟测试（确定性 + 基准图比对）
         timeout-minutes: 5
-        run: node tests/smoke/run.mjs ${{ inputs.update && '--update' || '' }}
+        run: npm run smoke -- ${{ inputs.update && '--update' || '' }}
       - name: 上传 linux 基准图
         if: ${{ inputs.update }}
         uses: actions/upload-artifact@v4

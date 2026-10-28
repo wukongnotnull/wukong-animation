@@ -5,7 +5,7 @@
 - **工序**：第 5 道 · 审片节点 ④ 分镜
 - **模板**：`engine/templates/film/storyboard.md`，第 3 道 `wka init` 建工程时带出空白稿 `films/<片名>/storyboard.md`
 - **流程**：怎么提交、签批被拒怎么办见 `../SKILL.md` 第 5 道
-- **示例**：各风格的示范片，如 `ink-wash/examples/hanjiang/storyboard.md`
+- **示例**：各风格的示范片，如 `ink-wash/examples/chunjiang/storyboard.md`
 
 ## 一、表头
 

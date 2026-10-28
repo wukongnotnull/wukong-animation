@@ -1,4 +1,4 @@
-# 文学脚本 story.md
+# 文学脚本填写规范（story.md）
 
 第 4 道工序的交付物，审片节点 ③ 文学脚本签批。模板 `engine/templates/film/story.md`，第 3 道 `wka init` 建工程时带出空白稿 `films/<片名>/story.md`，在上面填写。怎么提交、征询哪几点见 `SKILL.md` 第 4 道。
 

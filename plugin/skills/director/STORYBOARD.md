@@ -1,4 +1,4 @@
-# 分镜表格式
+# 分镜表填写规范（storyboard.md）
 
 第 5 道工序的交付物，审片节点 ④ 分镜签批。模板 `engine/templates/film/storyboard.md`，第 3 道 `wka init` 建工程时带出空白稿 `films/<片名>/storyboard.md`；样例见各风格的示范片，如 `ink-wash/examples/hanjiang/storyboard.md`。
 

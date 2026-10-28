@@ -1,4 +1,4 @@
-# 制作简报 brief.md
+# 制作简报填写规范（brief.md）
 
 第 2 道工序的交付物，审片节点 ① 制作简报签批。模板 `engine/templates/brief.md`，`wka brief <片名>` 建出空白稿 `films/<片名>/brief.md`。导演按追问结果填写，签批后第 3 道起各工序以它为制作规格的依据。怎么追问见 `SKILL.md` 第 2 道。
 

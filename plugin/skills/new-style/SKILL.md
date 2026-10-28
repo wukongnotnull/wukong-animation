@@ -23,15 +23,15 @@ description: 为 wukong-animation 创建自定义动画风格（第 73 变及以
    | 矢量排版、动态字体 | browser | svg-gsap（规划中） |
    | 大量排版、界面重绘、发布会式讲解（React 组件，镜头写 .tsx） | remotion | 无（积木放 scripts/index.ts，见 keynote） |
 
-   用到"规划中"的工具包时，告诉用户需要先实现它（`node tools/new-kit.mjs <名>` 生成骨架）。
+   用到"规划中"的工具包时，告诉用户它需要在插件仓库里实现（提 issue 或 PR），用户目录里加不了工具包。
 
-3. **建目录**（从插件的 `templates/style-skill/` 复制，或手写）：
+3. **建目录**：运行 `wka new style <id> --name <名称>`，从引擎模板生成以下结构（默认 category 为 `custom`、order 为 101）：
    ```
    ~/.wukong-animation/styles/<id>/
    ├── SKILL.md      # 触发描述一句话 + "流程按 director 执行"
    ├── STYLE.md      # 固定 10 节：本质 / 色彩 / 文字 / 构图 / 技法 / 运动语言 / 声音 / 禁忌 / 示范片 / 质检
    ├── TECH.md       # 选型理由 + 积木 API
-   ├── style.json    # category 用 "custom"，order 从 101 起
+   ├── style.json    # 管线、工具包、字体、qc 阈值
    └── scripts/      # 风格积木，挂到 wk.<短名>
    ```
 4. **写 style.json 的 qc 阈值**：留白、点缀色、帧差、硬切——让 `wka qc` 能替你把关。

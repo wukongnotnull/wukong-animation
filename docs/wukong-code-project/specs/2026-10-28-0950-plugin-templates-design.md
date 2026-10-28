@@ -18,7 +18,7 @@
 | 复制模板 | `core/scaffold.mjs`（新，自 `tools/scaffold.mjs` 移入） | `copyTemplate(src, dest, vars)`、`NAME_RE`，行为不变 |
 | 命令 | `bin/wka.mjs` 新增 `wka new style` | 从 `templates/style-skill/` 生成一个风格目录 |
 | 维护脚本 | `tools/new-style.mjs`、`tools/new-kit.mjs`、`tools/new-pipeline.mjs` | 改用引擎的 `parseArgs` 与 `core/scaffold.mjs`；`tools/scaffold.mjs` 删除 |
-| 分发边界检查 | `tools/lint.mjs` | 新增一条：`plugin/` 下的 `.md` 不得引用 `tools/` 或根目录 `templates/` |
+| 分发边界检查 | `tools/lint.mjs` | 新增一条：`plugin/skills/`、`plugin/commands/` 下的 `.md` 不得让用户运行 `node tools/…`，也不得引用根目录 `templates/`（kit README 里"由 `node tools/build-docs.mjs` 生成"的说明、片子目录里的 `tools/` 不算） |
 
 `new-kit` / `new-pipeline` **不**开放给用户：插槽在 `plugin/engine/` 里，用户加进去的会在插件升级时被覆盖。
 
@@ -32,6 +32,7 @@ wka new style <id> --name <名称> [--category <分类>] [--order <N>] [--dest <
 
 - `<id>` 须匹配 `NAME_RE`，`--name` 必填；缺少或不合法时退出码非 0，打印用法。
 - 默认值：`--category custom`、`--order 101`、`--dest ~/.wukong-animation/styles`（即 `USER_STYLES_DIR`，受 `WUKONG_ANIMATION_HOME` 覆盖）。
+- 风格模板 `style.json` 里的 `"qa"` 改为 schema 认可的 `"qc"`（实现中发现：原模板生成的风格过不了校验，会被 `getStyles()` 丢弃，A4 因此失败）。
 - 生成 `<dest>/<id>/`，占位符替换与现在 `tools/new-style.mjs` 相同：`ID`、`NAME`、`CATEGORY`、`ORDER`、`GLOBAL`（id 转驼峰）、`ONE_LINE`、`WHEN`。
 - 目标目录已存在：退出码非 0，不覆盖任何文件。
 - `<dest>` 不存在时自动创建。
@@ -87,7 +88,7 @@ node tools/new-style.mjs <id> --name <名称> --category <分类> [--order N] [-
 | A4 | 新生成的用户风格出现在 `wka list styles` 中 | 同上 |
 | A5 | `tools/new-style.mjs` 按 `plan72.json` 取序号，写到 `--dest` | 同上 |
 | A6 | `wka init` / `wka brief` 产出不变 | 现有 `init-template.test.mjs`、`brief.test.mjs` |
-| A7 | `plugin/` 下的 `.md` 不引用 `tools/` 或根目录 `templates/` | `node tools/lint.mjs` 新规则 |
+| A7 | `plugin/skills/`、`plugin/commands/` 下的 `.md` 不让用户运行 `node tools/…`、不引用根目录 `templates/` | `node tools/lint.mjs` 新规则 |
 | A8 | `tools/scaffold.mjs` 与根目录 `templates/` 不再存在；全部单元、集成测试和冒烟测试通过 | `node --test tests/unit/*.test.mjs tests/integration/*.test.mjs`、`node tests/smoke/run.mjs` |
 
 `style-sections.test.mjs`、`score-tracks.test.mjs` 里写死的模板路径随之更新。

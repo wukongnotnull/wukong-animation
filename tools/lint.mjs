@@ -106,7 +106,20 @@ for (const st of styles.values()) {
   }
 }
 
-// 5. catalog 是否最新
+// 5. 分发边界：只有 plugin/ 分发给用户，技能和命令不能让用户运行仓库的 tools/ 脚本或去找根目录的 templates/
+const OUTSIDE_REF = /(node tools\/[\w./-]*|(?<=^|[\s`'"(])templates\/[\w./-]*)/m;
+const walkMd = (d) =>
+  fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) return e.name === 'node_modules' || e.name.startsWith('.') ? [] : walkMd(p);
+    return e.name.endsWith('.md') ? [p] : [];
+  });
+for (const f of ['skills', 'commands'].flatMap((d) => walkMd(path.join(PLUGIN, d)))) {
+  const m = fs.readFileSync(f, 'utf8').match(OUTSIDE_REF);
+  if (m) errors.push(`${rel(f)}: 引用了不随插件分发的 ${m[1]}`);
+}
+
+// 6. catalog 是否最新
 const c = spawnSync(process.execPath, [path.join(ROOT, 'tools/build-catalog.mjs'), '--check'], { encoding: 'utf8' });
 if (c.status !== 0) errors.push((c.stderr || c.stdout).trim());
 

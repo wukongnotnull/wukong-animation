@@ -37,7 +37,8 @@ export default function S02({ dur, s }: ShotProps) {
 }
 ```
 
-- `ShotProps`：`dur` 本镜帧数；`s` 有 `id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名)`（秒，相对本镜）。`W/H` 是设计尺寸，小样由管线缩小，镜头里不用管。
+- `ShotProps`：`dur` 本镜帧数；`s` 有 `id / W / H / designW / designH / aspect / orientation / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名)`（秒，相对本镜）。`W/H` 是设计尺寸，小样由管线缩小，镜头里不用管。
+- **主版、副版共用镜头**：`s.aspect`（`'16:9'` / `'9:16'`）和 `s.orientation`（`'landscape'` / `'portrait'`）是当前渲染的画幅，`useFrame()` 已按它给出版式。只在两版排法真不一样的地方分支（`s.orientation === "portrait" ? … : …`）；一个文件排不下两版的，副版写覆盖文件 `shots/s03.9x16.tsx`，渲染副版时自动替换。重排怎么排见 STYLE.md「4. 构图 · 画幅重排规则」。
 - 镜头只能依赖 `useCurrentFrame()` 和 props；不要用 `Math.random()`、`Date`、网络请求。
 - 镜头经 `@wka/film/…` import 的片目录文件（公共组件、数据、图片）**都要列进 `film.json` 的 `scripts`**：镜头缓存只认这里列出的文件，漏列的文件改了不会触发重渲。风格通用的图片放风格 `assets/`，用 `staticFile('assets/…')`（已进缓存哈希）。
 
@@ -45,7 +46,7 @@ export default function S02({ dur, s }: ShotProps) {
 
 ### 几何与样式
 
-- `useFrame(): FrameSpec` —— `orientation`、`W/H`、`safe`、`type.T01…T09`（size / weight / line）、`layout.L01…L07`（L07 是 `cards` 四个位置）、`subtitle`、`presenter`、`scene.detail`（细节页，整个画面）。横竖由片子尺寸自动判断。新增横竖不同的几何，加到 `frame.tsx` 的 `SceneGeometry` 并两边都填。
+- `useFrame(): FrameSpec` —— `orientation`、`W/H`、`safe`、`type.T01…T09`（size / weight / line）、`layout.L01…L07`（L07 是 `cards` 四个位置）、`subtitle`、`presenter`、`scene.detail`（细节页，整个画面）。横竖跟着当前渲染的画幅（`s.orientation`）走，主版、副版各拿各的。新增横竖不同的几何，加到 `frame.tsx` 的 `SceneGeometry` 并两边都填。
 - `color`、`font`（`sans` / `mono`）、`gap`、`motion`（`fade` 14 / `move` 20 / `transition` 24 帧）、`lanes`。
 - `useShot(): { dur, s }` —— 不想层层传 props 时读当前镜头。
 

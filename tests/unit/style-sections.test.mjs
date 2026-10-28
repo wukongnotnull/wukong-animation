@@ -29,3 +29,20 @@ for (const file of styleFiles) {
 test('至少检查了模板和两个现有风格', () => {
   assert.ok(styleFiles.length >= 3, styleFiles.join('\n'));
 });
+
+/** 第 4 节「构图」里的小节标题 */
+function subsectionsOfComposition(file) {
+  const src = fs.readFileSync(file, 'utf8');
+  const body = src.split(/^## /m).find((part) => part.startsWith('4. 构图')) || '';
+  return { body, titles: body.split('\n').filter((l) => l.startsWith('### ')).map((l) => l.slice(4).trim()) };
+}
+
+for (const file of styleFiles) {
+  test(`${path.relative(ROOT, file)} 在「4. 构图」里写了画幅重排规则（横转竖、竖转横）`, () => {
+    const { body, titles } = subsectionsOfComposition(file);
+    assert.ok(titles.includes('画幅重排规则'), `小节：${titles.join('、')}`);
+    const rules = body.split('### 画幅重排规则')[1].split(/^### /m)[0];
+    assert.match(rules, /横转竖/);
+    assert.match(rules, /竖转横/);
+  });
+}

@@ -14,6 +14,8 @@
 
 所有长度参数按 1080p 设计，传 `u: s.u` 自动换算。
 
+主版、副版共用镜头时，`s.orientation`（`'landscape'` / `'portrait'`）和 `s.aspect`（`'16:9'` / `'9:16'`）是当前渲染的画幅，构图不同的地方按它分支；构图完全不同的镜头，副版写覆盖文件 `shots/sNN.9x16.js`。怎么排见 STYLE.md「4. 构图 · 画幅重排规则」。
+
 ### `wk.ink.palette`
 `{ paper, jiao, nong, zhong, dan, qing, zhusha }`，见 STYLE.md「2. 色彩」。
 

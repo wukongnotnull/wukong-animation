@@ -79,6 +79,8 @@
       W: cfg.W,
       H: cfg.H,
       u: cfg.H / cfg.designH, // 设计单位：按 1080p 设计的像素 × s.u
+      aspect: cfg.aspect, // 画幅 '16:9' / '9:16'：主版与副版共用镜头时按它分支
+      orientation: cfg.orientation, // 'landscape' / 'portrait' / 'square'
       fps: cfg.fps,
       T: meta.duration,
       start: meta.start,

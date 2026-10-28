@@ -6,6 +6,7 @@ import path from 'node:path';
 import { requireDep } from '../../core/deps.mjs';
 import { hasFfmpeg, openImagePipe } from '../../core/ffmpeg.mjs';
 import { ENGINE_VERSION } from '../../core/paths.mjs';
+import { aspectOf, orientationOf } from '../../core/variants.mjs';
 
 const RUNTIME_ORDER = ['wk.js', 'rng.js', 'easing.js', 'noise.js', 'timeline.js'];
 
@@ -59,6 +60,8 @@ function buildHost(job) {
     H: job.H,
     designW: job.designW,
     designH: job.designH,
+    aspect: aspectOf([job.designW, job.designH]),
+    orientation: orientationOf([job.designW, job.designH]),
     fps: job.fps,
     seed: job.seed,
     fonts: job.fonts.stacks,

@@ -133,3 +133,44 @@ test('style.schema accepts qc.by_aspect overrides', async () => {
   assert.deepEqual(errs({ accent_max: 0.04, by_aspect: { '9:16': { accent_max: 0.05 } } }), []);
   assert.notDeepEqual(errs({ by_aspect: { '9:16': { foo: 1 } } }), []);
 });
+
+/** 临时片目录：ink-wash 风格（声明了 16:9 与 9:16），s01 有竖版覆盖文件。 */
+function inkFilm(extra = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variant-film-'));
+  fs.mkdirSync(path.join(dir, 'shots'));
+  for (const f of ['s01.js', 's01.9x16.js', 's02.js']) fs.writeFileSync(path.join(dir, 'shots', f), '');
+  const film = {
+    title: 'v', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1,
+    shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }, { id: 's02', file: 'shots/s02.js', duration: 1 }],
+    ...extra,
+  };
+  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
+  return dir;
+}
+
+test('loadFilm without an aspect loads the main version as before', async () => {
+  const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
+  const dir = inkFilm({ variants: { '9:16': {} } });
+  const ctx = loadFilm(dir);
+  assert.equal(ctx.variant.isMain, true);
+  assert.deepEqual(ctx.film.size, [320, 180]);
+  assert.equal(ctx.shots[0].path, path.join(dir, 'shots', 's01.js'));
+});
+
+test('loadFilm with a variant aspect swaps the size and picks override shot files', async () => {
+  const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
+  const dir = inkFilm({ variants: { '9:16': { subtitles: { style: { size: 0.03 } } } } });
+  const ctx = loadFilm(dir, { aspect: '9:16' });
+  assert.equal(ctx.variant.isMain, false);
+  assert.deepEqual(ctx.film.size, [180, 320]);
+  assert.equal(ctx.shots[0].path, path.join(dir, 'shots', 's01.9x16.js'));
+  assert.equal(ctx.shots[1].path, path.join(dir, 'shots', 's02.js'));
+  assert.equal(ctx.style.subtitles.size, 0.03);
+  // film.json 本身不被改写
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8')).size, [320, 180]);
+});
+
+test('loadFilm rejects an aspect the film does not declare', async () => {
+  const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
+  assert.throws(() => loadFilm(inkFilm(), { aspect: '9:16' }), /variants/);
+});

@@ -49,3 +49,9 @@ for (const [name, f] of Object.entries(FRAMES)) {
     assert.deepEqual(f.scene.detail, { x: 0, y: 0, w: f.W, h: f.H });
   });
 }
+
+test('ShotRoot picks the frame spec from s.orientation given by the engine', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'plugin/skills/keynote/scripts/shot.tsx'), 'utf8');
+  assert.match(src, /s\.orientation/);
+  assert.doesNotMatch(src, /designH > s\.designW/);
+});

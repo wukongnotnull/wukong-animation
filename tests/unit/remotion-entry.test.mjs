@@ -27,7 +27,13 @@ test('每个镜头一个 Composition：id、帧数（四舍五入、至少 1 帧
 
 test('镜头的 s 与 browser 管线同名同义', () => {
   const [, s02] = shotsOf(buildEntry(job, ''));
-  assert.deepEqual(s02.s, { id: 's02', W: 1920, H: 1080, designW: 1920, designH: 1080, fps: 30, seed: 7, cues: { boom: 1.2 }, duration: 1.25, start: 2 });
+  assert.deepEqual(s02.s, { id: 's02', W: 1920, H: 1080, designW: 1920, designH: 1080, aspect: '16:9', orientation: 'landscape', fps: 30, seed: 7, cues: { boom: 1.2 }, duration: 1.25, start: 2 });
+});
+
+test('竖屏镜头的 s.aspect / s.orientation', () => {
+  const [s01] = shotsOf(buildEntry({ ...job, designW: 1080, designH: 1920 }, ''));
+  assert.equal(s01.s.aspect, '9:16');
+  assert.equal(s01.s.orientation, 'portrait');
 });
 
 test('按绝对路径引入镜头文件，注册根组件', () => {

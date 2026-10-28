@@ -263,10 +263,10 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', log = console.log }) {
-  const ctx = loadFilm(filmDir);
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, log = console.log }) {
+  const ctx = loadFilm(filmDir, { aspect });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
-  const base = ctx.film.export?.name || 'out';
+  const base = ctx.variant.exportName;
   const outputs = [];
   for (const name of wanted) {
     const exp = ctx.registry.exporters.get(name);

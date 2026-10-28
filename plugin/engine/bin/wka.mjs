@@ -26,11 +26,12 @@ import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR
 import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
 import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
 import { snapshotMain, checkMainUnchanged } from '../core/approval.mjs';
+import { listAspects } from '../core/variants.mjs';
 import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, recordApproval, readProgress, variantStale, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
+import { recordProgress, recordApproval, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
@@ -326,6 +327,18 @@ async function cmdSubtitles(filmDir, { force, preview, aspect }) {
   log(`字幕预览：${out}`);
 }
 
+/** --aspect all：先主版、再各副版；有过期副版时一个都不出。 */
+async function cmdFinalAll(filmDir, o) {
+  if (o.aspect !== 'all') return cmdFinal(filmDir, o);
+  const { film } = loadFilm(filmDir);
+  const stale = staleVariants(readProgress(filmDir));
+  if (stale.length) fail(`${stale.join('、')} 副版已过期：主版在第 13 道重新签批过，先重做第 14 道「改版」并签批，再出全部画幅`);
+  for (const aspect of listAspects(film)) {
+    log(`\n── ${aspect}${aspect === listAspects(film)[0] ? ' 主版' : ' 副版'} ──`);
+    await cmdFinal(filmDir, { ...o, aspect });
+  }
+}
+
 async function cmdFinal(filmDir, o) {
   const ctx = loadFilm(filmDir, { aspect: o.aspect });
   if (!ctx.variant.isMain) {
@@ -334,8 +347,9 @@ async function cmdFinal(filmDir, o) {
     }
     await checkMainUnchanged(filmDir, { aspect: o.aspect, log });
   }
-  const settings = subtitleSettings(ctx.film);
-  const subs = settings.mode === 'none' ? null : withEnglish(ctx, settings, readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles` }));
+  const settings = subtitleSettings(ctx.film, ctx.variant);
+  const aspectArg = ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`;
+  const subs = settings.mode === 'none' ? null : withEnglish(ctx, settings, readSubtitles(ctx, settings, { missing: `还没有 ${settings.file}：先运行 wka subtitles${aspectArg}` }));
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
   const { mix: audio, tracks, voices } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
   const { video, job, segments } = await render(filmDir, o);
@@ -346,28 +360,28 @@ async function cmdFinal(filmDir, o) {
   const names = subtitleOutputs(subs ? settings.mode : 'none', settings.bilingual);
   const outs = [];
   if (visual.length && names.burned !== null) {
-    const out = path.join(ctx.filmDir, '.cache', o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
+    const out = path.join(ctx.variant.cacheDir, o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
     const burned = await burnSubtitles(video, subs, out, { W: job.W, H: job.H, style: ctx.style, workDir: job.workDir, proxy: o.proxy, log });
-    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, log })));
   }
   // 已有烧录版时，无字幕版只多出一个 mp4
   if (visual.length && names.clean !== null) {
     const cleanFormats = names.burned === null ? visual : ['mp4'];
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect, log })));
   }
   if (drafts.length) {
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
-    const timeline = { title: job.film.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, log })));
+    const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.totalDuration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect, log })));
   }
   if (names.srt !== null && !o.proxy) {
-    const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}${names.srt}.srt`);
+    const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srt}.srt`);
     fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
     log(`  导出 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
   if (names.srtEn && !o.proxy) {
-    const srt = path.join(ctx.filmDir, `${ctx.film.export?.name || 'out'}${names.srtEn}.srt`);
+    const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srtEn}.srt`);
     fs.writeFileSync(srt, englishSrt(subs));
     log(`  导出英文 srt → ${path.basename(srt)}`);
     outs.push(srt);
@@ -490,8 +504,8 @@ async function main() {
       if (!pos[0]) fail('用法：wka subtitles <片目录> [--force] [--preview]');
       return cmdSubtitles(pos[0], { force: !!opt('force'), preview: !!opt('preview'), aspect: aspectOpt() });
     case 'final':
-      if (!pos[0]) fail('用法：wka final <片目录>');
-      return cmdFinal(pos[0], {
+      if (!pos[0]) fail('用法：wka final <片目录> [--aspect 9:16|all]');
+      return cmdFinalAll(pos[0], {
         proxy: !!opt('proxy'),
         only: opt('only') ? String(opt('only')).split(',') : null,
         force: !!opt('force'),

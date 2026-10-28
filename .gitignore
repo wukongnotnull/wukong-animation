@@ -15,3 +15,5 @@ plugin/skills/*/examples/*/stills/
 plugin/skills/*/examples/*/review/
 plugin/skills/*/examples/*/audio/generated/
 plugin/skills/*/examples/*/*.gif
+plugin/skills/*/examples/*/*_字幕.srt
+plugin/skills/*/examples/*/*_英文字幕.srt

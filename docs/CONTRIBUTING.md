@@ -12,7 +12,7 @@ node tools/new-style.mjs watercolor --name 水彩晕染 --category shouhui
 2. **style.json**：管线、工具包（带版本范围）、字体、`qc` 阈值。
 3. **scripts/**：把最难写的技法做成积木，挂到 `wk.<名>`。镜头只做编排。
 4. **TECH.md**：选型理由 + 积木 API。
-5. **examples/<片名>/**：10–20 秒示范片，必须 `wka qc` 全部通过。
+5. **examples/<片名>/**：10–20 秒示范片，必须 `wka qc` 全部通过。示范长篇旁白等特定做法的示范片可以更长（如 ink-wash 的《春江花月夜》148.8 秒），在风格 STYLE.md「9. 示范片」里写明它示范什么；冒烟测试只渲染首、中、末三张静帧，片长不影响 CI 用时。
 6. `node tools/build-catalog.mjs` → `node tools/render-stills.mjs <id> --gif` → `node tests/smoke/run.mjs <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
 7. `node tools/lint.mjs` 通过后提 PR。
 

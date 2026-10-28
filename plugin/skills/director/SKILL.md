@@ -116,6 +116,25 @@ node <插件根目录>/engine/bin/wka.mjs
 
 每到 ✅ 审片节点：**停下来把交付物提交给用户审阅，等用户明确签批（sign-off）**，再执行 `wka signoff <片目录> "<用户的审片结论 / 返修意见摘要>" --step N`，然后继续。问签批用选择卡片（见上一节）。
 
+**工序总表**（每个节点交什么、审什么，见上一节「审片节点总表」；每道怎么做，见下面各道细则）：
+
+| # | 工序 | 做什么 | 主要命令 | 产出 | 审片节点 · `--step` |
+|---|---|---|---|---|---|
+| 1 | 制作环境、工程初始化、恢复在制项目 | 检查环境，工程纳入 git，恢复在制的片子或新建 | `wka check`、`wka init-project`、`wka status` | 可用的制作环境、纳入 git 的工程目录 | — |
+| 2 | 制作简报（Brief）确认 | 用文字分轮追问，定下片名和制作规格 | `wka brief` | 占位片目录 `films/<片名>/`、`brief.md` | ① 制作简报 · `2` |
+| 3 | 美术定调（Look Development） | 提报 3 套视觉方案，用户选定风格后补齐工程 | `wka list styles`、`wka init` | 片目录里 `film.json`、`story.md`、`storyboard.md`、`audio/build.mjs`、`shots/` 的空白模板 | ② 美术定调 · `3` |
+| 4 | 文学脚本撰写 | 按段落写出全片的文字底稿 | — | `story.md`（v1、v2……） | ③ 文学脚本 · `4` |
+| 5 | 分镜脚本（Storyboard） | 按段落拆镜头，写分镜表和工程文件，两者逐镜对应 | — | `storyboard.md`、`film.json` | ④ 分镜 · `5` |
+| 6 | 人声素材来源 | 定人声从哪来；选 AI 配音的先试听再选音色 | `wka audition` | `film.json` 的 `audio.voice_source`、用户自供的录音 | ⑤ 人声素材来源 · `6` |
+| 7 | 声轨制作（声音先行） | 合成配乐、环境声、音效，接入人声，实测同步点并回调镜头时长 | `wka sfx`、`wka soundtrack` | `bgm.wav` / `ambience.wav` / `sfx.wav`、`.cache/mix.wav`、`review/声轨.m4a`、`film.json` 的 `cues` | ⑥ 声轨审听 · `7` |
+| 8 | 风格帧与动态分镜（Style Frames & Animatic） | 每镜先写出能看出构图的代码，出关键帧排成动态分镜 | `wka animatic` | `review/接触表.jpg`、`review/动态分镜.mp4`、每镜初版 `shots/sNN.js` | ⑦ 风格帧与动态分镜 · `8` |
+| 9 | 镜头制作 | 在第 8 道的代码上把每个镜头做完整 | — | `shots/sNN.js`（及 `shots/common.js`） | — |
+| 10 | 小样渲染与技术质检（Proxy & QC） | 渲染低清小样，量化检测加目视核对 | `wka render --proxy`、`wka qc --proxy`、`wka still` | `review/小样.mp4`、QC 报告 | ⑧ 小样 · `10` |
+| 11 | 字幕制作 | 从人声生成字幕，烧到小样上预览 | `wka subtitles` | `subtitles.srt`、`review/字幕预览.mp4` | ⑨ 字幕 · `11` |
+| 12 | 终版渲染与终混（Final Render & Mix） | 终混、全分辨率渲染、按字幕方式烧录、编码输出 | `wka final` | 成片（文件名标明有没有字幕）、外挂字幕 `<name>_字幕.srt` | — |
+| 13 | 终检与交付（Final QC & Delivery） | QC 终检后把成片交用户终审 | `wka qc` | 成片 vN 定版 | ⑩ 终审 · `13` |
+| 14 | 剪映草稿交付 | 先问要不要剪映草稿，要就导出 | `wka final --formats jianying` | 剪映草稿（写在剪映草稿目录，不进 git） | ⑪ 剪映草稿 · `14` |
+
 **流程图**
 
 ```

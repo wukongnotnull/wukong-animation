@@ -8,6 +8,7 @@
   "fps": 30,
   "seed": 72,
   "scripts": [
+    "shots/elements.js",
     "shots/common.js"
   ],
   "shots": [

@@ -22,6 +22,7 @@ wukong-animation/                          # GitHub 仓库
 │       ├── runtime/               # 页面运行时（浏览器类管线共用）
 │       ├── pipelines/  kits/  exporters/   # 三类插槽，各有 _template/
 │       └── audio/                 # synth 合成器 · tts · mix
+├── package.json                   # 维护命令入口：setup · test · smoke · lint · catalog（不分发、无依赖）
 ├── tools/                         # 维护脚本（不分发）
 ├── tests/smoke/                   # 冒烟测试 + 基准图（按平台分目录）
 ├── tests/unit/ tests/integration/ # node --test：cue 解析、AI 配音缓存、渲染失败清理

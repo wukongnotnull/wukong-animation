@@ -32,7 +32,7 @@ import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
-import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt } from '../core/subtitles.mjs';
+import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 
@@ -245,6 +245,19 @@ function reportSubtitleCheck(ctx, settings, subs) {
   if (errors.length) fail(`${settings.file} 有错误：\n  ${errors.join('\n  ')}`);
 }
 
+/** 副版英文稿：沿用主版英文，按副版的中文拆条重新切开（不重译）。 */
+function writeVariantEnglish(ctx, settings, subs) {
+  const main = loadFilm(ctx.filmDir);
+  const mainSettings = subtitleSettings(main.film, main.variant);
+  const mainSubs = readSubtitles(main, mainSettings, { missing: `副版英文沿用主版：先做主版字幕（wka subtitles ${ctx.filmDir}）` });
+  const mainPairs = readEnglish(main, mainSettings);
+  if (!mainPairs) fail(`副版英文沿用主版：还没有 ${mainSettings.enFile}，先做主版字幕`);
+  const audio = ctx.film.audio || {};
+  const pairs = splitEnglishForVariant({ voices: audio.voices || [], cues: ctx.film.cues || {}, mainSubs, mainPairs, variantSubs: subs });
+  fs.writeFileSync(path.join(ctx.filmDir, settings.enFile), JSON.stringify(pairs, null, 1) + '\n');
+  log(`✓ 副版英文按主版英文重新拆条 → ${settings.enFile}`);
+}
+
 /** 录音音效（第 7 道声轨制作用）：--list 只列来源与大小给用户确认，不带参数则下载并处理。 */
 async function cmdSfx(filmDir, { list }) {
   if (!filmDir) fail('用法：wka sfx <片目录> [--list]');
@@ -266,9 +279,9 @@ async function cmdSfx(filmDir, { list }) {
 }
 
 /** 字幕制作（第 11 道）：生成或检查 subtitles.srt；--preview 把字幕烧录到小样上审阅。 */
-async function cmdSubtitles(filmDir, { force, preview }) {
-  const ctx = loadFilm(filmDir);
-  const settings = subtitleSettings(ctx.film);
+async function cmdSubtitles(filmDir, { force, preview, aspect }) {
+  const ctx = loadFilm(filmDir, { aspect });
+  const settings = subtitleSettings(ctx.film, ctx.variant);
   if (settings.mode === 'none') return log('本片 subtitles.mode 为 none，不出字幕');
   const file = path.join(ctx.filmDir, settings.file);
   let subs;
@@ -283,15 +296,16 @@ async function cmdSubtitles(filmDir, { force, preview }) {
     fs.writeFileSync(file, formatSrt(subs));
     log(`✓ 字幕 ${subs.length} 条 → ${settings.file}`);
   }
+  if (settings.bilingual && !ctx.variant.isMain && (force || !fs.existsSync(path.join(ctx.filmDir, settings.enFile)))) writeVariantEnglish(ctx, settings, subs);
   if (settings.bilingual) syncEnglishFile(ctx, settings, subs);
   if (!preview) return;
   subs = withEnglish(ctx, settings, subs);
-  const video = path.join(ctx.filmDir, '.cache', 'video-proxy.mp4');
-  if (!fs.existsSync(video)) fail('还没有小样：先运行 wka render --proxy');
+  const video = path.join(ctx.variant.cacheDir, 'video-proxy.mp4');
+  if (!fs.existsSync(video)) fail(`还没有小样：先运行 wka render --proxy${ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`}`);
   const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
-  const out = path.join(ensureDir(path.join(ctx.filmDir, 'review')), '字幕预览.mp4');
+  const out = path.join(ensureDir(path.join(ctx.filmDir, 'review')), ctx.variant.review('字幕预览.mp4'));
   const { W, H } = outputSize(ctx.film, true);
-  await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.filmDir, '.cache', 'work'), proxy: true, audio: fs.existsSync(mix) ? mix : null, log });
+  await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.variant.cacheDir, 'work'), proxy: true, audio: fs.existsSync(mix) ? mix : null, log });
   log(`字幕预览：${out}`);
 }
 
@@ -447,7 +461,7 @@ async function main() {
     }
     case 'subtitles':
       if (!pos[0]) fail('用法：wka subtitles <片目录> [--force] [--preview]');
-      return cmdSubtitles(pos[0], { force: !!opt('force'), preview: !!opt('preview') });
+      return cmdSubtitles(pos[0], { force: !!opt('force'), preview: !!opt('preview'), aspect: aspectOpt() });
     case 'final':
       if (!pos[0]) fail('用法：wka final <片目录>');
       return cmdFinal(pos[0], {

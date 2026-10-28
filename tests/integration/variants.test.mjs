@@ -92,3 +92,34 @@ test('an aspect the film does not declare fails with the usable ones', () => {
   assert.notEqual(bad.status, 0);
   assert.match(bad.stderr + bad.stdout, /variants/);
 });
+
+test('wka subtitles --aspect writes the variant\'s own srt and English, split for its aspect', () => {
+  const text = '每一帧都由代码画出来，镜头版式和声音全都写在工程里。';
+  const dir = makeFilm({
+    subtitles: { mode: 'burn', bilingual: true },
+    audio: { voices: [{ text, at: 0 }] },
+    cues: { vo1: [0, 2] },
+  });
+  ok(wka('subtitles', dir));
+  const mainSrt = fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8');
+  const enFile = path.join(dir, 'subtitles.en.json');
+  const pairs = JSON.parse(fs.readFileSync(enFile, 'utf8'));
+  const english = ['Every frame is drawn by code', 'shots, layouts and sound all live in the project'];
+  assert.equal(pairs.length, english.length);
+  fs.writeFileSync(enFile, JSON.stringify(pairs.map((p, i) => ({ ...p, en: english[i] }))));
+
+  ok(wka('subtitles', dir, '--aspect', '9:16'));
+  const srt = fs.readFileSync(path.join(dir, 'subtitles.9x16.srt'), 'utf8');
+  const count = (t) => t.trim().split(/\n\s*\n/).length;
+  assert.ok(count(srt) > count(mainSrt), '竖屏每条字数更少，条数更多');
+  const vPairs = JSON.parse(fs.readFileSync(path.join(dir, 'subtitles.en.9x16.json'), 'utf8'));
+  assert.equal(vPairs.length, count(srt));
+  assert.equal(vPairs.map((p) => p.en).join(' '), english.join(' '), '英文沿用主版，只重新拆条');
+  assert.equal(fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8'), mainSrt, '主版字幕不动');
+
+  // 已存在时只检查不覆盖（可能手改过断句）
+  const edited = srt.replace('每一帧', '每一帧 ');
+  fs.writeFileSync(path.join(dir, 'subtitles.9x16.srt'), edited);
+  ok(wka('subtitles', dir, '--aspect', '9:16'));
+  assert.equal(fs.readFileSync(path.join(dir, 'subtitles.9x16.srt'), 'utf8'), edited);
+});

@@ -22,18 +22,23 @@ const SHORTEST = 0.6;
 export const countChars = (text) => [...text.replace(NOT_COUNTED, '')].length;
 const ms = (sec) => Math.round(sec * 1000) / 1000;
 
-/** film.json 的 subtitles 字段加上缺省值。 */
-export function subtitleSettings(film) {
+/**
+ * film.json 的 subtitles 字段加上缺省值。
+ * variant：当前画幅版本（resolveVariant 的结果）。副版用自己的字幕文件，拆条上限按副版画幅取缺省值
+ * （film.json 里的 max_chars 是为主版定的）。
+ */
+export function subtitleSettings(film, variant = null) {
   const s = film.subtitles || {};
   const [W, H] = film.size;
   const aspect = W > H ? 'landscape' : W < H ? 'portrait' : 'square';
+  const own = !variant || variant.isMain;
   return {
     mode: s.mode || 'none',
-    file: s.file || 'subtitles.srt',
-    maxChars: s.max_chars || MAX_CHARS_BY_ASPECT[aspect],
+    file: variant ? variant.subtitlesFile : s.file || 'subtitles.srt',
+    maxChars: (own && s.max_chars) || MAX_CHARS_BY_ASPECT[aspect],
     bilingual: !!s.bilingual,
-    enFile: 'subtitles.en.json',
-    maxCharsEn: s.max_chars_en || MAX_CHARS_EN_BY_ASPECT[aspect],
+    enFile: variant ? variant.enFile : 'subtitles.en.json',
+    maxCharsEn: (own && s.max_chars_en) || MAX_CHARS_EN_BY_ASPECT[aspect],
   };
 }
 
@@ -151,6 +156,59 @@ export function checkEnglish(pairs, { maxChars }) {
     if (/[^.]\.$/.test(en) || en === '.') w.push(`第 ${i + 1} 条英文以句号结尾（英文字幕不加句号，问句保留问号）`);
     return w;
   });
+}
+
+/** 英文按各段中文字数的比例，在词边界切成 n 段（词不够时后面的段为空）。 */
+function splitWords(en, weights) {
+  const words = en.trim().split(/\s+/).filter(Boolean);
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  // 每个词结束处在整句里的字符位置
+  const ends = [];
+  words.reduce((pos, w, i) => (ends[i] = pos + w.length + (i ? 1 : 0)), 0);
+  const length = ends.at(-1) || 0;
+  const cuts = [];
+  let acc = 0;
+  let from = 0;
+  for (let k = 0; k < weights.length - 1; k++) {
+    acc += weights[k];
+    const target = (length * acc) / total;
+    // 至少留一个词给本段，也给后面每段各留一个（词够的话）
+    const lo = Math.min(from + 1, words.length);
+    const hi = Math.max(lo, words.length - (weights.length - 1 - k));
+    let best = lo;
+    for (let i = lo; i <= hi; i++) if (Math.abs(ends[i - 1] - target) < Math.abs(ends[best - 1] - target)) best = i;
+    cuts.push(best);
+    from = best;
+  }
+  const bounds = [0, ...cuts, words.length];
+  return weights.map((_, k) => words.slice(bounds[k], bounds[k + 1]).join(' '));
+}
+
+/**
+ * 副版英文稿：副版中文拆条和主版不同，按人声句把主版英文合成一句，再按副版各条中文字数在词边界切开。
+ * 不重新翻译；某句人声的主版英文有空条时，这句的副版英文留空（attachEnglish 会报待填）。
+ * @returns {{zh: string, en: string}[]} 与 variantSubs 逐条对应
+ */
+export function splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs }) {
+  const ranges = voices.map((v, i) => cues[v.cue || `vo${i + 1}`]).filter(Boolean);
+  const voiceOf = (sub) => {
+    const mid = (sub.start + sub.end) / 2;
+    return ranges.findIndex(([a, b]) => mid >= a && mid <= b);
+  };
+  const groups = new Map();
+  mainSubs.forEach((sub, i) => {
+    const g = groups.get(voiceOf(sub)) || [];
+    groups.set(voiceOf(sub), [...g, String(mainPairs[i]?.en || '').trim()]);
+  });
+  const byVoice = new Map();
+  variantSubs.forEach((sub, i) => byVoice.set(voiceOf(sub), [...(byVoice.get(voiceOf(sub)) || []), i]));
+  const en = new Array(variantSubs.length).fill('');
+  for (const [voice, idx] of byVoice) {
+    const parts = groups.get(voice) || [];
+    if (!parts.length || parts.some((p) => !p)) continue;
+    splitWords(parts.join(' '), idx.map((i) => countChars(variantSubs[i].text))).forEach((e, k) => (en[idx[k]] = e));
+  }
+  return variantSubs.map((s, i) => ({ zh: s.text, en: en[i] }));
 }
 
 /** 外挂英文 srt：时间同中文字幕。 */

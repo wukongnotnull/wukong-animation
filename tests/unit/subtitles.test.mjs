@@ -146,3 +146,46 @@ test('a long line is not split inside a number', () => {
   const subs = buildSubtitles([{ text: '增长了3.5亿，达到1,000万人次，创下新高', at: 0 }], { vo1: [0, 6] }, { maxChars: 10 });
   assert.deepEqual(texts(subs), ['增长了3.5亿', '达到1,000万人次', '创下新高']);
 });
+
+test('a variant reads and writes its own subtitle files and splits by its own aspect', async () => {
+  const { resolveVariant } = await import('../../plugin/engine/core/variants.mjs');
+  const film = { title: 't', size: [1920, 1080], subtitles: { mode: 'burn', max_chars: 16, bilingual: true }, variants: { '9:16': {} } };
+  const style = { id: 'k', aspects: ['16:9', '9:16'] };
+  const main = resolveVariant({ film, style, filmDir: '/f' });
+  const v = resolveVariant({ film, style, filmDir: '/f' }, '9:16');
+  assert.deepEqual(
+    [subtitleSettings(film, main).file, subtitleSettings(film, main).maxChars, subtitleSettings(film, main).enFile],
+    ['subtitles.srt', 16, 'subtitles.en.json'],
+  );
+  const s = subtitleSettings({ ...film, size: v.size }, v);
+  assert.equal(s.file, 'subtitles.9x16.srt');
+  assert.equal(s.enFile, 'subtitles.en.9x16.json');
+  assert.equal(s.maxChars, 12, '副版按自己的画幅取缺省上限，不沿用主版的 max_chars');
+  assert.equal(s.maxCharsEn, 28);
+  assert.equal(s.mode, 'burn');
+  assert.equal(s.bilingual, true);
+});
+
+test('splitEnglishForVariant re-splits each voice line\'s English at word boundaries, no re-translation', async () => {
+  const { splitEnglishForVariant } = await import('../../plugin/engine/core/subtitles.mjs');
+  const voices = [{ text: '一二三四五六，七八九十甲乙。', at: 0 }, { text: '山不说话。', at: 5 }];
+  const cues = { vo1: [0, 4], vo2: [5, 6] };
+  const mainSubs = buildSubtitles(voices, cues, { maxChars: 18 });
+  const mainPairs = [{ zh: mainSubs[0].text, en: 'one two three four five six seven eight' }, { zh: '山不说话', en: 'The mountain is silent' }];
+  const variantSubs = buildSubtitles(voices, cues, { maxChars: 6 });
+  assert.equal(variantSubs.length, 3);
+  const pairs = splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs });
+  assert.deepEqual(pairs.map((p) => p.zh), variantSubs.map((s) => s.text));
+  assert.equal(`${pairs[0].en} ${pairs[1].en}`, 'one two three four five six seven eight');
+  assert.ok(pairs[0].en && pairs[1].en, '两段都分到英文');
+  assert.equal(pairs[2].en, 'The mountain is silent');
+});
+
+test('splitEnglishForVariant leaves a line blank when its main English is missing', async () => {
+  const { splitEnglishForVariant } = await import('../../plugin/engine/core/subtitles.mjs');
+  const voices = [{ text: '山不说话。', at: 0 }];
+  const cues = { vo1: [0, 1] };
+  const mainSubs = buildSubtitles(voices, cues, { maxChars: 18 });
+  const pairs = splitEnglishForVariant({ voices, cues, mainSubs, mainPairs: [{ zh: '山不说话', en: '' }], variantSubs: mainSubs });
+  assert.deepEqual(pairs, [{ zh: '山不说话', en: '' }]);
+});

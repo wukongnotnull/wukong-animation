@@ -30,7 +30,6 @@ const entries = plan.styles.map(([id, name, category, pipeline, kits], i) => {
   const st = styles.get(id);
   if (!st) return { id, order: i + 1, name, category, categoryName: plan.categories[category], status: 'planned', pipeline, kits };
   const ok = resolveStyle(st, reg).errors.length === 0;
-  const still = fs.existsSync(path.join(ROOT, 'docs/gallery', `${id}.jpg`)) ? `docs/gallery/${id}.jpg` : null;
   const examples = fs.existsSync(path.join(st.dir, 'examples'))
     ? fs.readdirSync(path.join(st.dir, 'examples')).filter((d) => fs.existsSync(path.join(st.dir, 'examples', d, 'film.json')))
     : [];
@@ -48,7 +47,6 @@ const entries = plan.styles.map(([id, name, category, pipeline, kits], i) => {
     best_for: bestFor(st.dir),
     skill: `skills/${id}`,
     examples: examples.map((e) => `skills/${id}/examples/${e}`),
-    still,
   };
 });
 // 不在规划表里的内置风格（第 73 变及以后）
@@ -75,7 +73,9 @@ const rows = Object.entries(plan.categories).map(([cat, cname]) => {
 });
 // 有画廊图（node tools/render-stills.mjs）的风格放在表格下方，每行 3 张
 const PER_ROW = 3;
-const cells = entries.filter((e) => e.still).map((e) => `<td align="center"><img src="${e.still}" width="400" alt="${e.name}"><br>${e.name}</td>`);
+// 画廊图只在仓库里（README 用），不写进随插件分发的 catalog.json（#64）
+const galleryOf = (id) => `docs/gallery/${id}.jpg`;
+const cells = entries.filter((e) => fs.existsSync(path.join(ROOT, galleryOf(e.id)))).map((e) => `<td align="center"><img src="${galleryOf(e.id)}" width="400" alt="${e.name}"><br>${e.name}</td>`);
 const picRows = [];
 for (let i = 0; i < cells.length; i += PER_ROW) picRows.push(`<tr>${cells.slice(i, i + PER_ROW).join('')}</tr>`);
 const pics = picRows.length ? ['', '<table>', ...picRows, '</table>'] : [];

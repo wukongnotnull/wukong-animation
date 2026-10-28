@@ -10,15 +10,14 @@ const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'plugin/catalog.json'
 const available = catalog.styles.filter((s) => s.status === 'available');
 const block = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').match(/<!-- gallery -->([\s\S]*?)<!-- \/gallery -->/)[1];
 
-test('每个已可用的风格都有画廊图，catalog.json 的 still 指向它', () => {
-  for (const s of available) {
-    assert.equal(s.still, `docs/gallery/${s.id}.jpg`, s.id);
-    assert.ok(fs.existsSync(path.join(ROOT, s.still)), `${s.still} 不存在`);
-  }
+const gallery = (s) => `docs/gallery/${s.id}.jpg`;
+
+test('每个已可用的风格都有画廊图 docs/gallery/<id>.jpg', () => {
+  for (const s of available) assert.ok(fs.existsSync(path.join(ROOT, gallery(s))), `${gallery(s)} 不存在`);
 });
 
 test('README 画廊区为每张画廊图放一张图，配风格名', () => {
   for (const s of available) {
-    assert.match(block, new RegExp(`<img src="${s.still}"[^>]*alt="${s.name}"`), s.id);
+    assert.match(block, new RegExp(`<img src="${gallery(s)}"[^>]*alt="${s.name}"`), s.id);
   }
 });

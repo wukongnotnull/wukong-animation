@@ -146,7 +146,7 @@ void main() {
         i += len + Math.floor(r.range(0.02, 0.09) * ridge.length);
       }
     }
-    // 皴擦：沿山体向内的短促斜笔（披麻皴的简化），越往下越稀
+    // 皴擦：沿山体向内的短促斜笔（简化的皴擦），越往下越稀
     const cun = o.cun ?? 1;
     if (cun > 0) {
       const r = wk.rng(seed + 23);

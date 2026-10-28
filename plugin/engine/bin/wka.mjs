@@ -11,7 +11,7 @@
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
 //   wka qc <片目录> [--proxy]       量化技术质检（QC）
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy]   静帧 + 接触表
-//   wka animatic <片目录> [--proxy]   动态分镜：关键帧按镜头时长排成粗片并配上声轨
+//   wka animatic <片目录> [--proxy]   动态分镜：代表帧按镜头时长排成粗片并配上声轨
 //   wka render <片目录> [--proxy] [--only s01,s03] [--force]   渲染（--proxy 为小样）
 //   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
 //   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理

@@ -1,10 +1,10 @@
 # 统一时间轴与累计误差质检
 
-Status: Draft — 等待用户审阅本文件
+Status: Confirmed — 用户于 2026-10-29 在本会话明确批准
 
 日期：2026-10-29（Asia/Shanghai）
 
-依据：已批准的 [PRD](../prd.md) FR-1、FR-2；[体验报告](../reports/2026-10-29-codex-editing-experience.md)；[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。源码基线 `dd230e7`（插件行为同 `8daae3e`）。以下为本次提交审阅的具体设计，获批前不实现。
+依据：已批准的 [PRD](../prd.md) FR-1、FR-2；[体验报告](../reports/2026-10-29-codex-editing-experience.md)；[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。源码基线 `dd230e7`（插件行为同 `8daae3e`）。本文件已获用户批准，实施与验收以此为准。
 
 ## 1. 问题与目标
 

@@ -13,6 +13,9 @@ test('同一批准重试只提交一次历史与定稿身份，输入变化拒�
   stateApi.commitSignoff(film,record);
   assert.equal(readProgress(film).history.length,1);assert.equal(readProgress(film).approved.mainId,identity);
   assert.throws(()=>stateApi.commitSignoff(film,{...record,signature:'changed'}),/变化|不一致/);
+  const note={id:'note-only',note:'补充原结论',signature:'current'};
+  stateApi.commitSignoff(film,note);stateApi.commitSignoff(film,note);
+  assert.equal(readProgress(film).history.filter(h=>h.approvalId==='note-only').length,1);
   fs.rmSync(path.dirname(path.dirname(film)),{recursive:true,force:true});
 });
 

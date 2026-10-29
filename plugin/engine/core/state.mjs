@@ -108,7 +108,7 @@ export function recordApproval(filmDir, { main = null, variant = null, shots = n
 export function commitSignoff(filmDir,{id,step,note,signature,main=null,variants=null}) {
   const st=readProgress(filmDir),old=st.history.find(h=>h.approvalId===id);
   if(old){
-    if(old.signature!==signature||old.step!==step||old.note!==note) throw new Error('同一批准对应的输入或结论发生变化，不一致，需核实当前审阅');
+    if(old.signature!==signature||old.step!==(step||st.step)||old.note!==note) throw new Error('同一批准对应的输入或结论发生变化，不一致，需核实当前审阅');
     return st;
   }
   let approved=st.approved||{};

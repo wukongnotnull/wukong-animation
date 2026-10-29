@@ -20,5 +20,8 @@ test('实际审听范围、来源失效；QC人工接受不改变原测量和硬
   const accepts=first.issues.map(i=>({finding:i.id,disposition:'accepted',range:[i.t0,i.t1],reviewer:'制作者',reviewedAt:'2026-10-29T10:00:00Z',reason:'核对抽帧为转场设计',evidence:'实际打开本段前后帧'}));
   const after=review.qcReview(issues,{source:'video-a',cfg:{fps:10},notes:{qc:accepts}});
   assert.equal(after.machineOk,false);assert.equal(after.accepted.length,1);assert.equal(after.unresolved.length,1);assert.equal(after.issues[0].msg,'diff 40');
+  accepts[1].disposition='needs-fix';
+  const fix=review.qcReview(issues,{source:'video-a',cfg:{fps:10},notes:{qc:accepts}});
+  assert.equal(fix.needsFix.length,1,'硬错误可标记需修复，但不能接受为通过');assert.equal(fix.machineOk,false);
   const stale=review.qcReview(issues,{source:'video-b',cfg:{fps:10},notes:{qc:accepts}});assert.equal(stale.accepted.length,0);assert.equal(stale.staleNotes.length,2);
 });

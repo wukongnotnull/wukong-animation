@@ -49,8 +49,8 @@ export function qcReview(issues,{source,cfg,notes={}}) {
     const n=(notes.qc||[]).find(n=>n.finding===row.id);
     const start=row.t0??row.t??null,end=row.t1??row.t??null;
     const coverage=start===null?validRange(n?.range,cfg?.duration)&&n.range[1]>n.range[0]:validRange(n?.range,cfg?.duration)&&n.range[0]<=start&&n.range[1]>=end;
-    if(n&&attributed(n)&&n.reason?.trim()&&coverage&&SOFT.has(row.kind)) {
-      if(n.disposition==='accepted'){accepted.push({...row,review:n});continue;}
+    if(n&&attributed(n)&&n.reason?.trim()&&coverage) {
+      if(n.disposition==='accepted'&&SOFT.has(row.kind)){accepted.push({...row,review:n});continue;}
       if(n.disposition==='needs-fix'){needsFix.push({...row,review:n});continue;}
     }
     if(n)invalidNotes.push({finding:n.finding,error:'review-notes.json.qc：操作者/审阅时间/理由/证据缺失、区间未覆盖，或此项为不能绕过的技术门槛'});

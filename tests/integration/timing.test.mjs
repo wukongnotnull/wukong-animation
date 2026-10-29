@@ -80,10 +80,92 @@ if (process.env.WKA_TIMING_LONG) for (const pipeline of ['browser','remotion']) 
   try {
     for (const aspect of [null,'9:16']) for (const proxy of [false,true]) {
       const r = cli('render',dir,...(aspect?['--aspect',aspect]:[]),...(proxy?['--proxy']:[]));
-      assert.equal(r.status,0,r.stderr);
+      assert.equal(r.status,0,r.stderr + r.stdout.slice(-6000));
       const file = path.join(dir,'.cache',...(aspect?['9x16']:[]),proxy?'video-proxy.mp4':'video.mp4');
       assert.equal(frames(file),proxy?1637:3274);
       checkBoundaries(file,Array(107).fill(1.02),proxy?15:30);
+      console.log(`${pipeline} ${aspect||'16:9'} ${proxy?'15fps小样':'30fps高清'}：${frames(file)}帧，107个切点检查通过`);
     }
+  } finally { if (process.env.WKA_TIMING_KEEP) console.log('保留长片诊断目录：'+dir); else fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('旧定稿帧长变化时，副版检查保留主版缓存与快照', {timeout:300000}, () => {
+  const dir = film('browser');
+  try {
+    assert.equal(cli('render',dir).status,0);
+    const signed = cli('signoff',dir,'主版确认','--step','13');
+    assert.equal(signed.status,0,signed.stderr);
+    const manifest = fs.readFileSync(path.join(dir,'.cache','manifest.json'));
+    const snapshot = fs.readFileSync(path.join(dir,'.cache','approved','s01.mp4'));
+    const state = fs.readFileSync(path.join(dir,'.wka','state.json'));
+    const file = path.join(dir,'film.json'), f = JSON.parse(fs.readFileSync(file));
+    f.shots[0].duration = 0.54;
+    fs.writeFileSync(file,JSON.stringify(f));
+    cli('render',dir,'--aspect','9:16');
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache','manifest.json')),manifest,'不能自动重渲帧长已变的签批主版');
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache','approved','s01.mp4')),snapshot);
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.wka','state.json')),state);
+    assert.match(fs.readFileSync(path.join(dir,'review','主版不变报告-9x16.md'),'utf8'),/主版有变化/);
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('错误缓存片段被拒绝并失效；下一次渲染恢复', {timeout:300000}, () => {
+  const dir = film('browser');
+  try {
+    assert.equal(cli('render',dir).status,0);
+    const manifestFile = path.join(dir,'.cache','manifest.json');
+    const m=JSON.parse(fs.readFileSync(manifestFile));
+    const bad=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=black:s=32x18:r=10','-frames:v','2',m.shots.s01.file]);
+    assert.equal(bad.status,0,String(bad.stderr));
+    const r=cli('render',dir);
+    assert.notEqual(r.status,0);
+    assert.match(r.stderr,/s01.*实测 2 帧，期望 3 帧/);
+    assert.equal(JSON.parse(fs.readFileSync(manifestFile)).shots.s01,undefined);
+    const recovery=cli('render',dir);
+    assert.equal(recovery.status,0,recovery.stderr);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('动态分镜按12fps累计切点，带声音和无声都保持帧数', {timeout:300000}, () => {
+  const dir=film('browser');
+  try {
+    for(const audio of [false,true]) {
+      if(audio) {
+        fs.mkdirSync(path.join(dir,'.cache'),{recursive:true});
+        const r=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','1.02',path.join(dir,'.cache','mix.wav')]);
+        assert.equal(r.status,0,String(r.stderr));
+      }
+      const r=cli('animatic',dir);
+      assert.equal(r.status,0,r.stderr);
+      const out=path.join(dir,'review','动态分镜.mp4');
+      assert.equal(frames(out),12);
+      checkBoundaries(out,[0.34,0.34,0.34],12);
+    }
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('零帧镜头和小数fps拒绝，不改工程或启动渲染', () => {
+  const dir=film('browser',1,0.1,1);
+  try {
+    const file=path.join(dir,'film.json'), original=fs.readFileSync(file);
+    const zero=cli('render',dir);
+    assert.notEqual(zero.status,0);
+    assert.match(zero.stderr,/s01.*1fps.*不足一帧/);
+    assert.deepEqual(fs.readFileSync(file),original);
+    assert.equal(fs.existsSync(path.join(dir,'.cache','segments')),false);
+    const f=JSON.parse(original);f.fps=29.97;fs.writeFileSync(file,JSON.stringify(f));
+    const fraction=cli('render',dir);
+    assert.notEqual(fraction.status,0);
+    assert.match(fraction.stderr,/fps.*integer/);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('没有时间轴证据不能记录成片终审签批', () => {
+  const dir=film('browser');
+  try {
+    const r=cli('signoff',dir,'未经渲染的终审','--step','13');
+    assert.notEqual(r.status,0);
+    assert.match(r.stderr,/时间轴未验证/);
+    assert.equal(fs.existsSync(path.join(dir,'.wka','state.json')),false);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

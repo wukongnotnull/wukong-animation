@@ -1,4 +1,8 @@
 // 累计切点量化：每镜帧数取相邻切点之差，禁止独立舍入后再求和。
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 export const TIMING_VERSION = 1;
 
 export function buildFrameTimeline(shots, fps) {
@@ -16,11 +20,6 @@ export function buildFrameTimeline(shots, fps) {
   });
   return { version: TIMING_VERSION, fps, totalFrames: boundary, duration: boundary / fps, shots: timeline };
 }
-
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
 
 const ratio = (s) => {
   const [n, d = 1] = String(s).split('/').map(Number);
@@ -44,7 +43,7 @@ export function inspectVideo(file, { fps, frames }) {
     if (!Number.isFinite(tick) || tick <= 0) throw new Error('无效媒体 time_base');
     const tolerance = tick + 1e-6;
     if (result.frames !== frames) errors.push(`实测 ${result.frames} 帧，期望 ${frames} 帧`);
-    if (Math.abs(result.fps - fps) > 1e-6 || Math.abs(ratio(stream.avg_frame_rate) - fps) > 1e-6) errors.push(`实测帧率 ${stream.r_frame_rate}/${stream.avg_frame_rate}，期望 ${fps}fps`);
+    if (!Number.isFinite(result.fps) || !Number.isFinite(ratio(stream.avg_frame_rate)) || Math.abs(result.fps - fps) > 1e-6 || Math.abs(ratio(stream.avg_frame_rate) - fps) > 1e-6) errors.push(`实测帧率 ${stream.r_frame_rate}/${stream.avg_frame_rate}，期望 ${fps}fps`);
     const bad = data.frames.findIndex((f, i) => !Number.isFinite(Number(f.best_effort_timestamp_time)) || Math.abs(Number(f.best_effort_timestamp_time) - i / fps) > tolerance);
     if (bad >= 0) errors.push(`第 ${bad} 帧时间戳不连续：${data.frames[bad].best_effort_timestamp_time}，期望 ${(bad / fps).toFixed(6)}s（容差 ${tick}s）`);
     if (!Number.isFinite(result.duration) || Math.abs(result.duration - frames / fps) > tolerance) errors.push(`视频轨时长 ${stream.duration}s，期望 ${frames / fps}s`);
@@ -90,6 +89,7 @@ function writeReport(ctx, report, { proxy = false, purpose = '', log = () => {} 
 }
 
 export function timingFailure(ctx, error, { proxy = false, log = () => {} } = {}) {
+  fs.rmSync(manifestFile(ctx, proxy), { force: true });
   const timeline = buildFrameTimeline(ctx.shots, fpsOf(ctx, proxy));
   return writeReport(ctx, { ...timeline, aspect: ctx.variant.aspect, purpose: proxy ? '小样' : '高清', errors: [error.message], outputs: [] }, { proxy, log });
 }
@@ -121,16 +121,18 @@ export function recordTiming(ctx, video, segments, { proxy = false, log = () => 
     const sources = segments.map(file => ({ file: path.relative(ctx.filmDir, file), sha256: fileSha(file) }));
     atomicJson(manifestFile(ctx, proxy), { signature: report.signature, timeline, sources, video: { file: path.relative(ctx.filmDir, video), sha256: fileSha(video) } });
   }
+  if (report.errors.length) fs.rmSync(manifestFile(ctx, proxy), { force: true });
   writeReport(ctx, report, { proxy, log });
-  if (!report.ok) throw new Error('视频时间轴检查失败；请查看 review/时间轴检查报告，重渲相关镜头');
+  if (!report.ok) throw new Error('视频时间轴检查失败：' + report.errors.join('；') + '；请重渲相关镜头');
   return report;
 }
 
 /** QC/预览入口：来源签名匹配之后仍重新探测，绝不把旧报告当通过证据。 */
 export function checkTiming(ctx, { proxy = false, log = () => {} } = {}) {
-  const timeline = buildFrameTimeline(ctx.shots, fpsOf(ctx, proxy));
-  let report = { ...timeline, aspect: ctx.variant.aspect, purpose: proxy ? '小样' : '高清', errors: [], outputs: [] };
+  let report = { fps: fpsOf(ctx, proxy), totalFrames: null, shots: [], aspect: ctx.variant.aspect, purpose: proxy ? '小样' : '高清', errors: [], outputs: [] };
   try {
+    const timeline = buildFrameTimeline(ctx.shots, report.fps);
+    report = { ...report, ...timeline };
     const file = manifestFile(ctx, proxy);
     if (!fs.existsSync(file)) throw new Error('缺少时间轴来源记录，需重新运行 wka render' + (proxy ? ' --proxy' : ''));
     const m = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -146,8 +148,9 @@ export function checkTiming(ctx, { proxy = false, log = () => {} } = {}) {
     if (fileSha(video) !== m.video.sha256) throw new Error('拼接视频已变化，需重新渲染/拼接');
     const previous = path.join(ctx.filmDir, 'review', reportBase(ctx, proxy) + '.json');
     const old = fs.existsSync(previous) ? JSON.parse(fs.readFileSync(previous, 'utf8')) : null;
-    report = { ...measure(ctx, timeline, segments, video), purpose: report.purpose, signature: sig, outputs: old?.signature === sig ? old.outputs || [] : [] };
+    report = { ...measure(ctx, timeline, segments, video), purpose: report.purpose, signature: sig, outputs: old?.signature === sig ? (old.outputs || []).map(o => inspectVideo(o.file, { fps: timeline.fps, frames: timeline.totalFrames })) : [] };
   } catch (e) { report.errors.push(e.message); }
+  report.errors.push(...report.outputs.filter(o => !o.ok).flatMap(o => o.errors.map(e => `输出 ${o.file}：${e}`)));
   return writeReport(ctx, report, { proxy, log });
 }
 

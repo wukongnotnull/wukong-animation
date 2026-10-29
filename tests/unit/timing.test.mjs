@@ -50,3 +50,64 @@ test('真实媒体检查拒绝错误帧数，即使容器时长看起来正常',
     assert.equal(timing.inspectVideo(file, { fps: 15, frames: 31 }).ok, false);
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });
+
+test('中间正负偏差抵消、截短输出和来源过期都不能通过', async () => {
+  const { recordTiming, checkTiming, checkOutputTiming } = await import('../../plugin/engine/core/timing.mjs');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(),'wka-timing-cancel-'));
+  const ctx = {filmDir:dir, film:{fps:10,shots:[{id:'s01',duration:1},{id:'s02',duration:1}]},variant:{aspect:'16:9',cacheDir:path.join(dir,'.cache')}};
+  ctx.shots = ctx.film.shots;
+  const make = (name, frames) => {
+    const file = path.join(dir,name);
+    const r = spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=red:s=16x16:r=10','-frames:v',String(frames),file]);
+    assert.equal(r.status,0,String(r.stderr));
+    return file;
+  };
+  try {
+    assert.equal(checkTiming(ctx).ok,false,'没有来源记录不得通过');
+    const a = make('a.mp4',11), b = make('b.mp4',9), video=make('video.mp4',20);
+    assert.throws(() => recordTiming(ctx,video,[a,b]), /时间轴检查失败/);
+    const report = JSON.parse(fs.readFileSync(path.join(dir,'review','时间轴检查.json')));
+    assert.equal(report.video.frames,20,'总帧数其实正确');
+    assert.match(report.errors.join(' '),/s01 切点实测 11 帧，期望 10/);
+    assert.equal(fs.existsSync(path.join(dir,'.cache','timing.json')),false);
+    make('a.mp4',10); make('b.mp4',10);
+    recordTiming(ctx,video,[a,b]);
+    assert.equal(checkTiming(ctx).ok,true);
+    const {encodeOutput} = await import('../../plugin/engine/exporters/mp4/index.mjs');
+    const audio = path.join(dir,'short.wav');
+    const sound = spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','0.1',audio]);
+    assert.equal(sound.status,0,String(sound.stderr));
+    const out = path.join(dir,'short.mp4');
+    await encodeOutput({video,audio,out});
+    assert.throws(() => checkOutputTiming(ctx,out),/声轨是否过短/);
+    assert.equal(checkTiming(ctx).ok,false,'失败输出不能在后续QC中消失');
+    recordTiming(ctx,video,[a,b]);
+    const exported=make('exported.mp4',20);
+    checkOutputTiming(ctx,exported);
+    make('exported.mp4',19);
+    assert.equal(checkTiming(ctx).ok,false,'输出被截短后不能沿用旧的通过结论');
+    recordTiming(ctx,video,[a,b]);
+    ctx.film.shots[0].duration=1.1;
+    assert.match(checkTiming(ctx).errors.join(' '),/过期/);
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('拼接消除微秒时长累积的PTS误差，保持全部视频帧', async () => {
+  const media = await import('../../plugin/engine/core/ffmpeg.mjs');
+  assert.equal(typeof media.concatVideo,'function','缺少保留帧数的拼接时间戳量化');
+  const { inspectVideo } = await import('../../plugin/engine/core/timing.mjs');
+  const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
+  const {spawnSync}=await import('node:child_process');
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-concat-pts-'));
+  try {
+    const clip=path.join(dir,'clip.mp4');
+    const r=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=red:s=16x16:r=30','-frames:v','31','-video_track_timescale','90000','-movie_timescale','90000',clip]);
+    assert.equal(r.status,0,String(r.stderr));
+    const out=path.join(dir,'out.mp4');
+    await media.concatVideo(Array(107).fill(clip),{fps:30,list:path.join(dir,'list.txt'),out});
+    const result=inspectVideo(out,{fps:30,frames:3317});
+    assert.equal(result.ok,true,result.errors.join('；'));
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});

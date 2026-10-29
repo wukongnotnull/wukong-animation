@@ -7,7 +7,7 @@ import { validate } from './validate.mjs';
 import { ShotCache, hashParts, fontCssParts } from './cache.mjs';
 import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
-import { run, drawLabel } from './ffmpeg.mjs';
+import { run, drawLabel, concatVideo } from './ffmpeg.mjs';
 import { pickCues } from './cues.mjs';
 import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
@@ -185,15 +185,14 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   }
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');
-  fs.writeFileSync(list, segments.map((s) => `file '${s}'`).join('\n'));
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   try {
-    await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
-    recordTiming(ctx, video, segments, { proxy, log });
+    await concatVideo(segments, { fps: job.fps, list, out: video });
   } catch (e) {
     timingFailure(ctx, e, { proxy, log });
     throw e;
   }
+  recordTiming(ctx, video, segments, { proxy, log });
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
   const shotSegments = job.timeline.shots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
   return { video, job, segments: shotSegments };

@@ -11,7 +11,7 @@ Remotion 不是 MIT 许可：**个人和不超过 3 人的公司免费，更大�
 
 `shots/sNN.tsx` 默认导出一个组件，props 为 `{ dur, s }`：
 
-- `dur`：本镜帧数（`round(duration × fps)`，至少 1）。
+- `dur`：本镜帧数（全片累计切点的相邻差，不是逐镜独立取整）。
 - `s`：`{ id, W, H, designW, designH, fps, seed, cues, duration, start }`。`W/H` 是**设计尺寸**；小样由 `renderMedia` 的 `scale` 缩小，组件不用管。
 
 组件只能依赖 `useCurrentFrame()` 和 props（Remotion 的约束）。风格 `scripts/` 里的 `index.ts(x)` 用 `@wka/style` 引用；片目录里的文件用 `@wka/film/<路径>` 引用。风格 `index` 若导出 `ShotRoot`，每个镜头都会包在它里面（放背景、几何上下文等）。
@@ -25,5 +25,9 @@ Remotion 不是 MIT 许可：**个人和不超过 3 人的公司免费，更大�
 | 静态文件 | 风格的 `assets/` 复制到 public 的 `assets/`，组件用 `staticFile('assets/…')` |
 | 依赖 | `react`、`react-dom`、`remotion` 用别名钉成同一份（`core/deps.mjs` 的 `resolveDep`） |
 | 浏览器 | 用 playwright 同版本的 chromium headless shell；找不到时 Remotion 自行下载（约 170 MB） |
-| 小样 | `scale` 0.5，按 `film.fps` 渲染后用 ffmpeg 降到半帧率 |
+| 小样 | `scale` 0.5，按 `film.fps` 的累计切点渲染，再用 ffmpeg 降帧并精确匹配代理帧时间轴；仅允许补足最多两帧镜尾画面 |
 | 失败 | 先写 `.part.mp4`，成功才改名；报错带镜头 id 和文件名 |
+
+## 时间轴检查
+
+镜头时长与声音 cue 保留原始秒数。引擎按当前输出 fps 量化全片切点，相减得到每镜帧数；零帧镜头报错，不静默补成一帧。新片段、命中缓存与拼接视频均检查真实帧数和时间戳，错误结果不进入后续交付。`review/时间轴检查*.md` 是可交付的报告，`.cache/timing*.json` 是来源记录；旧工程先重新渲染建立记录。视频时间轴通过不代表旁白语义或关键词同步通过。

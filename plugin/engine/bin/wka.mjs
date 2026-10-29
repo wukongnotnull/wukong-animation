@@ -361,7 +361,8 @@ async function cmdFinal(filmDir, o) {
     if (variantStale(readProgress(filmDir), ctx.variant.aspect)) {
       fail(`${ctx.variant.aspect} 副版已过期：主版在第 13 道重新签批过，先重做第 14 道「改版」并签批，再出副版成片`);
     }
-    await checkMainUnchanged(filmDir, { aspect: o.aspect, log });
+    const mainCheck = await checkMainUnchanged(filmDir, { aspect: o.aspect, log });
+    if (mainCheck?.timingChanged) fail('主版时间轴已变化，请先明确重出主版并完成第 13 道终审，再导出副版');
   }
   const settings = subtitleSettings(ctx.film, ctx.variant);
   const aspectArg = ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`;
@@ -435,6 +436,17 @@ async function main() {
         const problems = checkShotSizes(loadFilm(pos[0], { requireShots: false }).film.shots);
         if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
+      }
+      if (step === FINAL_REVIEW_STEP) requireTiming(loadFilm(pos[0]), { log });
+      if (step === VARIANT_STEP) {
+        const { film } = loadFilm(pos[0]);
+        for (const aspect of Object.keys(film.variants || {})) {
+          const ctx = loadFilm(pos[0], { aspect });
+          const checked = await checkMainUnchanged(pos[0], { aspect, log });
+          if (checked && !checked.ok) fail('主版不变检查未通过，不能签批副版；先完成主版复核');
+          const proxy = fs.existsSync(path.join(ctx.variant.cacheDir, 'timing-proxy.json'));
+          requireTiming(ctx, { proxy, log });
+        }
       }
       recordProgress(pos[0], { step, note });
       await recordStepApproval(pos[0], step);

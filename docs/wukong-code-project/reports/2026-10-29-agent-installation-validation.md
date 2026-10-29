@@ -1,6 +1,6 @@
 # 主流 Agent 安装验证记录
 
-日期：2026-10-29；跟踪 #98 / PR #99；源码运行时代码基线 `9d4fba2`（后续安装测试覆盖全部 variants）。
+日期：2026-10-29；跟踪 #98 / PR #99；最终核对提交 `1aa83f7`。此前安装契约与 Codex 发现记录的运行时代码基线为 `9d4fba2`，随后的安装测试覆盖全部 variants。
 
 ## 计数与边界
 
@@ -61,9 +61,23 @@ macOS 27.0 / arm64 本地完成安装契约，Linux/macOS/Windows 的 hosted CI 
 
 本地产物根：`/Users/wukong/.codex/visualizations/2026/10/29/01a18638-6b66-7560-82a9-6be129eb754d/agent-installation-validation`。
 
+## 发布包路径别名
+
+macOS 临时目录经 `/var` 访问时，realpath 是 `/private/var`。解压后的 `install-agent.mjs` 若用字符串比较这两个路径，进程会以退出码 0 结束且不执行安装。`1aa83f7` 改为比较 realpath。
+
+本机复核：把 `wukong-animation-agent-skills-v0.15.0.zip` 解压到含中文、空格、`#`、`%` 的 `/var/folders/...` 目录，确认脚本路径与 realpath 不同。随后对该副本执行 Cursor 项目级 `install`、`status`、`uninstall`，状态依次为 `current`、`current`、`missing`，收据写入后被卸载删除。同一行为有回归测试 `a moved release installer actually executes CLI mutations through OS path aliases`。
+
 ## 完整回归与 CI
 
-当前仍在运行完整 npm test；最终测试数量、smoke 和三系统 CI 结果在完成后追加。未完成的项目不记为 passed。
+在 `1aa83f7` 上本地执行：
+
+- `npm test`：379 项通过、0 失败、0 跳过，耗时约 176 秒。
+- `npm run lint`：通过。
+- `npm run smoke`：本次未在本地重跑。该提交只改安装器路径比较和对应测试，渲染代码未变。push 与 pull_request 的 smoke 均在 `1aa83f7` 通过（run `40875102087`、`40875111012`）。
+
+更早一次完整测试在路径修复提交前启动，结果为 378 项中 377 项通过，`tests/integration/subtitles.test.mjs` 的 `mode both` 失败一次：实测 19 帧、期望 20 帧。干净重跑未复现，时间轴与字幕代码未因此改动。
+
+`1aa83f7` 的 push 与 pull_request 检查均通过：lint、smoke，以及 ubuntu/macos/windows 的安装契约。
 
 ## 尚未验证
 

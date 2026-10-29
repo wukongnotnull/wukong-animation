@@ -131,12 +131,13 @@ PRD 已获批，首批 FR-1/FR-2 通过 PR #94、第二批 FR-3/FR-4 通过 PR #
 
 用户另行明确要求“简报选了，就不要重复问”，director/BRIEF 已遵循：已选草稿直接准备导出，已选只交成片直接结束，只有交付未明确才询问；实际依赖/目录/剪映运行阻塞只处理对应事项。真实审片节点继续保留。
 
-用户已明确回复“同意”，批准本轮 FR-9～FR-14；已形成两份待审具体 spec：[可移植分发与安装生命周期](specs/2026-10-29-2017-portable-installation-design.md)、[宿主适配与兼容证据](specs/2026-10-29-2017-agent-host-adaptation-design.md)，分别审阅后才写实施计划和代码。27 工具族是目标清单，本轮调查不宣称已完成新的安装能力；#98 与 #93 分别记录新增平台覆盖与既有人工播放待办。当前 v0.15.0 的已发布状态不受本轮设计影响。
+用户已明确回复“同意”，并随后批准两份 spec：[可移植分发与安装生命周期](specs/2026-10-29-2017-portable-installation-design.md)、[宿主适配与兼容证据](specs/2026-10-29-2017-agent-host-adaptation-design.md)。实现在 [PR #99](https://github.com/wukongnotnull/wukong-animation/pull/99)，证据见[安装验证记录](reports/2026-10-29-agent-installation-validation.md)。25 个工具族有安装契约，实际宿主发现与最小渲染目前只有 Codex CLI；其余宿主、媒体打开和正式发布仍未完成。#98 继续开放，#93 的人工播放待办不变。当前已发布的 v0.15.0 不包含这批安装改动。
 
 ## 10. 修订记录
 
 | 日期 | 修订 | 原因 | 跟踪 |
 | --- | --- | --- | --- |
+| 2026-10-29 | 记录 FR-9～FR-14 已按批准 spec 实现，等待 PR #99 审阅；未发布 | 安装契约、发布包路径别名和完整测试已核对 | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[PR #99](https://github.com/wukongnotnull/wukong-animation/pull/99) |
 | 2026-10-29 | 确认 FR-9～FR-14，进入具体 spec 设计 | 用户明确回复“同意” | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98) |
 | 2026-10-29 | 新增待审 FR-9～FR-14：至少25工具族安装覆盖、完整资源、生命周期、宿主能力与分级验证；既有批准不变 | 用户要求主流 Agent 可安装，平台越多越好 | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98) |
 | 2026-10-29 | 第三批四份 spec 获批并完成实现；宿主播放保留人工验证 | 用户明确回复“确认”，按 TDD 实施 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #96](https://github.com/wukongnotnull/wukong-animation/pull/96) |

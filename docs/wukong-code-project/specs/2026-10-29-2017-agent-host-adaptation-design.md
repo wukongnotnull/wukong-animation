@@ -1,6 +1,6 @@
 # Agent 宿主适配、能力降级与兼容证据
 
-状态：待审；日期：2026-10-29；对应已批准 PRD FR-9/12/13/14；关联 [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)。依赖[可移植分发 spec](2026-10-29-2017-portable-installation-design.md)，本文尚未批准实施。
+状态：已批准（用户于 2026-10-29 明确回复“批准”）；日期：2026-10-29；对应已批准 PRD FR-9/12/13/14；关联 [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)。依赖[可移植分发 spec](2026-10-29-2017-portable-installation-design.md)，本文已获批准实施。
 
 ## 1. 问题与目标
 

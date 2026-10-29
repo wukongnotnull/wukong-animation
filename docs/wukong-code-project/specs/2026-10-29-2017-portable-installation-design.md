@@ -1,6 +1,6 @@
 # 可移植技能分发与安装生命周期
 
-状态：待审；日期：2026-10-29；对应已批准 PRD FR-9/10/11/14；跟踪 [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)。本文是具体设计提案，尚未批准实施。
+状态：已批准（用户于 2026-10-29 明确回复“批准”）；日期：2026-10-29；对应已批准 PRD FR-9/10/11/14；跟踪 [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)。本文是具体设计提案，已获批准实施。
 
 ## 1. 问题与目标
 

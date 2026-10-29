@@ -10,6 +10,8 @@
 
 ## 修订记录
 
+- v1.14.0（2026-10-29）：通用宿主按实际工具能力交付：先读 `HOSTS.md`；没有文件链接或预览时用 `delivery --host generic` 给出真实路径、类型和未验证说明，不编造可点击目标。Codex / Claude 的原有链接格式不变。15 道工序与 12 个审片节点不变（[#98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[#99](https://github.com/wukongnotnull/wukong-animation/pull/99)）。
+
 - v1.13.0（2026-10-29）：长片审片与交付可靠性优化：关键词同步区分实际来源和估算，字幕预检保留人工断句与双语稿；主版成功证明按当前输入/定稿/环境复用；恢复先核实阶段和产物，同一批准重试不重复存档，已确认的简报交付选择不再询问；声轨分段审听、QC 人工处置和草稿声音差异在交付前明确。15 道工序与 12 个审片节点不变（[#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[#94](https://github.com/wukongnotnull/wukong-animation/pull/94)、[#95](https://github.com/wukongnotnull/wukong-animation/pull/95)、[#96](https://github.com/wukongnotnull/wukong-animation/pull/96)）。
 
 - v1.12.0（2026-10-29）：适配 Codex / ChatGPT 桌面本地执行环境：从加载的 skill 解析插件路径，按宿主能力选择提问工具与文件链接；异步提问必须等待明确回复，无多选工具时使用多轮单选或文字收集返修意见。15 道工序与 12 个审片节点不变。

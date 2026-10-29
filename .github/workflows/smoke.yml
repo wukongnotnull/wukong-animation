@@ -18,8 +18,8 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    # 正常 1–2 分钟跑完；默认上限是 6 小时，卡住时会一直占着
-    timeout-minutes: 15
+    # 词级音视频矩阵增加真实渲染；保留有限超时并为依赖安装与冒烟留出余量。
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -87,7 +87,7 @@ jobs:
           path: ~/apt-archives
           key: apt-${{ runner.os }}-deps-${{ steps.apt.outputs.hash }}
       - name: 单元与集成测试
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: npm test
       - name: 冒烟测试（确定性 + 基准图比对）
         timeout-minutes: 5

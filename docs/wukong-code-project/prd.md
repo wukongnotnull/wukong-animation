@@ -86,7 +86,7 @@ PRD 已获批，首批 FR-1/FR-2 通过 PR #94、第二批 FR-3/FR-4 通过 PR #
 - [FR-7 可验证交付与制作决定](specs/2026-10-29-1639-delivery-decisions-design.md)
 - [FR-8 声轨审听、QC 处置与草稿声音差异](specs/2026-10-29-1639-audio-review-qc-design.md)
 
-用户随后明确回复“确认”，批准上述四份文件，已按[第三批计划](plans/2026-10-29-1847-phase-three.md)实现，待当前 PR #96 的最终 CI 与人工宿主打开验证。实现与证据边界见[第三批验证记录](reports/2026-10-29-phase-three-validation.md)。
+用户随后明确回复“确认”，批准上述四份文件，已按[第三批计划](plans/2026-10-29-1847-phase-three.md)实现，运行时代码 `3cdb19a` 的 push/PR 两套 lint、smoke 均通过，等待 PR #96 审阅与人工宿主打开验证。实现与证据边界见[第三批验证记录](reports/2026-10-29-phase-three-validation.md)。
 
 用户另行明确要求“简报选了，就不要重复问”，director/BRIEF 已遵循：已选草稿直接准备导出，已选只交成片直接结束，只有交付未明确才询问；实际依赖/目录/剪映运行阻塞只处理对应事项。真实审片节点继续保留。
 

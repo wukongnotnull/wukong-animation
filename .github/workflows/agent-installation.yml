@@ -1,0 +1,31 @@
+name: agent-installation
+on: [push, pull_request, workflow_dispatch]
+concurrency:
+  group: agent-installation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/integration/portable-installation.test.mjs
+      - run: npm run build:portable
+      - name: Verify ZIP transport
+        shell: bash
+        run: |
+          python -c "import glob,zipfile; z=zipfile.ZipFile(glob.glob('dist/*.zip')[0]); assert z.testzip() is None; z.extractall('dist/extracted')"
+          node dist/extracted/install-agent.mjs list --json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-skills-${{ runner.os }}
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS

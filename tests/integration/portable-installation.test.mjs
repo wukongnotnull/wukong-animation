@@ -41,8 +41,8 @@ test('all enabled portable profiles support isolated lifecycle, shared ownership
  const r=run('tools/build-portable.mjs',['--out',path.join(tmp,'release')]);assert.equal(r.status,0,r.stderr);
  const bundle=path.join(tmp,'release/wukong-animation'),context={home:path.join(tmp,'home')};fs.mkdirSync(context.home);
  const project=path.join(tmp,'作品 项目');fs.mkdirSync(project);fs.writeFileSync(path.join(project,'作品.txt'),'不动');
- for(const agent of loadProfiles().agents.filter(p=>p.channel==='portable'&&p.qualification==='contract-supported'))for(const scope of agent.scopes){
-  const variant=Object.keys(agent.variants)[0],opt={agent:agent.familyId,scope,project,bundle,variant};
+ for(const agent of loadProfiles().agents.filter(p=>p.channel==='portable'&&p.qualification==='contract-supported'))for(const scope of agent.scopes)for(const variant of Object.keys(agent.variants).length?Object.keys(agent.variants):[undefined]){
+  const opt={agent:agent.familyId,scope,project,bundle,variant};
   const before=walk(tmp);const preview=operate('install',{...opt,dryRun:true},context);assert.ok(preview.target.endsWith('wukong-animation'));assert.deepEqual(walk(tmp),before);
   const installed=operate('install',opt,context);assert.equal(installed.state,'current');
   assert.equal(operate('install',opt,context).changed,false,'重复安装应为零变更');

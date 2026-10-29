@@ -49,6 +49,6 @@
 | `voices[].speaker` | 说话的人或声音来源，对应标记括号里的内容，如 `对白（老者）` 写 `"speaker": "老者"` |
 | `export.formats` | 已注册的导出器：`mp4` / `gif` / `png-seq` / `jianying`（剪映草稿，直接写进剪映草稿目录；不写进这里，等 ⑩ 终审定版后在第 15 道用 `wka final <片> --formats jianying` 单独导出） |
 | `variants` | 副版画幅（第 14 道改版用）：键是画幅，如 `"variants": { "9:16": {} }`；主版画幅就是 `size`。值里可覆盖 `export.name`（缺省为主版名加 `-<后缀>`，如 `chenwu-9x16`）和 `subtitles.style`（叠在主版的字幕样式之上）。主版和副版的画幅都必须在风格 `style.json` 的 `aspects` 里。副版尺寸按主版短边等比推出（主版 1920×1080 时 9:16 副版为 1080×1920）；镜头表、时长、`cues`、声音两版共用。没有这个字段即只出主版 |
-| `subtitles` | 字幕（第 11 道工序，审片节点⑨）：`mode` 为 `none` 不出 / `srt` 外挂 / `burn` 烧录 / `both` 两者；`file` 字幕文件（缺省 `subtitles.srt`，`wka subtitles` 生成，可手改）；`max_chars` 每条最多几个字（缺省横屏 18、竖屏 12、方形 14）；`style` 这支片的字幕样式（字段同 `style.json` 的 `subtitles` 块：`font`、`size`、`color`、`stroke`、`bottom`，逐项覆盖风格的设置）。没有这个字段即不出字幕 |
+| `subtitles` | 字幕（第 10 道工序，审片节点⑧）：`mode` 为 `none` 不出 / `srt` 外挂 / `burn` 烧录 / `both` 两者；`file` 字幕文件（缺省 `subtitles.srt`，`wka subtitles` 生成，可手改）；`max_chars` 每条最多几个字（缺省横屏 18、竖屏 12、方形 14）；`style` 这支片的字幕样式（字段同 `style.json` 的 `subtitles` 块：`font`、`size`、`color`、`stroke`、`bottom`，逐项覆盖风格的设置）。没有这个字段即不出字幕 |
 
 旧字段名 `voiceover` / `vo_source` 仍能读取，`wka soundtrack` 会提示改成新名；新旧两个名字同时出现会报错。

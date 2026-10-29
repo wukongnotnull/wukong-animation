@@ -1,18 +1,21 @@
 // 实际字幕布局检查；未知画面内容与可读性始终保留人工待查。
+// 版式预检（layout）用于还没有小样的第 10 道：时间轴按 film.json 计算，只在纯色底上出样张。
 import {fileURLToPath} from 'node:url';
 import fs from 'node:fs';import path from 'node:path';import {spawnSync} from 'node:child_process';
 import {renderSubtitleLayers,subtitleStyle,prepareSubtitleFonts,subtitleFontSignature} from './subtitle-layer.mjs';
 import {subtitleSettings,parseSrt,attachEnglish,checkSubtitles} from './subtitles.mjs';
 import {validate} from './validate.mjs';
-import {requireTiming} from './timing.mjs';
+import {requireTiming,buildFrameTimeline} from './timing.mjs';
 import {hashParts} from './cache.mjs';
 import {run} from './ffmpeg.mjs';
 
 const intersects=(a,b)=>a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
 const normalized=(r)=>Array.isArray(r) && r.length===4 && r.every(Number.isFinite) && r[0]>=0 && r[1]>=0 && r[2]>0 && r[3]>0 && r[0]+r[2]<=1+1e-9 && r[1]+r[3]<=1+1e-9;
 const pixels=(r,W,H)=>({x:r[0]*W,y:r[1]*H,w:r[2]*W,h:r[3]*H});
-const stem=(ctx,proxy)=>ctx.variant.review('字幕预检.json').slice(0,-5)+(proxy?'-proxy':'');
-const fileOf=(ctx,proxy)=>path.join(ctx.filmDir,'review',stem(ctx,proxy)+'.json');
+const stem=(ctx,proxy,layout)=>ctx.variant.review('字幕预检.json').slice(0,-5)+(layout?'-版式':proxy?'-proxy':'');
+const fileOf=(ctx,proxy,layout)=>path.join(ctx.filmDir,'review',stem(ctx,proxy,layout)+'.json');
+/** 预检报告的路径（不含扩展名），交付登记用 */
+export const preflightBase=(ctx,{proxy=true,layout=false}={})=>fileOf(ctx,proxy,layout).slice(0,-5);
 
 export function checkSubtitleGeometry({subs,measurements,W,H,requestedSize,style,shots,regions}) {
  const errors=[],warnings=[],manual_required=['亮暗背景可读性和完整动画遮挡仍需人工审阅；几何检查不理解画面语义'];
@@ -60,8 +63,8 @@ function readRegions(ctx) {
  return own;
 }
 
-function inputs(ctx,{proxy,subs=null}) {
- const timing=requireTiming(ctx,{proxy});
+function inputs(ctx,{proxy,subs=null,layout=false}) {
+ const timing=layout?buildFrameTimeline(ctx.shots,proxy?Math.max(1,Math.round(ctx.film.fps/2)):ctx.film.fps):requireTiming(ctx,{proxy});
  const settings=subtitleSettings(ctx.film,ctx.variant);
  const textFile=path.join(ctx.filmDir,settings.file);
  if(!fs.existsSync(textFile)) throw new Error(`还没有 ${settings.file}，先运行 wka subtitles 生成字幕，再预检`);
@@ -76,15 +79,15 @@ function inputs(ctx,{proxy,subs=null}) {
  const [W,H]=ctx.film.size.map(n=>Math.round(n*scale/2)*2);
  const signature=hashParts([srt,settings.bilingual?{file:path.join(ctx.filmDir,settings.enFile)}:'',style,settings.protectedTerms || [],{W,H,fps:timing.fps,aspect:ctx.variant.aspect},
   {file:path.join(ctx.filmDir,'subtitle-layout.json')},subtitleFontSignature(fonts),{file:fileURLToPath(new URL('./subtitle-layer.html',import.meta.url))},{file:fileURLToPath(new URL('./subtitle-layer.mjs',import.meta.url))},{file:fileURLToPath(new URL('./subtitle-preflight.mjs',import.meta.url))},
-  {file:path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4')}]);
+  layout?{layout:ctx.shots.map(s=>[s.id,s.duration])}:{file:path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4')}]);
  return {signature,settings,style,subs,W,H,workDir,timing,fonts};
 }
 
-async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy}) {
- const dir=path.join(ctx.filmDir,'review',stem(ctx,proxy));fs.mkdirSync(dir,{recursive:true});
+async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy,layout}) {
+ const dir=path.join(ctx.filmDir,'review',stem(ctx,proxy,layout));fs.mkdirSync(dir,{recursive:true});
  const images=[];
  const rate=proxy?Math.max(1,Math.round(ctx.film.fps/2)):ctx.film.fps;
- for(const [i,sub] of subs.entries()) for(const [part,t] of [['起',sub.start],['中',(sub.start+sub.end)/2],['末',Math.max(sub.start,sub.end-1/rate)]]) {
+ if(video) for(const [i,sub] of subs.entries()) for(const [part,t] of [['起',sub.start],['中',(sub.start+sub.end)/2],['末',Math.max(sub.start,sub.end-1/rate)]]) {
   const out=path.join(dir,`${i+1}-${part}.png`);
   await run(['-ss',String(t),'-i',video,'-i',layers.files[i],'-filter_complex','[0:v][1:v]overlay=0:0','-frames:v','1',out]);
   const gray=spawnSync('ffmpeg',['-v','error','-i',out,'-vf','scale=8:8','-pix_fmt','gray','-f','rawvideo','-']);
@@ -125,20 +128,21 @@ async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy}) {
  return {images,contactSheet};
 }
 
-function save(ctx,proxy,report) {
- const file=fileOf(ctx,proxy);fs.mkdirSync(path.dirname(file),{recursive:true});
+function save(ctx,proxy,layout,report) {
+ const file=fileOf(ctx,proxy,layout);fs.mkdirSync(path.dirname(file),{recursive:true});
  fs.writeFileSync(file+'.tmp',JSON.stringify(report,null,2)+'\n');fs.renameSync(file+'.tmp',file);
- fs.writeFileSync(file.slice(0,-5)+'.md',[`# 字幕预检 · ${ctx.variant.aspect}`,'',report.errors.length?'✗ 机器检查发现确定错误':'机器检查未发现确定错误；人工项目待审','',`测量 ${report.W ? `${report.W}×${report.H} @${report.fps}fps` : "未完成"}；签名 ${report.signature || '无'}`,'',
+ fs.writeFileSync(file.slice(0,-5)+'.md',[`# 字幕${layout?'版式':''}预检 · ${ctx.variant.aspect}`,'',report.errors.length?'✗ 机器检查发现确定错误':'机器检查未发现确定错误；人工项目待审','',`测量 ${report.W ? `${report.W}×${report.H} @${report.fps}fps` : "未完成"}；签名 ${report.signature || '无'}`,'',
   ...['errors','warnings','manual_required'].flatMap(k=>[`## ${k}`,'',...report[k].map(e=>`- ${e}`),'']),
   ...(report.contactSheet?[`[查看接触表](<${report.contactSheet}>)`,'']:[]),
   ...(report.images || []).flatMap(i=>[`- 第 ${i.index} 条 · ${i.kind} · ${i.time===null?'无实片时刻':i.time.toFixed(3)+'s'}：[原始样张](<${i.file}>)${i.guides?` · [辅助线](<${i.guides}>)`:''}`]),''].join('\n'));
 }
 
-export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,log=()=>{}}={}) {
- log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · subtitle-preflight] 开始`);
- let report={version:1,errors:[],warnings:[],manual_required:[],images:[]},layers;
+export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,layout=false,log=()=>{}}={}) {
+ const label=layout?'版式':proxy?'小样':'高清';
+ log(`[${ctx.variant.aspect} ${label} · subtitle-preflight] 开始`);
+ let report={version:1,layout,errors:[],warnings:[],manual_required:[],images:[]},layers;
  try {
-  const data=inputs(ctx,{proxy,subs});
+  const data=inputs(ctx,{proxy,subs,layout});
   const {signature,settings,style,W,H,workDir,timing}=data;subs=data.subs;
   report={...report,signature,W,H,fps:timing.fps,style,fontSignature:subtitleFontSignature(data.fonts),fontReport:data.fonts.report,fontCss:data.fonts.css,fontStacks:data.fonts.stacks};
   const regions=readRegions(ctx);
@@ -147,25 +151,26 @@ export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,log=()=
   const shots=ctx.shots.map((s,i)=>({...s,start:timing.shots[i].startFrame/timing.fps,duration:timing.shots[i].frames/timing.fps}));
   const geometry=checkSubtitleGeometry({subs,measurements:layers.measurements,W,H,requestedSize:layers.requestedSize,style,shots,regions});
   report={...report,...geometry,errors:[...check.errors,...geometry.errors],warnings:[...check.warnings,...geometry.warnings],measurements:layers.measurements};
-  const actualVideo=video || path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4');
-  report={...report,...await samples(ctx,{subs,W,H,video:actualVideo,layers,style,regions,proxy})};
+  if(layout) report.manual_required.push('还没有小样，未在实际画面上核对；第 11 道渲染小样后用 --preview 复查遮挡与可读性');
+  const actualVideo=layout?null:video || path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4');
+  report={...report,...await samples(ctx,{subs,W,H,video:actualVideo,layers,style,regions,proxy,layout})};
  } catch(e) {report.errors.push(e.message);}
- save(ctx,proxy,report);
- log(`字幕预检：${fileOf(ctx,proxy).replace(/\.json$/,'.md')}`);
+ save(ctx,proxy,layout,report);
+ log(`字幕预检：${fileOf(ctx,proxy,layout).replace(/\.json$/,'.md')}`);
  for(const msg of report.warnings) log('  ! '+msg);
  for(const msg of report.manual_required) log('  · 人工待查：'+msg);
  if(report.errors.length) throw new Error('字幕预检失败：'+report.errors.join('；'));
- log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · subtitle-preflight] 完成`);
+ log(`[${ctx.variant.aspect} ${label} · subtitle-preflight] 完成`);
  return {report,layers,subs};
 }
 
-export async function requireSubtitlePreflight(ctx,{proxy=true}={}) {
+export async function requireSubtitlePreflight(ctx,{proxy=true,layout=false}={}) {
  const settings=subtitleSettings(ctx.film,ctx.variant);
  if(settings.mode==='none') return null;
- const file=fileOf(ctx,proxy);
- if(!fs.existsSync(file)) throw new Error('缺少当前字幕预检，请先运行 wka subtitles --preflight'+(ctx.variant.isMain?'':` --aspect ${ctx.variant.aspect}`));
+ const file=fileOf(ctx,proxy,layout);
+ if(!fs.existsSync(file)) throw new Error((layout?'缺少当前字幕版式预检，请先运行 wka subtitles --preflight':proxy?'缺少基于小样的字幕预检，请先 wka render --proxy 再运行 wka subtitles --preview':'缺少当前字幕预检，请先运行 wka subtitles --preflight')+(ctx.variant.isMain?'':` --aspect ${ctx.variant.aspect}`));
  const report=JSON.parse(fs.readFileSync(file,'utf8'));
- const current=inputs(ctx,{proxy});
+ const current=inputs(ctx,{proxy,layout});
  if(report.signature!==current.signature) throw new Error('字幕预检已过期，请重新生成预览/预检');
  if(report.errors.length) throw new Error('字幕预检存在确定错误，不能签批：'+report.errors.join('；'));
  const measured=await renderSubtitleLayers({W:current.W,H:current.H,style:current.style,subs:current.subs,workDir:current.workDir});

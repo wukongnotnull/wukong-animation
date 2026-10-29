@@ -39,7 +39,7 @@
 | JetBrains Mono | 代码、命令、配置文件、终端等重绘界面里的等宽内容 | `mono` |
 
 - 只用这两套，不加第三种字体；字幕字体由 `style.json` 的 `subtitles` 决定，镜头里不管。
-- **字幕默认中英双语**（口播片，在简报阶段确认）：中文在上、英文在下，同字号白字，中文 Noto Sans SC、英文 Inter（`style.json` 的 `subtitles.font_en`）；`film.json` 的 `subtitles` 写 `"bilingual": true`，英文怎么填见 director 第 11 道。字幕带按两行留的位置，单语时也不往里放内容。
+- **字幕默认中英双语**（口播片，在简报阶段确认）：中文在上、英文在下，同字号白字，中文 Noto Sans SC、英文 Inter（`style.json` 的 `subtitles.font_en`）；`film.json` 的 `subtitles` 写 `"bilingual": true`，英文怎么填见 director 第 10 道。字幕带按两行留的位置，单语时也不往里放内容。
 - 字号、字重、行高一律用 `f.type.Txx`，不手写。
 
 字号（横 / 竖，px）与字重：

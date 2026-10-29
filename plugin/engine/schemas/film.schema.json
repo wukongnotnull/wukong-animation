@@ -221,7 +221,7 @@
       "required": [
         "mode"
       ],
-      "description": "字幕（第 11 道工序）：以片目录里的 srt 为准，由 wka subtitles 从人声生成。没有这个字段即不出字幕",
+      "description": "字幕（第 10 道工序）：以片目录里的 srt 为准，由 wka subtitles 从人声生成。没有这个字段即不出字幕",
       "properties": {
         "mode": {
           "type": "string",

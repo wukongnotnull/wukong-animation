@@ -103,3 +103,15 @@ test('stale owned locks recover safely and unknown staging directories are never
  const guard=path.join(parent,'.wukong-animation.recover-lock');fs.mkdirSync(guard);
  assert.throws(()=>operate('install',opt),e=>e.code===5,'恢复锁也应排他，不能抢占另一进程');
 });
+
+test('a moved release installer actually executes CLI mutations through OS path aliases',t=>{
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'wka released CLI 中 '));t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+ const out=path.join(tmp,'release'),project=path.join(tmp,'project');fs.mkdirSync(project);
+ assert.equal(run('tools/build-portable.mjs',['--out',out]).status,0);
+ const script=path.join(out,'install-agent.mjs');
+ for(const action of ['install','status','uninstall']){
+  const r=spawnSync(process.execPath,[script,action,'--agent','cursor','--scope','project','--project',project,'--json'],{encoding:'utf8'});
+  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/"state":/,'CLI 必须实际执行并输出结果，不可静默返回0');
+  const result=JSON.parse(r.stdout);assert.equal(result.state,action==='uninstall'?'missing':'current');
+ }
+});

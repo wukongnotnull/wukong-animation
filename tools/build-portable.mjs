@@ -54,6 +54,6 @@ export function build(out) {
  write(path.join(out,name),zip(entries));write(path.join(out,'SHA256SUMS'),sha(path.join(out,name))+'  '+name+'\n');
  return {bundle,archive:path.join(out,name),files:manifest.files.length,version:pluginVersion,sourceCommit:manifest.sourceCommit};
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+if(process.argv[1]&&fs.realpathSync(process.argv[1])===fs.realpathSync(fileURLToPath(import.meta.url))){
  try{const args=process.argv.slice(2);if(args.length&&!(args.length===2&&args[0]==='--out'))throw new Error('用法：node tools/build-portable.mjs [--out <目录>]');console.log(JSON.stringify(build(args[1]||path.join(ROOT,'dist')),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
 }

@@ -160,7 +160,7 @@ function parse(argv){const [action,...args]=argv,opt={};for(let i=0;i<args.lengt
  const key={'--agent':'agent','--variant':'variant','--scope':'scope','--project':'project','--bundle':'bundle'}[a];
  if(!key||!args[i+1]||args[i+1].startsWith('--'))fail(2,'未知或缺值参数 '+a);opt[key]=args[++i];
  }return {action,opt};}
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+if(process.argv[1]&&fs.realpathSync(process.argv[1])===fs.realpathSync(fileURLToPath(import.meta.url))){
  let json=process.argv.includes('--json');try{
   const {action,opt}=parse(process.argv.slice(2));
   if(!opt.json&&['install','upgrade','uninstall'].includes(action))process.stdout.write(JSON.stringify(operate(action,{...opt,dryRun:true}),null,2)+'\n');

@@ -1,6 +1,6 @@
 # 第二批 B：术语保护与字幕预检
 
-Status: Draft — 待用户审阅本文件
+Status: Confirmed — 用户于 2026-10-29 明确批准两份 spec
 
 日期：2026-10-29（Asia/Shanghai）
 

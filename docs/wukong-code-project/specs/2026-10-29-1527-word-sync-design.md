@@ -1,10 +1,10 @@
 # 第二批 A：词级同步与证据标记
 
-Status: Draft — 待用户审阅本文件
+Status: Confirmed — 用户于 2026-10-29 明确批准两份 spec
 
 日期：2026-10-29（Asia/Shanghai）
 
-依据：[已批准 PRD](../prd.md) FR-3、[体验报告](../reports/2026-10-29-codex-editing-experience.md)、[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。源码基线：`c787f44`，首批时间轴修复已通过 PR #94 合并。用户已采纳编写第二批 spec，本文件尚未获实现批准。
+依据：[已批准 PRD](../prd.md) FR-3、[体验报告](../reports/2026-10-29-codex-editing-experience.md)、[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。源码基线：`c787f44`，首批时间轴修复已通过 PR #94 合并。用户已采纳编写第二批 spec，本文件已获实现批准。
 
 ## 1. 问题与目标
 

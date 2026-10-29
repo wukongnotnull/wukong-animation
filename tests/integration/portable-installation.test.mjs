@@ -87,3 +87,19 @@ test('upgrade, corrupt package, interrupted transaction, locks and conflicts pre
  fs.mkdirSync(target);fs.writeFileSync(path.join(target,'客户.txt'),'保留');
  assert.throws(()=>api.operate('install',opt),e=>e.code===3);assert.equal(fs.readFileSync(path.join(target,'客户.txt'),'utf8'),'保留');
 });
+
+test('stale owned locks recover safely and unknown staging directories are never deleted',async t=>{
+ const {operate}=await import('../../tools/install-agent.mjs');
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'wka stale '));t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+ const project=path.join(tmp,'project');fs.mkdirSync(project);const out=path.join(tmp,'release');assert.equal(run('tools/build-portable.mjs',['--out',out]).status,0);
+ const opt={agent:'codex',scope:'project',project,bundle:path.join(out,'wukong-animation')};
+ const first=operate('install',opt),parent=path.dirname(first.target);
+ fs.writeFileSync(path.join(parent,'.wukong-animation.lock'),JSON.stringify({marker:'wukong-animation-install-v1',target:first.target,pid:2147483647}));
+ assert.equal(operate('install',opt).changed,false);
+ fs.mkdirSync(path.join(parent,'.wukong-animation.stage'));fs.writeFileSync(path.join(parent,'.wukong-animation.stage/user.txt'),'不可删除');
+ assert.throws(()=>operate('uninstall',opt),e=>e.code===5);
+ assert.equal(fs.readFileSync(path.join(parent,'.wukong-animation.stage/user.txt'),'utf8'),'不可删除');
+ fs.rmSync(path.join(parent,'.wukong-animation.stage'),{recursive:true});
+ const guard=path.join(parent,'.wukong-animation.recover-lock');fs.mkdirSync(guard);
+ assert.throws(()=>operate('install',opt),e=>e.code===5,'恢复锁也应排他，不能抢占另一进程');
+});

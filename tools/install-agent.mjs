@@ -23,7 +23,7 @@ export function filesAt(root,prefix='') {
 export function validateBundle(root) {
  try {
   const m=read(path.join(root,'bundle.json'));
-  if(m.schemaVersion!==1||m.entry!=='SKILL.md'||!/^\d+\.\d+\.\d+$/.test(m.pluginVersion)||!Array.isArray(m.files))fail(4,'无效 bundle.json');
+  if(m.schemaVersion!==1||m.entry!=='SKILL.md'||!/^\d+\.\d+\.\d+$/.test(m.pluginVersion)||!Array.isArray(m.files)||!/^([0-9a-f]{40})$/.test(m.sourceCommit)||typeof m.engineVersion!=='string')fail(4,'无效 bundle.json');
   const paths=m.files.map(f=>f.path);
   for(const p of paths)if(!p||p.includes('\\')||p.split('/').some(s=>!s||s==='..'||s==='.')||path.isAbsolute(p)||p==='bundle.json'||p===RECEIPT)fail(4,'非法包路径');
   const actual=filesAt(root).filter(p=>p!=='bundle.json');
@@ -109,13 +109,20 @@ export function operate(action,opt={},context={}) {
  if(opt.dryRun)return {...result,version:manifest?.pluginVersion||result.version,dryRun:true,plannedAction:action,owners:[...owners]};
  const parent=path.dirname(target);fs.mkdirSync(parent,{recursive:true});
  const tx={lock:path.join(parent,'.wukong-animation.lock'),journal:path.join(parent,'.wukong-animation.transaction.json'),stage:path.join(parent,'.wukong-animation.stage'),backup:path.join(parent,'.wukong-animation.backup')};
+ const guard=path.join(parent,'.wukong-animation.recover-lock');
+ if(exists(guard))fail(5,'另一事务正在恢复；若进程已退出请保留文件并检查恢复锁');
+ let fd;
+ const acquire=()=>{try{fd=fs.openSync(tx.lock,'wx');fs.writeFileSync(fd,JSON.stringify({marker:MARKER,target,pid:process.pid}));fs.closeSync(fd);fd=null;}catch(e){fail(5,`无法取得安装锁：${e.message}`);}};
  if(exists(tx.lock)){
-  const lock=read(tx.lock);if(lock.marker!==MARKER||lock.target!==target||!Number.isInteger(lock.pid)||lock.pid<=0)fail(5,'未知安装锁');
-  let alive=true;try{process.kill(lock.pid,0);}catch(e){if(e.code==='ESRCH')alive=false;}
-  if(alive)fail(5,'另一安装事务正在运行');
-  recover(target,tx);fs.unlinkSync(tx.lock);
- }
- let fd;try{fd=fs.openSync(tx.lock,'wx');fs.writeFileSync(fd,JSON.stringify({marker:MARKER,target,pid:process.pid}));fs.closeSync(fd);fd=null;}catch(e){fail(5,`无法取得安装锁：${e.message}`);}
+  // 恢复也要排他；持有 guard 直到新锁取得，避免移除另一个进程刚取得的锁。
+  try{fs.mkdirSync(guard);}catch{fail(5,'另一事务正在恢复');}
+  try{
+   const lock=read(tx.lock);if(lock.marker!==MARKER||lock.target!==target||!Number.isInteger(lock.pid)||lock.pid<=0)fail(5,'未知安装锁');
+   let alive=true;try{process.kill(lock.pid,0);}catch(e){if(e.code==='ESRCH')alive=false;}
+   if(alive)fail(5,'另一安装事务正在运行');
+   recover(target,tx);fs.unlinkSync(tx.lock);acquire();
+  }finally{fs.rmdirSync(guard);}
+ }else acquire();
  try{
   recover(target,tx);
   // 锁内重查，防止两个进程在预检后交错覆盖。

@@ -50,17 +50,26 @@ const chars = s.cueChars('第四句');
 [...'花落知多少'].forEach((ch, i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * step, size, progress: wk.seg(t, chars[i].in, chars[i].out) }));
 ```
 
-  逐字同步点是近似值：按句中停顿分句、每句里按字数均分。念得快慢不均、需要更准时，再用下面的手工办法。
-- 手工办法（没有逐字同步点时的备用）：把每个字的起笔时刻对到人声里念到这个字的时刻：用 `ffmpeg -i <人声文件> -af silencedetect=noise=-35dB:d=0.08 -f null -` 量出句中停顿，按停顿把字分组；量不出停顿就按字数比例把字分配到 `[cueIn, cueOut]`。不用固定字速（如"每字 0.6 秒"）。
-- 每个字相对 `cueIn` 的时间写成常量表放在镜头文件开头，注明"从人声实测得出，换配音要重量"。
+逐字同步点只是估算：停顿区间内仍按字数均分，静音检测不能证明词首时刻。不要把这种结果写成“逐词实测”。
+
+### 列举词和步骤：词锚点
+
+需要“念到有素材，文字就出现”时，在片目录的 `sync-points.json` 声明词点，格式见 `engine/schemas/sync-points.schema.json`。先运行 `wka soundtrack`，从 `.cache/voice-sources.json` 读取当前人声的 audio_sha256/text_sha256；manual 或 aligned 的 range 是相对该句原始音频的秒数，必须来自实际听审或可核对的对齐结果，不能由字数均分伪装成测量。
+
+- id 全片唯一（小写字母起始，字母/数字/连字符），运行时名字为 `word:<id>`；重复词必须给 occurrence。
+- `manual` 附听审标注说明；`aligned` 附可读取的本地对齐结果路径；没有测量就写 `estimated`，明确未验证。
+- 原始音频或原文哈希不匹配时，旧测量失效。预览仅使用按当前输入重新计算的估算；用户标注文件不自动改写。
+- 两条管线都用 `s.cueFrame('word:material-available')` 取得可比较的显现帧号；Browser 与 `s.frame` 比，Remotion 与 `useCurrentFrame()` 比。它已适配小样降帧，**不要再乘 fps**。
 
 ```js
-// 从旁白「一叶落，而知天下秋」实测（停顿检测）得出，换配音要重量
-const TITLE = [['一', 0.22, 0.35], ['叶', 0.38, 0.35], ['知', 1.1, 0.4], ['秋', 1.71, 0.5]]; // [字, 起笔, 写完用时]
-// render 里：
-const vo = s.cueIn('旁白');
-TITLE.forEach(([ch, at, dur], i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * step, size, progress: wk.seg(t, vo + at, vo + at + dur) }));
+if (s.frame >= s.cueFrame('word:material-available')) {
+  // 此帧开始显示“有素材”；入场动画的第一可见帧也要对准词首
+}
 ```
+
+也可用 cueIn/cueOut 取得词点相对实际呈现镜头起点的秒数，旧普通 cue 的秒数语义不变。不要把词点写成平均镜长或不会随音频更新的常量表。
+
+render/still/animatic/final 会生成 `review/词级同步[-画幅][-proxy].md`，包含来源状态和词首前/当/后的画面、人声音频。**来源有效不等于画面响应正确**：先自行听看，再放进现有声轨、小样或改版审阅；不新增节点或自动签批。未声明词点时如实标为未声明，不声称整片词级同步已验证。
 
 ## s：镜头状态
 
@@ -74,6 +83,7 @@ TITLE.forEach(([ch, at, dur], i) => wk.ink.inscribe(ctx, ch, { x, y: y + i * ste
 | `s.rng` | 本帧的种子随机数（`r()`、`r.range(a,b)`、`r.int`、`r.pick`、`r.gauss`） |
 | `s.state` | `setup` 的返回值 |
 | `s.cueIn(名)` `s.cueOut(名)` | 声音同步点在本镜头内的入点 / 出点 |
+| `s.cueFrame("word:id")` | 词首显现帧号；只用于声明过的词点，已适配当前管线/小样 |
 | `s.cueChars(名)` | 逐字同步点 `[{ in, out }, …]`（本镜头内时间，一个字一项，不含标点）；要在 `voices[].chars` 设 `true` 并运行 `wka soundtrack` |
 | `s.seed` | 本镜头的种子 |
 
@@ -119,7 +129,7 @@ export default function S01({ dur, s }: ShotProps) {
 }
 ```
 
-- `dur`：本镜帧数；`s`：`id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名)`。`W/H` 是设计尺寸，小样由管线缩小。
+- `dur`：本镜帧数；`s`：`id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名) / cueFrame("word:id")`。`W/H` 是设计尺寸，小样由管线缩小。
 - 铁律照旧：画面只由帧号决定（不用 `Math.random()`、`Date`、网络）；同步点只用字面量 `s.cueIn('名')`。
 - 片内公共组件写成 `.tsx` 列进 `film.json` 的 `scripts`，镜头里用 `@wka/film/<相对片目录的路径>` 引用。
 - 其余（时长、景别、缓存、字幕、声音）与 `.js` 镜头完全相同。

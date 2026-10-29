@@ -8,7 +8,7 @@ const PREFIX = /wka-static:([^')]+)/g;
 function cueOf(s, name, i) {
   const c = s.cues[name];
   if (!c) throw new Error(`没有声音同步点 "${name}"。已有：${Object.keys(s.cues).join('、') || '（无）'}。先运行 wka soundtrack`);
-  return c[i] - s.start;
+  return c[i] - (name.startsWith('word:') ? s.renderStart : s.start);
 }
 
 /**
@@ -23,7 +23,11 @@ export function WkaShot({ Shot, Wrap, s, dur, fontCss }) {
       .then(() => document.fonts.ready)
       .then(() => continueRender(handle));
   }, []);
-  const shot = { ...s, cueIn: (name) => cueOf(s, name, 0), cueOut: (name) => cueOf(s, name, 1) };
+  const cueFrame = (name) => {
+    if (!name.startsWith('word:') || !Object.hasOwn(s.wordFrames || {}, name)) throw new Error(`没有词首帧 ${name}，请检查 sync-points.json`);
+    return s.wordFrames[name];
+  };
+  const shot = { ...s, cueFrame, cueIn: (name) => cueOf(s, name, 0), cueOut: (name) => cueOf(s, name, 1) };
   const inner = <Shot dur={dur} s={shot} />;
   return (
     <>

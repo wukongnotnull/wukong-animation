@@ -6,6 +6,7 @@ import * as synth from './synth.mjs';
 import { synthesizeVoiceOver } from './tts.mjs';
 import { run, probeDuration } from '../core/ffmpeg.mjs';
 import { loadFilm } from '../core/job.mjs';
+import { writeVoiceSources } from '../core/word-sync.mjs';
 import { charCues, clearCharCues, orphanCharCues } from './char-cues.mjs';
 import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
 import { loadSfxLibrary, createSfx, densityWarnings } from './sfx.mjs';
@@ -145,7 +146,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
       const chars = charCues(l.text, name, { at: l.at, duration: dur, ranges });
       Object.assign(film.cues, chars);
       const n = Object.keys(chars).length;
-      log(n ? `             逐字同步点 ${name}#1…#${n}（${ranges ? '按人声实测' : '估算'}）` : `  ! ${name} 设了 chars，但这句没有要计时的字（只有标点）`);
+      log(n ? `             逐字同步点 ${name}#1…#${n}（${ranges ? '按停顿分组后均分，估算' : '按字数估算'}）` : `  ! ${name} 设了 chars，但这句没有要计时的字（只有标点）`);
     }
   });
   film.cues = dropOrphanCharCues(film.cues, lines.map((l, i) => (l.chars ? cueName(l, i) : null)).filter(Boolean), log);
@@ -192,6 +193,7 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   if (!tracks.length) {
     // 清掉上一次的混音，免得动态分镜和导出误用旧声轨
     fs.rmSync(path.join(ctx.filmDir, '.cache', 'mix.wav'), { force: true });
+    writeVoiceSources(ctx, vo);
     log('  · 没有音轨，导出无声视频');
     return { mix: null, tracks, voices };
   }
@@ -208,6 +210,7 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   log(`  ✓ 混音完成（${tracks.length} 条音轨）`);
   log(output === null ? '  · 声轨没有可测响度，未做响度标准化' : `  ✓ 响度 ${output.toFixed(1)} LUFS（目标 ${target}）`);
   if (sfx?.placements.length) await auditSfx({ tracks, D, cache, sfx, lib, shots: ctx.shots, log });
+  writeVoiceSources(ctx, vo);
   return { mix: out, tracks, voices };
 }
 

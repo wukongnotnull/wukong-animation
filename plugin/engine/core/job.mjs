@@ -13,6 +13,7 @@ import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 import { labelPngs } from './labels.mjs';
 import { resolveVariant, overrideShotPath } from './variants.mjs';
+import { prepareWordShots, writeWordReview } from './word-sync.mjs';
 import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFailure, requireTiming, checkOutputTiming, checkAnimaticTiming } from './timing.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
@@ -50,10 +51,10 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   const styleScripts = (style.scripts || []).map((p) => path.join(style.dir, p));
   const filmScripts = (film.scripts || []).map((p) => path.join(filmDir, p));
   // 片子可以单独改字幕样式（film.json 的 subtitles.style），副版还能再覆盖一层；不用动插件目录里的 style.json
-  const subtitleOverrides = [film.subtitles?.style, variant.overrides.subtitles?.style].filter(Boolean);
-  const filmStyle = subtitleOverrides.length
-    ? { ...style, subtitles: subtitleOverrides.reduce((acc, o) => mergeSubtitleStyle(acc, o), style.subtitles) }
-    : style;
+  const { by_aspect: byAspect = {}, ...baseSubtitles } = style.subtitles || {};
+  const resolvedSubtitles = [byAspect[variant.aspect],film.subtitles?.style,variant.overrides.subtitles?.style].filter(Boolean)
+    .reduce((acc,o)=>mergeSubtitleStyle(acc,o),baseSubtitles);
+  const filmStyle = { ...style, subtitles: resolvedSubtitles };
   return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts, variant };
 }
 
@@ -78,7 +79,7 @@ function createRenderJob(ctx, { proxy = false, log }) {
   const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
-  return {
+  return prepareWordShots({
     ...ctx,
     shots, timeline,
     W,
@@ -92,7 +93,7 @@ function createRenderJob(ctx, { proxy = false, log }) {
     workDir,
     runtimeDir: path.join(ENGINE_ROOT, 'runtime'),
     log,
-  };
+  });
 }
 
 /** 目录下所有文件（递归、排好序）；目录不存在时为空。 */
@@ -120,6 +121,8 @@ function shotHash(job, shot) {
     ...fontCssParts(job.fonts.css),
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
+    pickCues(job.wordEvidence, [shot.path, ...job.styleScripts, ...job.filmScripts]),
+    pickCues(shot.wordFrames, [shot.path, ...job.styleScripts, ...job.filmScripts]),
   ]);
 }
 
@@ -193,6 +196,7 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
     throw e;
   }
   recordTiming(ctx, video, segments, { proxy, log });
+  await writeWordReview(job, { video });
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
   const shotSegments = job.timeline.shots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
   return { video, job, segments: shotSegments };
@@ -226,6 +230,7 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
   }
   const outDir = ensureDir(ctx.variant.stillsDir);
   const files = await mod.renderStills(job, points, outDir);
+  await writeWordReview(job, { renderStills: (points, dir) => mod.renderStills(job, points, dir) });
   log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {
@@ -302,7 +307,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     const mod = await loadModule(exp);
     const target = path.join(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`);
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
-    const out = (await mod.encodeOutput({ video, audio, out: target, fps: ctx.film.fps, proxy, timeline })) || target;
+    const out = (await mod.encodeOutput({ video, audio, out: target, fps: outputSize(ctx.film,proxy).fps, duration: buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration, proxy, timeline })) || target;
     if (name === 'mp4') checkOutputTiming(ctx, out, { proxy, log });
     log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);
     outputs.push(out);

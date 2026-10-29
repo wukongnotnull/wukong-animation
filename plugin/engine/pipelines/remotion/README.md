@@ -31,3 +31,7 @@ Remotion 不是 MIT 许可：**个人和不超过 3 人的公司免费，更大�
 ## 时间轴检查
 
 镜头时长与声音 cue 保留原始秒数。引擎按当前输出 fps 量化全片切点，相减得到每镜帧数；零帧镜头报错，不静默补成一帧。新片段、命中缓存与拼接视频均检查真实帧数和时间戳，错误结果不进入后续交付。`review/时间轴检查*.md` 是可交付的报告，`.cache/timing*.json` 是来源记录；旧工程先重新渲染建立记录。视频时间轴通过不代表旁白语义或关键词同步通过。
+
+## 词首显现
+
+片级 sync-points.json 可声明 manual/aligned/estimated 词点。使用 `const at = s.cueFrame("word:material-available")`，再比较 useCurrentFrame；不要额外乘 fps。该帧入口适配输出切点与代理采样，动画仍以原生 film.fps 运行。来源状态、词首前当后帧和人声片段交付到 review/词级同步*.md；来源有效不代表实际画面响应已经由机器证明。

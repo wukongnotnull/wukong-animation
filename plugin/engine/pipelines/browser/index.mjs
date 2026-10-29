@@ -125,7 +125,7 @@ async function renderFrame(page, shot, t, frame, type, quality) {
       wk._renderAt(id, meta, t, frame);
       return wk._grab(type, quality);
     },
-    [shot.id, { duration: shot.duration, start: shot.start }, t, frame, type, quality]
+    [shot.id, { duration: shot.duration, start: shot.start, renderStart: shot.renderStart, wordFrames: shot.wordFrames }, t, frame, type, quality]
   );
   return Buffer.from(b64, 'base64');
 }

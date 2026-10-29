@@ -47,7 +47,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka animatic <片目录> [--proxy] [--aspect 9:16]` | 动态分镜：每镜代表帧按镜头时长停留、配上声轨，输出 `review/动态分镜.mp4` + `review/接触表.jpg` |
 | `wka render <片目录> [--proxy] [--only s03] [--aspect 9:16]` | 渲染（镜头级缓存）；`--proxy` 另出带声音的小样 `review/小样.mp4` |
 | `wka qc <片目录> [--proxy] [--aspect 9:16]` | 量化技术质检（QC） |
-| `wka subtitles <片目录> [--force] [--preview] [--aspect 9:16]` | 从人声生成字幕 `subtitles.srt`（已存在时只检查不覆盖，`--force` 重新生成）；`--preview` 烧录到小样上审阅 |
+| `wka subtitles <片目录> [--force] [--preview\|--preflight] [--aspect 9:16]` | 从人声生成字幕 `subtitles.srt`（已存在时只检查不覆盖，`--force` 重新生成）；`--preview` 烧录到小样上审阅 |
 | `wka final <片目录> [--proxy] [--only s03] [--formats mp4,gif] [--aspect 9:16\|all]` | 混音 + 渲染 + 按字幕方式烧录 / 外挂字幕 + 编码输出（文件名标明有没有字幕，见第 12 道）；`--formats jianying` 只导出剪映草稿（第 15 道） |
 
 **`--aspect`**：不写就是主版（`film.json` 的 `size`）；写副版画幅（`film.json` 的 `variants` 里的键）就处理副版，缓存放 `.cache/<后缀>/`，审阅文件、成片的文件名带 `-<后缀>`（如 `review/小样-9x16.mp4`），字幕文件带 `.<后缀>`（如 `subtitles.9x16.srt`）。副版只在第 14 道「改版」用，见该道细则。
@@ -431,7 +431,7 @@ edge-tts 的中文普通话音色：
 - 有错误（出点早于入点、超出片长）必须改；警告（相邻重叠、单行超长、短于 0.6 秒）看情况改，直接编辑 `subtitles.srt` 即可。
 - `subtitles.srt` 已存在时 `wka subtitles` 只检查不覆盖（保护手改的断句）；声音返修后要加 `--force` 重新生成。
 
-**预览与自查**：`wka subtitles <片> --preview` 把字幕烧录到小样上（`review/字幕预览.mp4`）。**自己先看一遍**：
+**预览与自查**：`wka subtitles <片> --preflight` 只读已有字幕，生成字框、安全区、已声明内容区检查，以及亮暗底/实际画面样张。`wka subtitles <片> --preview` 自动包含预检，再把字幕烧录到小样上（`review/字幕预览.mp4`）。**自己先看一遍**：
 
 | 检查项 | 标准 | 不合格怎么办 |
 |---|---|---|
@@ -439,18 +439,20 @@ edge-tts 的中文普通话音色：
 | 在不在安全框里 | 字幕整体在画面中间 90% 的范围内，文字底边离画面底边不少于画高 5% | 调字幕样式 |
 | 有没有压住屏幕文字 | 不压住题字、落款等屏幕文字 | 调字幕样式 |
 
+术语被拆开时可在 `subtitles.protected_terms` 声明固定词组，超宽术语完整保留并提示。预检的 errors 会阻断 preview/final 和字幕签批；warnings 交用户判断；manual_required 必须如实列出，不能说“全部无遮挡/可读”。重要内容区域用可选 `subtitle-layout.json` 声明（格式见插件内 schema）；未声明区域只代表未覆盖，不证明没有遮挡。旧工程需重出预览建立当前预检证据。
+
 改样式写 `film.json` 的 `subtitles.style`（字段同 `style.json` 的 `subtitles` 块，逐项覆盖），不改插件目录里的 `style.json`。
 
-**中英双语**（`subtitles.bilingual: true`）：`wka subtitles` 同时按中文字幕生成或更新 `subtitles.en.json`（每条 `{ "zh", "en" }`，与 srt 逐条对应；中文没变的条目保留已填的英文），并列出待填的条目。逐条填 `en`，规则：
+**中英双语**（`subtitles.bilingual: true`）：`wka subtitles` 在英文稿缺失时生成 `subtitles.en.json`，已存在时保留手改，只有显式 `--force` 才重新生成/重排（每条 `{ "zh", "en" }`，与 srt 逐条对应；中文没变的条目保留已填的英文），并列出待填的条目。逐条填 `en`，规则：
 
 - 口语意译，不逐字翻；一条一行，横屏不超过约 45 个字符（竖屏 28），超了会缩字。
 - 产品名、术语原样保留：Claude Code、Codex、Diff、Token、Git。
 - 和中文的节奏对应：中文是半句，英文也写半句，不要把两条合成一句。
 - 结尾不加句号，问句保留问号。
-- 填完再跑一次 `wka subtitles <片>`，确认"0 条待填"、没有超长和句号的警告。改了中文字幕（手改 srt 或 `--force`）也要再跑一次，英文稿会跟着重排，改过的条目要重填。
+- 填完再跑一次 `wka subtitles <片>`，确认"0 条待填"、没有超长和句号的警告。改了中文字幕后先检查英文对应关系；需要重排时明确使用 `--force`（会覆盖手改 SRT/英文），或由用户逐条修正，不默认覆盖。
 - `--preview` 和 `wka final` 发现英文稿和中文字幕对不上、或有空条，会直接停下。外挂方式（`srt` / `both`）另出 `<name>_英文字幕.srt`；剪映草稿多一条「英文字幕」轨。
 
-**提交**：把 `subtitles.srt` 原文和带字幕的小样一起交给用户，问：有没有错字？断句是否自然？出入时间跟不跟得上人声？位置是否压住了屏幕文字？双语的片子把英文稿也交给用户，问英文是否通顺、术语对不对。
+**提交**：把 `review/字幕预检[-画幅][-proxy].md`、接触表和样张连同 `subtitles.srt` 原文、带字幕的小样一起交给用户，问：有没有错字？断句是否自然？出入时间跟不跟得上人声？位置是否压住了屏幕文字？双语的片子把英文稿也交给用户，问英文是否通顺、术语对不对。
 
 ✅ **审片节点⑨ 字幕** → `--step 11`
 
@@ -493,7 +495,7 @@ edge-tts 的中文普通话音色：
 3. **出副版、自己先审**：
    - `wka animatic <片> --aspect <副版>`：出副版接触表 `review/接触表-<后缀>.jpg`（和动态分镜），用 Read 打开，对照 STYLE.md 的「交付前质检」查有没有出安全区、压字幕、画面发空。只想看某几帧用 `wka still <片> --aspect <副版> --at s03:1.5`（静帧在 `stills/<后缀>/`）。
    - `wka render <片> --proxy --aspect <副版>`、`wka qc <片> --proxy --aspect <副版>`：副版小样和质检。
-   - 有字幕的：`wka subtitles <片> --aspect <副版> --preview`。副版字幕按副版画幅重新拆条（竖屏每条最多 12 字），写在 `subtitles.<后缀>.srt`；双语的英文沿用主版译文，按副版的拆条重新切开，写在 `subtitles.en.<后缀>.json`，不重新翻译。主版英文改过之后再跑一次，副版英文会跟着重切。
+   - 有字幕的：`wka subtitles <片> --aspect <副版> --preview`。副版字幕按副版画幅重新拆条（竖屏每条最多 12 字），写在 `subtitles.<后缀>.srt`；双语的英文沿用主版译文，按副版的拆条重新切开，写在 `subtitles.en.<后缀>.json`，不重新翻译。主版英文改过之后，已有副版英文默认保留；只有明确使用 `--force` 才重新切分，会覆盖手改。
    - 每次带 `--aspect` 的 `render` / `still` / `final` 都会先比对主版：主版镜头哈希和第 13 道签批时一样就算没动；变了的镜头（比如改共用镜头文件时加了竖屏分支）重渲后与定稿快照逐帧比对，写成 `review/主版不变报告-<后缀>.md`。
 4. **看主版不变报告**：报告第一行是结论。
    - 「✓ 主版画面没有变化」：照常提交 ⑪。

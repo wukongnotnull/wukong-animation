@@ -26,6 +26,7 @@ export function buildEntry(job, fontCss) {
       id: sh.id, W: job.designW, H: job.designH, designW: job.designW, designH: job.designH,
       aspect: aspectOf([job.designW, job.designH]), orientation: orientationOf([job.designW, job.designH]),
       fps, seed: job.seed, cues: job.film.cues || {}, duration: sh.duration, start: sh.start,
+      ...(Object.keys(sh.wordFrames || {}).length ? { wordFrames: sh.wordFrames, renderStart: sh.renderStart } : {}),
     },
   }));
   const lines = [

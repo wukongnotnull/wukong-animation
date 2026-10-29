@@ -25,6 +25,8 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden}
   const lines = { zh: [document.getElementById('line'), document.getElementById('text'), c.family], en: [document.getElementById('line-en'), document.getElementById('text-en'), c.familyEn] };
   Object.assign(frame.style, { width: c.W + 'px', height: c.H + 'px' });
   Object.assign(block.style, { bottom: c.bottom + 'px', color: c.color });
+  if(c.safeArea) Object.assign(block.style,{left:c.safeArea.x+'px',right:(c.W-c.safeArea.x-c.safeArea.w)+'px'});
+  let loaded=true;
   /** 摆好一行；整行放不下就缩小字号，返回实际字号。 */
   const fit = async ([line, text, family], s) => {
     let size = c.size;
@@ -33,7 +35,7 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden}
     for (;;) {
       line.style.fontSize = size + 'px';
       line.style.webkitTextStroke = `${size * c.strokeWidth * 2}px ${c.strokeColor}`;
-      await document.fonts.load(`${size}px ${family}`, s).catch(() => {});
+      await document.fonts.load(`${size}px ${family}`, s).catch(() => {loaded=false;});
       await document.fonts.ready;
       if (text.offsetWidth <= c.maxWidth || size <= 8) return size;
       size -= 1;
@@ -42,7 +44,13 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden}
   /** 摆好一条字幕（en 为空时只有中文行），返回两行各自的实际字号。 */
   window.setSubtitle = async (s, en) => {
     lines.en[0].style.display = en ? '' : 'none';
-    return { zh: await fit(lines.zh, s), en: en ? await fit(lines.en, en) : null };
+    loaded=true;
+    const zh=await fit(lines.zh,s), english=en?await fit(lines.en,en):null;
+    const rects=Object.entries(lines).filter(([lang])=>lang==='zh' || en).map(([lang,[line,text]])=>{
+      const r=text.getBoundingClientRect(),stroke=parseFloat(line.style.fontSize)*c.strokeWidth;
+      return {lang,x:r.x-stroke,y:r.y-stroke,w:r.width+2*stroke,h:r.height+2*stroke};
+    });
+    return {zh,en:english,rects,loaded};
   };
 })();
 </script>

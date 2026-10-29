@@ -19,6 +19,17 @@ for(const pipeline of ['browser','remotion']) {
     const en=JSON.stringify([{zh:'有素材 A-roll',en:'Footage A-roll'}],null,4)+'\n';
     fs.writeFileSync(path.join(dir,`subtitles${suffix}.srt`),srt);fs.writeFileSync(path.join(dir,`subtitles.en${suffix}.json`),en);
     const args=aspect?['--aspect',aspect]:[];
+    if(!aspect) {
+     // 第 10 道还没有小样：只做版式预检，不烧录预览；字幕能签批，小样不能
+     const layout=cli('subtitles',dir,'--preflight');assert.equal(layout.status,0,layout.stderr+layout.stdout.slice(-2500));
+     const report=JSON.parse(fs.readFileSync(path.join(dir,'review','字幕预检-版式.json')));
+     assert.equal(report.layout,true);assert.equal(report.errors.length,0);
+     assert.ok(!report.images.some(i=>i.kind==='实际画面'));assert.ok(report.manual_required.some(m=>/未在实际画面上核对/.test(m)));
+     assert.equal(fs.existsSync(path.join(dir,'review','时间轴检查-proxy.json')),false,'没有小样时不写时间轴报告');
+     const preview=cli('subtitles',dir,'--preview');assert.notEqual(preview.status,0);assert.match(preview.stderr,/还没有当前的小样/);
+     const subtitles=cli('signoff',dir,'字幕版式通过','--step','10');assert.equal(subtitles.status,0,subtitles.stderr);
+     const proxyGate=cli('signoff',dir,'小样通过','--step','11');assert.notEqual(proxyGate.status,0);assert.match(proxyGate.stderr,/小样/);
+    }
     const render=cli('render',dir,'--proxy',...args);assert.equal(render.status,0,render.stderr);
     for(const bilingual of [false,true]) {
      film.subtitles.bilingual=bilingual;fs.writeFileSync(filmFile,JSON.stringify(film));

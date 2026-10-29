@@ -40,7 +40,7 @@
 
 ## 三、字幕方式取值
 
-第 3 道 `wka init` 之后写进 `film.json` 的 `subtitles.mode`，要中英双语再加 `"bilingual": true`；第 11 道按它执行。
+第 3 道 `wka init` 之后写进 `film.json` 的 `subtitles.mode`，要中英双语再加 `"bilingual": true`；第 10 道按它执行。
 
 | 字幕方式 | `mode` | 适合 |
 |---|---|---|

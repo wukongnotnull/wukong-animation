@@ -10,6 +10,8 @@
 
 ## 修订记录
 
+- v1.15.0（2026-10-29）：字幕制作与小样互换：字幕制作改为第 10 道、审片节点 ⑧ 字幕，小样渲染与技术质检改为第 11 道、审片节点 ⑨ 小样。第 10 道还没有小样，`wka subtitles --preflight` 做版式预检（时间轴按 `film.json` 计算，只在纯色底上出样张，报告注明未在实际画面上核对）；第 11 道渲染小样后用 `--preview` 在小样画面上复查字幕，⑨ 小样签批要求当前的小样字幕预检。旧进度自动换算：原第 10、11 道互换编号，只签过小样、还没做字幕的片子退回到下一步第 10 道字幕。15 道工序与 12 个审片节点数量不变。
+
 - v1.14.0（2026-10-29）：通用宿主按实际工具能力交付：先读 `HOSTS.md`；没有文件链接或预览时用 `delivery --host generic` 给出真实路径、类型和未验证说明，不编造可点击目标。Codex / Claude 的原有链接格式不变。15 道工序与 12 个审片节点不变（[#98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[#99](https://github.com/wukongnotnull/wukong-animation/pull/99)）。
 
 - v1.13.0（2026-10-29）：长片审片与交付可靠性优化：关键词同步区分实际来源和估算，字幕预检保留人工断句与双语稿；主版成功证明按当前输入/定稿/环境复用；恢复先核实阶段和产物，同一批准重试不重复存档，已确认的简报交付选择不再询问；声轨分段审听、QC 人工处置和草稿声音差异在交付前明确。15 道工序与 12 个审片节点不变（[#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[#94](https://github.com/wukongnotnull/wukong-animation/pull/94)、[#95](https://github.com/wukongnotnull/wukong-animation/pull/95)、[#96](https://github.com/wukongnotnull/wukong-animation/pull/96)）。

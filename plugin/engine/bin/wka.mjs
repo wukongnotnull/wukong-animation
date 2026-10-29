@@ -18,7 +18,7 @@
 //   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
 //   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理
 //   wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]   音色试听：同一句用几个音色各合成一遍
-//   wka subtitles <片目录> [--force] [--preview|--preflight] [--aspect 9:16]   字幕制作：从人声生成 subtitles.srt；--preview 烧录到小样上审阅
+//   wka subtitles <片目录> [--force] [--preview|--preflight] [--aspect 9:16]   字幕制作：从人声生成 subtitles.srt；--preflight 预检（还没有小样时为版式预检）；--preview 烧录到小样上审阅
 //   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif] [--aspect 9:16|all]   终版渲染与终混
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,8 +36,8 @@ import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
 import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
-import {preflightSubtitles,requireSubtitlePreflight} from '../core/subtitle-preflight.mjs';
-import { requireTiming, checkOutputTiming } from '../core/timing.mjs';
+import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
+import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
@@ -48,6 +48,8 @@ import { draftAudioDifference } from '../core/review-evidence.mjs';
 import { digest, fileDigest, readJson, atomicJson,treeEvidence } from '../core/evidence.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
+const SUBTITLES_STEP = 10; // 第 10 道「字幕制作」：还没有小样，版式预检即可
+const PROXY_STEP = 11; // 第 11 道「小样渲染与技术质检」：字幕要在小样画面上预检过
 const FINAL_REVIEW_STEP = 13; // 第 13 道「终检与交付」：主版定稿
 const VARIANT_STEP = 14; // 第 14 道「改版」：副版定稿
 const { cmd, pos, opt } = parseArgs(process.argv.slice(2));
@@ -291,7 +293,7 @@ async function cmdSfx(filmDir, { list }) {
   log('完成 ✓');
 }
 
-/** 字幕制作（第 11 道）：生成或检查 subtitles.srt；--preview 把字幕烧录到小样上审阅。 */
+/** 字幕制作（第 10 道）：生成或检查 subtitles.srt；--preflight 预检，还没有小样时只做版式预检；--preview 把字幕烧录到小样上审阅（第 11 道）。 */
 async function cmdSubtitles(filmDir, { force, preview, preflight, aspect }) {
   const ctx = loadFilm(filmDir, { aspect });
   const settings = subtitleSettings(ctx.film, ctx.variant);
@@ -320,9 +322,11 @@ async function cmdSubtitles(filmDir, { force, preview, preflight, aspect }) {
     registerReview(filmDir,'subtitles',[path.join(ctx.filmDir,settings.file),...(settings.bilingual?[path.join(ctx.filmDir,settings.enFile)]:[])],aspect);
     return;
   }
+  const layout = !fs.existsSync(path.join(ctx.variant.cacheDir, 'timing-proxy.json')) || !checkTiming(ctx, { proxy: true }).ok;
+  if (preview && layout) fail(`还没有当前的小样，不能烧录预览：先 wka render ${filmDir} --proxy${aspect ? ` --aspect ${aspect}` : ''}；第 10 道字幕用 --preflight 做版式预检`);
   const video = path.join(ctx.variant.cacheDir, 'video-proxy.mp4');
-  const checked = await preflightSubtitles(ctx,{proxy:true,video,subs,log});
-  registerSubtitleEvidence(ctx,checked,true);
+  const checked = await preflightSubtitles(ctx,{proxy:true,video,subs,layout,log});
+  registerSubtitleEvidence(ctx,checked,true,layout);
   if (!preview) return;
   subs=checked.subs;
   const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
@@ -466,7 +470,11 @@ async function main() {
       if (step === FINAL_REVIEW_STEP) {
         const ctx=loadFilm(pos[0]);requireTiming(ctx,{log});await requireSubtitlePreflight(ctx,{proxy:false});
       }
-      if (step === 11) await requireSubtitlePreflight(loadFilm(pos[0]),{proxy:true});
+      if (step === SUBTITLES_STEP) {
+        const ctx=loadFilm(pos[0]);
+        try { await requireSubtitlePreflight(ctx,{proxy:true}); } catch { await requireSubtitlePreflight(ctx,{proxy:true,layout:true}); }
+      }
+      if (step === PROXY_STEP) await requireSubtitlePreflight(loadFilm(pos[0]),{proxy:true});
       if (step === VARIANT_STEP) {
         const { film } = loadFilm(pos[0]);
         for (const aspect of Object.keys(film.variants || {})) {
@@ -599,8 +607,8 @@ function registerReview(filmDir,stage,outputs,aspect=null,proxy=false){
   const ctx=loadFilm(filmDir,{requireShots:false,aspect});
   rememberArtifacts(ctx.filmDir,{stage:'review:'+stage,aspect:ctx.variant.aspect,proxy,outputs,value:outputs,signature:digest(outputs.map(file=>fileDigest(file)))});
 }
-function registerSubtitleEvidence(ctx,checked,proxy){
-  const settings=subtitleSettings(ctx.film,ctx.variant),base=path.join(ctx.filmDir,'review',`字幕预检${ctx.variant.suffix?'-'+ctx.variant.suffix:''}${proxy?'-proxy':''}`);
+function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
+  const settings=subtitleSettings(ctx.film,ctx.variant),base=preflightBase(ctx,{proxy,layout});
   const outputs=[base+'.md',base+'.json',path.join(ctx.filmDir,settings.file),...(settings.bilingual?[path.join(ctx.filmDir,settings.enFile)]:[]),...(checked.report.contactSheet?[checked.report.contactSheet]:[]),...checked.report.images.flatMap(i=>[i.file,...(i.guides?[i.guides]:[])])];
   registerReview(ctx.filmDir,'subtitle-preflight',outputs,ctx.variant.aspect,proxy);
 }

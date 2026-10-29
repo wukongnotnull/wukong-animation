@@ -43,6 +43,10 @@ for(const pipeline of ['browser','remotion']) {
    // 修改样式后，不得沿用旧预检签批。
    film.subtitles.style={bottom:0.2};fs.writeFileSync(filmFile,JSON.stringify(film));
    const stale=cli('signoff',dir,'字幕确认','--step','11');assert.notEqual(stale.status,0);assert.match(stale.stderr,/过期/);
+   fs.rmSync(path.join(dir,'subtitles.en.json'));
+   const missing=cli('subtitles',dir,'--preflight');assert.notEqual(missing.status,0);
+   assert.equal(fs.existsSync(path.join(dir,'subtitles.en.json')),false,'预检不擅自创建英文稿');
+   assert.ok(JSON.parse(fs.readFileSync(path.join(dir,'review','字幕预检-proxy.json'))).errors.length>0,'缺英文也保留失败报告');
   } finally {if(process.env.WKA_SUB_KEEP) console.log('字幕诊断目录 '+dir);else fs.rmSync(dir,{recursive:true,force:true});}
  });
 }

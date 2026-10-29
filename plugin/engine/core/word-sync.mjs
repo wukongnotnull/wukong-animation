@@ -62,7 +62,7 @@ export function resolveWordSync(ctx) {
     if(p.method==='aligned' && !fs.existsSync(path.resolve(ctx.filmDir,p.evidence))) throw new Error(`${label}：缺少本地对齐证据文件`);
     const source=sources[p.voice];
     let fresh=false,observedAudio=null;
-    if(source && source.request_sha256===requestHash(audio,voice) && source.text_sha256===hash(voice.text)) {
+    if(source && Number.isFinite(source.at) && Number.isFinite(source.duration) && source.duration>0 && source.request_sha256===requestHash(audio,voice) && source.text_sha256===hash(voice.text)) {
       try {observedAudio=fileHash(path.resolve(ctx.filmDir,source.file));fresh=observedAudio===source.audio_sha256;} catch { /* 旧音频丢失 */ }
     }
     const measurementValid=measured && fresh && p.source.audio_sha256===source.audio_sha256 && p.source.text_sha256===source.text_sha256;
@@ -129,6 +129,9 @@ export async function writeWordReview(job,{video=null,renderStills=null}={}) {
   const base=path.join(job.filmDir,'review',stem);
   const dir=base;
   const images=[];
+  atomic(base+'.json',{version:1,status:'证据生成中/未验证',points:[]});
+  fs.writeFileSync(base+'.md','# 词级同步\n\n证据生成中/未验证，旧结论不可复用。\n');
+  try {
   for(const p of points) {
     p.images=[];
     const shot=job.shots.find(s=>s.id===p.shot);
@@ -152,6 +155,11 @@ export async function writeWordReview(job,{video=null,renderStills=null}={}) {
       p.audio=path.join(dir,`${p.id}.wav`);
       await run(['-ss',String(start),'-i',path.resolve(job.filmDir,p.source.file),'-t',String(end-start),p.audio]);
     }
+  }
+  } catch(e) {
+    atomic(base+'.json',{version:1,status:'证据生成失败/未验证',errors:[e.message],points:[]});
+    fs.writeFileSync(base+'.md','# 词级同步\n\n证据生成失败/未验证：'+e.message+'\n');
+    throw e;
   }
   const report={version:1,generatedAt:new Date().toISOString(),inputSignature:hash(JSON.stringify(points.map(p=>[p.key,p.input_sha256,p.range,p.frame,p.shot]))),aspect:job.variant.aspect,fps:job.fps,status:!points.length?'未声明词级检查':points.every(p=>p.valid && p.verified)?'来源有效/定位可验证；画面响应待人工核对':'存在未验证词点；画面响应待人工核对',points};
   atomic(base+'.json',report);

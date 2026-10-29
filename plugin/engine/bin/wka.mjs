@@ -8,6 +8,8 @@
 //   wka init <片名> --style <id> [--dir 项目目录] [--aspect 16:9|9:16]
 //   wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]   新建风格（默认 ~/.wukong-animation/styles/）
 //   wka status [项目目录]             各片制作进度（恢复在制项目）
+//   wka resume <片目录> [--json]       核实已完成产物、失败阶段和待存档签批
+//   wka delivery <片目录> --host codex|claude [--aspect all|9:16] [--json]  生成存在性与新旧状态交付清单
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
 //   wka qc <片目录> [--proxy] [--aspect 9:16]       量化技术质检（QC）
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy] [--aspect 9:16]   静帧 + 接触表
@@ -20,6 +22,7 @@
 //   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif] [--aspect 9:16|all]   终版渲染与终混
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
@@ -31,7 +34,7 @@ import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg, generatedMixPadding } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, recordApproval, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../core/state.mjs';
+import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import {preflightSubtitles,requireSubtitlePreflight} from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkOutputTiming } from '../core/timing.mjs';
@@ -39,6 +42,10 @@ import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
+import { runStage, lockProduction, recoveryStatus,rememberArtifacts,implementationState } from '../core/operations.mjs';
+import { writeDelivery,readDecisions,decisionConflicts } from '../core/delivery.mjs';
+import { draftAudioDifference } from '../core/review-evidence.mjs';
+import { digest, fileDigest, readJson, atomicJson,treeEvidence } from '../core/evidence.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
 const FINAL_REVIEW_STEP = 13; // 第 13 道「终检与交付」：主版定稿
@@ -264,20 +271,6 @@ function writeVariantEnglish(ctx, settings, subs) {
   log(`✓ 副版英文按主版英文重新拆条 → ${settings.enFile}`);
 }
 
-/**
- * 签批时记下镜头哈希：第 13 道终审存主版定稿快照；第 14 道改版审片记各副版（与当时的主版定稿对应）。
- */
-async function recordStepApproval(filmDir, step) {
-  if (step === FINAL_REVIEW_STEP) {
-    const { hashes } = snapshotMain(filmDir, { log });
-    recordApproval(filmDir, { main: hashes });
-  }
-  if (step === VARIANT_STEP) {
-    const { film } = loadFilm(filmDir, { requireShots: false });
-    for (const aspect of Object.keys(film.variants || {})) recordApproval(filmDir, { variant: aspect, shots: shotHashes(filmDir, { aspect }) });
-  }
-}
-
 /** 录音音效（第 7 道声轨制作用）：--list 只列来源与大小给用户确认，不带参数则下载并处理。 */
 async function cmdSfx(filmDir, { list }) {
   if (!filmDir) fail('用法：wka sfx <片目录> [--list]');
@@ -323,9 +316,13 @@ async function cmdSubtitles(filmDir, { force, preview, preflight, aspect }) {
     if(!ctx.variant.isMain && (force || !enExists)) writeVariantEnglish(ctx,settings,subs);
     syncEnglishFile(ctx,settings,subs,{force});
   }
-  if (!preview && !preflight) return;
+  if (!preview && !preflight) {
+    registerReview(filmDir,'subtitles',[path.join(ctx.filmDir,settings.file),...(settings.bilingual?[path.join(ctx.filmDir,settings.enFile)]:[])],aspect);
+    return;
+  }
   const video = path.join(ctx.variant.cacheDir, 'video-proxy.mp4');
   const checked = await preflightSubtitles(ctx,{proxy:true,video,subs,log});
+  registerSubtitleEvidence(ctx,checked,true);
   if (!preview) return;
   subs=checked.subs;
   const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
@@ -333,6 +330,7 @@ async function cmdSubtitles(filmDir, { force, preview, preflight, aspect }) {
   const { W, H } = outputSize(ctx.film, true);
   await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.variant.cacheDir, 'work'), proxy: true, fps: outputSize(ctx.film,true).fps, prepared: checked.layers, audio: fs.existsSync(mix) ? mix : null, log });
   checkOutputTiming(ctx, out, { proxy: true, log });
+  registerReview(filmDir,'subtitle-preview',[out],aspect,true);
   log(`字幕预览：${out}`);
 }
 
@@ -349,7 +347,8 @@ async function cmdFinalAll(filmDir, o) {
 }
 
 async function cmdFinal(filmDir, o) {
-  const ctx = loadFilm(filmDir, { aspect: o.aspect });
+  let ctx = loadFilm(filmDir, { aspect: o.aspect });
+  const conflicts=decisionConflicts(ctx,readDecisions(ctx.filmDir));if(conflicts.length)throw new Error(conflicts.join('；'));
   if (!ctx.variant.isMain) {
     if (variantStale(readProgress(filmDir), ctx.variant.aspect)) {
       fail(`${ctx.variant.aspect} 副版已过期：主版在第 13 道重新签批过，先重做第 14 道「改版」并签批，再出副版成片`);
@@ -358,13 +357,24 @@ async function cmdFinal(filmDir, o) {
     if (mainCheck?.timingChanged) fail('主版时间轴已变化，请先明确重出主版并完成第 13 道终审，再导出副版');
   }
   const settings = subtitleSettings(ctx.film, ctx.variant);
+  const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
+  const draftOnly=formats.every(f=>f==='jianying');
   let subs = settings.mode === 'none' ? null : [];
   // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
-  const { mix: audio, tracks, voices } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
-  const { video, job, segments } = await render(filmDir, o);
-  const checked = subs ? await preflightSubtitles(ctx,{proxy:!!o.proxy,video,subs,log}) : null;
+  const { mix: audio, tracks, voices,loudness } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
+  ctx=loadFilm(filmDir,{aspect:o.aspect});
+  const { video, job, segments } = await render(filmDir, {...o,segmentsOnly:draftOnly});
+  if(draftOnly&&subs) {
+    subs=readSubtitles(ctx,settings,{missing:`还没有 ${settings.file}，请先制作字幕`});
+    if(settings.bilingual){
+      const pairs=readEnglish(ctx,settings),errors=checkEnglish(pairs||[],{maxChars:settings.maxCharsEn});
+      if(!pairs||pairs.length!==subs.length||pairs.some((p,i)=>!p.en?.trim()||p.zh!==subs[i].text)||errors.length) throw new Error('草稿双语字幕缺失或与中文字幕不一致');
+      subs=subs.map((s,i)=>({...s,en:pairs[i].en}));
+    }
+  }
+  const checked = subs&&!draftOnly ? await preflightSubtitles(ctx,{proxy:!!o.proxy,video,subs,log}) : null;
+  if(checked)registerSubtitleEvidence(ctx,checked,!!o.proxy);
   if(checked) subs=checked.subs;
-  const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
   // 画面类成片按字幕方式出烧录版 / 无字幕版，文件名标明有没有字幕；剪映草稿只导一份
   const visual = formats.filter((f) => f !== 'jianying');
   const drafts = formats.filter((f) => f === 'jianying');
@@ -372,29 +382,35 @@ async function cmdFinal(filmDir, o) {
   const outs = [];
   if (visual.length && names.burned !== null) {
     const out = path.join(ctx.variant.cacheDir, o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
-    const burned = await burnSubtitles(video, subs, out, { W: job.W, H: job.H, style: ctx.style, workDir: job.workDir, proxy: o.proxy, prepared: checked?.layers, log });
+    const burned = await runStage(ctx.filmDir,{stage:'subtitle-burn',aspect:ctx.variant.aspect,proxy:!!o.proxy,force:o.force,signature:digest({video:fileDigest(video),subs,style:ctx.style.subtitles,layers:checked?.report?.signature}),log,run:async()=>{
+      const value=await burnSubtitles(video,subs,out,{W:job.W,H:job.H,style:ctx.style,workDir:job.workDir,proxy:o.proxy,prepared:checked?.layers,log});return {value,outputs:[value]};}});
     checkOutputTiming(ctx, burned, { proxy: o.proxy, log });
-    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,log })));
   }
   // 已有烧录版时，无字幕版只多出一个 mp4
   if (visual.length && names.clean !== null) {
     const cleanFormats = names.burned === null ? visual : ['mp4'];
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect,force:o.force, log })));
   }
   if (drafts.length) {
+    const difference=draftAudioDifference(ctx,tracks,loudness??null);
+    registerReview(filmDir,'draft-audio-difference',difference.files,o.aspect);
+    log(`[${ctx.variant.aspect} 高清 · draft-export] 写入前说明：${difference.report.note}\n${difference.files[0]}`);
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
     const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force, log })));
   }
-  if (names.srt !== null && !o.proxy) {
+  if (names.srt !== null && !o.proxy && !draftOnly) {
     const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srt}.srt`);
     fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
+    registerReview(filmDir,'sidecar-srt',[srt],o.aspect);
     log(`  导出 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
-  if (names.srtEn && !o.proxy) {
+  if (names.srtEn && !o.proxy && !draftOnly) {
     const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srtEn}.srt`);
     fs.writeFileSync(srt, englishSrt(subs));
+    registerReview(filmDir,'sidecar-en',[srt],o.aspect);
     log(`  导出英文 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
@@ -403,6 +419,17 @@ async function cmdFinal(filmDir, o) {
 
 async function main() {
   switch (cmd) {
+    case 'delivery': {
+      if(!pos[0]) throw new Error('用法：wka delivery <片目录> --host codex|claude [--json]');
+      const report=writeDelivery(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
+      log(opt('json')?JSON.stringify(report,null,2):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
+      process.exitCode=report.ok?0:2;return;
+    }
+    case 'resume': {
+      if(!pos[0]) throw new Error('用法：wka resume <片目录> [--json]');
+      const status=recoveryStatus(path.resolve(pos[0]));
+      log(opt('json')?JSON.stringify(status,null,2):[...status.stages.map(s=>`[${s.aspect} ${s.proxy?'小样':'高清'} · ${s.stage}] ${s.status}${s.error?'：'+s.error:''}`),status.next].join('\n'));return;
+    }
     case 'setup':
       return cmdSetup();
     case 'check':
@@ -431,6 +458,11 @@ async function main() {
         if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
       }
+      const pendingFile=path.join(path.resolve(pos[0]),'.wka/pending-approval.json');
+      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===13||step===14?shotHashes(pos[0]):null});
+      const pending=readJson(pendingFile),id=String(opt('approval-id')||(pending?.status!=='completed'&&pending?.note===note?pending.id:crypto.randomUUID()));
+      if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
+      atomicJson(pendingFile,{id,step,note,signature,status:'prepared'});
       if (step === FINAL_REVIEW_STEP) {
         const ctx=loadFilm(pos[0]);requireTiming(ctx,{log});await requireSubtitlePreflight(ctx,{proxy:false});
       }
@@ -446,9 +478,14 @@ async function main() {
           await requireSubtitlePreflight(ctx,{proxy});
         }
       }
-      recordProgress(pos[0], { step, note });
-      await recordStepApproval(pos[0], step);
+      const prior=readProgress(pos[0]).history.find(h=>h.approvalId===id);
+      let main=null,variants=null;
+      if(!prior&&step===FINAL_REVIEW_STEP){const snapshot=snapshotMain(pos[0],{log});if(snapshot.missing.length)throw new Error('缺少完整定稿快照，签批存档未提交');main=snapshot.hashes;}
+      if(!prior&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
+      commitSignoff(pos[0],{id,step,note,signature,main,variants});
+      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:'pending'});
       const sha = commitSnapshot(pos[0], note, { log });
+      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:sha?'committed':'not-confirmed',sha});
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
       void sha;
       return;
@@ -481,12 +518,14 @@ async function main() {
         : null;
       await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
       const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), log });
+      registerReview(pos[0],'stills',[...r.files,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       return;
     }
     case 'animatic': {
       if (!pos[0]) fail('用法：wka animatic <片目录> [--proxy]');
       const r = await animatic(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });
+      registerReview(pos[0],'animatic',[r.file,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       log(`动态分镜：${r.file}`);
       return;
@@ -504,6 +543,7 @@ async function main() {
       const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(mix,job.timeline.duration,job.fps), '-shortest'] : ['-i', video, '-c', 'copy'];
       const out = await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart']);
       checkOutputTiming(job, out, { proxy, log });
+      registerReview(pos[0],'proxy',[out],aspectOpt(),true);
       log(`小样：${out}`);
       return;
     }
@@ -512,7 +552,7 @@ async function main() {
       loadFilm(pos[0], { requireShots: false });
       const { mix } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
       // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/ 交给用户审听
-      if (mix) log(`声轨审听：${await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k'])}`);
+      if (mix) {const out=await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k']);registerReview(pos[0],'soundtrack',[out]);log(`声轨审听：${out}`);}
       return;
     }
     case 'sfx':
@@ -526,7 +566,8 @@ async function main() {
       const str = (name) => (typeof opt(name) === 'string' ? opt(name) : undefined);
       // 没给参数时用第一条人声的文本和它已经调过的语速、音高
       const text = str('text') ?? first.text;
-      auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
+      const audition=auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
+      registerReview(pos[0],'audition',audition.map(a=>a.file));
       return;
     }
     case 'subtitles':
@@ -554,4 +595,19 @@ async function main() {
   }
 }
 
-main().catch((e) => fail(e.message));
+function registerReview(filmDir,stage,outputs,aspect=null,proxy=false){
+  const ctx=loadFilm(filmDir,{requireShots:false,aspect});
+  rememberArtifacts(ctx.filmDir,{stage:'review:'+stage,aspect:ctx.variant.aspect,proxy,outputs,value:outputs,signature:digest(outputs.map(file=>fileDigest(file)))});
+}
+function registerSubtitleEvidence(ctx,checked,proxy){
+  const settings=subtitleSettings(ctx.film,ctx.variant),base=path.join(ctx.filmDir,'review',`字幕预检${ctx.variant.suffix?'-'+ctx.variant.suffix:''}${proxy?'-proxy':''}`);
+  const outputs=[base+'.md',base+'.json',path.join(ctx.filmDir,settings.file),...(settings.bilingual?[path.join(ctx.filmDir,settings.enFile)]:[]),...(checked.report.contactSheet?[checked.report.contactSheet]:[]),...checked.report.images.flatMap(i=>[i.file,...(i.guides?[i.guides]:[])])];
+  registerReview(ctx.filmDir,'subtitle-preflight',outputs,ctx.variant.aspect,proxy);
+}
+async function execute(){
+  const writes=['signoff','qc','still','animatic','render','soundtrack','subtitles','final'];
+  const unlock=writes.includes(cmd)&&pos[0]?lockProduction(pos[0]):()=>{};
+  if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
+  try{await main();}finally{unlock();}
+}
+execute().catch((e) => fail(e.message));

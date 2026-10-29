@@ -60,8 +60,9 @@ export function webpackAliases(job) {
  */
 export function rewriteFontCss(css) {
   const files = [];
-  const out = css.replace(/url\('file:\/\/([^']+)'\)/g, (_, from) => {
-    const to = `fonts/${files.length}-${path.basename(from)}`;
+  const out = css.replace(/url\('file:\/\/([^']+)'\)/g, (_, encoded) => {
+    const from=fileURLToPath('file://'+encoded);
+    const to = `fonts/${files.length}-${path.basename(from).replace(/[^A-Za-z0-9_.-]/g,'_')}`;
     files.push({ from, to });
     return `url('${STATIC_PREFIX}${to}')`;
   });

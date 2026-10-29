@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "已明确制作决定；缺省不等于已批准",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "delivery": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "enum": [
+            "video",
+            "video-and-draft"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "confirmedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "aspects": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "confirmedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "subtitles": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": "object",
+          "required": [
+            "mode",
+            "bilingual"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "none",
+                "srt",
+                "burn",
+                "both"
+              ]
+            },
+            "bilingual": {
+              "type": "boolean"
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "confirmedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "use"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "use": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "confirmedAt": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildEntry, rewriteFontCss, webpackAliases, headlessShellFrom } from '../../plugin/engine/pipelines/remotion/entry.mjs';
+import { pathToFileURL } from 'node:url';
+
+test('含井号百分号引号的字体文件URL解码且静态目标不破坏CSS',()=>{
+  const file="/tmp/字体 #%'a.ttf";
+  const css=`@font-face{src:url('${pathToFileURL(file).href.replace(/'/g,'%27')}')}`;
+  const result=rewriteFontCss(css);
+  assert.equal(result.files[0].from,file);
+  assert.match(result.files[0].to,/^fonts\/[A-Za-z0-9_.-]+$/);
+  assert.equal((result.css.match(/'/g)||[]).length,2);
+});
 
 const job = {
   film: { fps: 30, cues: { boom: 1.2 } },

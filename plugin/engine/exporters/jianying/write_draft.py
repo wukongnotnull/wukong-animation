@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import uuid
+import hashlib
 
 import pyJianYingDraft as draft
 from pyJianYingDraft import ClipSettings, FontType, TextBorder, TextStyle, Timerange, TrackSpec, TrackType
@@ -102,10 +103,26 @@ def main() -> None:
     draft_dir = os.path.join(root, plan["name"])
     script = draft.DraftFolder(root).create_draft(plan["name"], plan["width"], plan["height"], fps=plan["fps"], allow_replace=False)
     try:
+        if plan.get("wka_operation"):
+            with open(os.path.join(draft_dir, ".wka-owner.json"), "w", encoding="utf-8") as owner:
+                json.dump({"operation": plan["wka_operation"]}, owner)
         build(plan, draft_dir, script)
         script.save()
         fresh_ids(draft_dir, root, plan["name"])
         shutil.copy(os.path.join(draft_dir, "draft_content.json"), os.path.join(draft_dir, "draft_info.json"))
+        if plan.get("wka_operation"):
+            entries = []
+            for directory, _, files in os.walk(draft_dir):
+                for name in files:
+                    file = os.path.join(directory, name)
+                    with open(file, "rb") as data:
+                        entries.append({"path": os.path.relpath(file, draft_dir), "sha256": hashlib.sha256(data.read()).hexdigest(), "size": os.path.getsize(file)})
+            # Node 校验按相对路径排序；完整发布标记不包含自身。
+            marker = {"operation": plan["wka_operation"], "signature": plan["wka_signature"], "entries": sorted(entries, key=lambda item: item["path"])}
+            temporary = os.path.join(draft_dir, ".wka-complete.part")
+            with open(temporary, "w", encoding="utf-8") as data:
+                json.dump(marker, data, ensure_ascii=False)
+            os.replace(temporary, os.path.join(draft_dir, ".wka-complete.json"))
     except BaseException:
         shutil.rmtree(draft_dir, ignore_errors=True)
         raise

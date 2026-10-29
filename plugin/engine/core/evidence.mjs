@@ -28,7 +28,7 @@ export function treeEvidence(dir, exclude=()=>false) {
     if(ent.isDirectory()) walk(file);
     else if(ent.isFile()) rows.push({path:rel,sha256:fileDigest(file),size:fs.statSync(file).size});
   }};
-  walk(dir); return rows;
+  walk(dir); return rows.sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0);
 }
 export function evidenceMatches(items) {
   try { return items.length>0 && items.every(i=>fileDigest(i.file)===i.sha256 && fs.statSync(i.file).size===i.size); }

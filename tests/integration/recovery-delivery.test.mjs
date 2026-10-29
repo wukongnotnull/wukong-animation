@@ -1,0 +1,42 @@
+// 真实命令、音频与输出文件验证恢复；不从“命令成功”推断用户批准。
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {fileDigest} from '../../plugin/engine/core/evidence.mjs';
+
+const CLI=fileURLToPath(new URL('../../plugin/engine/bin/wka.mjs',import.meta.url));
+const run=(...args)=>spawnSync(process.execPath,[CLI,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WKA_WORKERS:'2'}});
+const ok=r=>assert.equal(r.status,0,r.stdout+r.stderr);
+for(const style of ['ink-wash','keynote'])test(`${style} 实际编码复用、缺失补做、签批重试与特殊路径交付`,t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'动画 工程 (中) #%-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'audio'));
+  const browser=style==='ink-wash',ext=browser?'js':'jsx',shot=path.join(dir,'shots',`s01.${ext}`);
+  const source=browser?'wk.shot({render(ctx,t,s){ctx.fillStyle="white";ctx.fillRect(0,0,s.W,s.H);}});':'import React from "react";export default function Shot(){return <div style={{width:"100%",height:"100%",background:"white"}}/>}';
+  fs.writeFileSync(shot,source);
+  const audio=path.join(dir,'audio','人声 [一] #%.wav');
+  const tone=spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=frequency=440:duration=0.3','-ar','48000','-y',audio]);assert.equal(tone.status,0);
+  const originalAudio=fileDigest(audio);
+  const film={title:'recovery',style,size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:`shots/s01.${ext}`,duration:0.8}],audio:{voice_source:'user',voices:[{cue:'v',text:'有素材',at:0.1,file:path.relative(dir,audio)}]},export:{name:'成片 #%',formats:['mp4']}};
+  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
+  ok(run('final',dir));
+  const out=path.join(dir,'成片 #%.mp4'),video=path.join(dir,'.cache/video.mp4'),mtime=fs.statSync(out).mtimeMs;
+  const again=run('final',dir);ok(again);assert.match(again.stdout,/encode:mp4.*复用完成产物/);assert.equal(fs.statSync(out).mtimeMs,mtime);
+  const concatenated=fs.statSync(video).mtimeMs;fs.rmSync(out);ok(run('final',dir));assert.equal(fs.statSync(video).mtimeMs,concatenated);assert.ok(fs.existsSync(out));
+  ok(run('signoff',dir,'用户明确批准','--step','13','--approval-id','review-1'));
+  const stateFile=path.join(dir,'.wka/state.json'),first=JSON.parse(fs.readFileSync(stateFile));
+  ok(run('signoff',dir,'用户明确批准','--step','13','--approval-id','review-1'));
+  let state=JSON.parse(fs.readFileSync(stateFile));assert.equal(state.history.filter(h=>h.approvalId==='review-1').length,1);assert.equal(state.approved.mainId,first.approved.mainId);
+  const pendingFile=path.join(dir,'.wka/pending-approval.json'),pending=JSON.parse(fs.readFileSync(pendingFile));pending.status='prepared';fs.writeFileSync(pendingFile,JSON.stringify(pending));
+  const resume=run('resume',dir,'--json');ok(resume);assert.equal(JSON.parse(resume.stdout).pendingApproval.id,'review-1');
+  const snap=fileDigest(path.join(dir,'.cache/approved/s01.mp4'));fs.appendFileSync(shot,'\n// changed after approval\n');
+  const changed=run('signoff',dir,'用户明确批准','--step','13','--approval-id','review-1');assert.notEqual(changed.status,0);assert.match(changed.stderr,/输入已变化/);assert.equal(fileDigest(path.join(dir,'.cache/approved/s01.mp4')),snap);
+  fs.writeFileSync(shot,source);ok(run('signoff',dir,'用户明确批准','--step','13','--approval-id','review-1'));
+  const delivered=run('delivery',dir,'--host','codex','--json');ok(delivered);const report=JSON.parse(delivered.stdout);
+  const item=report.items.find(i=>i.path===out);assert.equal(item.status,'current');assert.equal(fileDigest(decodeURIComponent(/<([^>]+)>/.exec(item.link)[1])),fileDigest(out));assert.equal(item.openStatus,'not-tested');
+  const audioReview=JSON.parse(fs.readFileSync(path.join(dir,'review/声轨审听.json')));assert.equal(audioReview.status,'not-listened');assert.match(audioReview.sha256,/^[a-f0-9]{64}$/);
+  assert.equal(fileDigest(audio),originalAudio,'原始人声未修改');
+});

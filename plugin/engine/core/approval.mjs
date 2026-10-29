@@ -50,16 +50,23 @@ export function snapshotMain(filmDir, { log = console.log } = {}) {
   const hashes = shotHashes(filmDir);
   const cache = new ShotCache(path.resolve(filmDir));
   const dir = SNAPSHOT_DIR(filmDir);
-  fs.rmSync(dir, { recursive: true, force: true });
-  ensureDir(dir);
+  const next=dir+'.next',backup=dir+'.previous';
+  if(!fs.existsSync(dir)&&fs.existsSync(backup)) fs.renameSync(backup,dir);
+  fs.rmSync(next,{recursive:true,force:true});ensureDir(next);
   const missing = [];
   for (const [id, hash] of Object.entries(hashes)) {
     const hit = cache.lookup(id, hash);
-    if (hit) fs.copyFileSync(hit, path.join(dir, `${id}.mp4`));
+    if (hit) fs.copyFileSync(hit, path.join(next, `${id}.mp4`));
     else missing.push(id);
   }
   if (missing.length) log(`  ! ${missing.join('、')} 还没按当前代码渲染全分辨率，没存下定稿快照；做副版时这几镜要目视复核主版（先 wka final 再签批可避免）`);
   else log(`  ✓ 主版定稿快照 ${Object.keys(hashes).length} 镜 → .cache/approved/`);
+  if(!missing.length){
+    fs.rmSync(backup,{recursive:true,force:true});
+    if(fs.existsSync(dir)) fs.renameSync(dir,backup);
+    try {fs.renameSync(next,dir);}catch(e){if(fs.existsSync(backup))fs.renameSync(backup,dir);throw e;}
+    fs.rmSync(backup,{recursive:true,force:true});
+  }else fs.rmSync(next,{recursive:true,force:true});
   return { hashes, missing };
 }
 
@@ -95,7 +102,11 @@ function reportText(aspect, rows) {
 export async function checkMainUnchanged(filmDir, { aspect, log = console.log } = {}) {
   const { variant } = loadFilm(filmDir, { aspect });
   if (variant.isMain) return null;
+  const callerLog=log,mainAspect=loadFilm(filmDir).variant.aspect;
+  log=message=>callerLog(`[${mainAspect} 主版高清 · main-check；准备 ${variant.aspect} 副版] ${message}`);
   const progress=readProgress(filmDir),approved=progress.approved?.main;
+  const pending=readJson(path.join(path.resolve(filmDir),'.wka/pending-approval.json'));
+  if(pending&&pending.step===13&&pending.status!=='completed') throw new Error('主版批准仍待存档，请先恢复原 signoff 命令');
   if (!approved) { log('  ! 主版还没在第 13 道签批，跳过主版不变比对'); return null; }
   const ctx=loadFilm(filmDir),current=shotHashes(filmDir),native=buildFrameTimeline(ctx.shots,ctx.film.fps);
   const ids=[...new Set([...Object.keys(approved),...Object.keys(current)])];
@@ -137,9 +148,11 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
       if(structure) {rows.push({id:f.id,result:'fail',psnr:null,reason:'镜头集合或顺序变化'});continue;}
       if(!f.snapshot) {rows.push({id:f.id,result:'missing',psnr:null});continue;}
       if(!f.snapshot.valid||!f.segment?.valid) {rows.push({id:f.id,result:'fail',psnr:null,reason:'定稿或当前片段无效'});continue;}
-      if(current[f.id]===approved[f.id]) {rows.push({id:f.id,result:'same',psnr:null});continue;}
-      const psnr=await psnrMin(f.snapshot.file,f.segment.file);
-      rows.push({id:f.id,result:psnr>PSNR_PASS?'pass':'fail',psnr:psnr===Infinity?'inf':psnr});
+      if(current[f.id]===approved[f.id]&&f.snapshot.sha256===f.segment.sha256) {rows.push({id:f.id,result:'same',psnr:null});continue;}
+      try {
+        const psnr=await psnrMin(f.snapshot.file,f.segment.file);
+        rows.push({id:f.id,result:psnr>PSNR_PASS?'pass':'fail',psnr:psnr===Infinity?'inf':psnr});
+      }catch(e){rows.push({id:f.id,result:'fail',psnr:null,reason:e.message});}
     }
   }
   const ok=rows.every(r=>r.result==='same'||r.result==='pass');

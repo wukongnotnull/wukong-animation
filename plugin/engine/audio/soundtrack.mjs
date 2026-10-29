@@ -13,6 +13,11 @@ import { loadSfxLibrary, createSfx, densityWarnings } from './sfx.mjs';
 import { duckFile } from './duck.mjs';
 import { normalizeLoudness } from './loudness.mjs';
 import { frameDb, judgeSfx, formatAudit } from './audit.mjs';
+import { runStage } from '../core/operations.mjs';
+import { digest, fileDigest, treeEvidence } from '../core/evidence.mjs';
+import { ENGINE_ROOT } from '../core/paths.mjs';
+import { saveAudioReview,saveSfxReview } from '../core/review-evidence.mjs';
+import { rememberArtifacts } from '../core/operations.mjs';
 
 // 风格没写 style.json 的 loudness 时，声轨标准化到的整体响度（LUFS）
 const DEFAULT_LOUDNESS = -18;
@@ -161,6 +166,23 @@ function writeVoiceCues(ctx, lines, vo, log) {
  *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}，人声另带实测 duration；voices：人声 {text, at, duration, estimated}
  */
 export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
+  const ctx=loadFilm(filmDir,{requireShots:false}),audio=ctx.film.audio||{};
+  const files=[...(audio.tracks||[]),...(audio.voices||[])].filter(t=>t.file).map(t=>path.resolve(ctx.filmDir,t.file));
+  const signature=audio.build?null:digest({audio,shots:ctx.shots.map(s=>[s.id,s.duration]),style:ctx.style.loudness,files:files.map(file=>[file,fileDigest(file)]),engine:treeEvidence(path.join(ENGINE_ROOT,'audio'))});
+  const value=await runStage(ctx.filmDir,{stage:'soundtrack',aspect:ctx.variant.aspect,signature,log,onReuse:()=>{if(audio.voices?.length)log('  · 声音同步点未变化（完整声轨与同步点文件已核对）');},run:async()=>{
+    const value=await mixSoundtrackFresh(filmDir,{log});
+    return {value,outputs:[path.join(ctx.filmDir,'film.json'),...(value.mix?[value.mix]:[]),path.join(ctx.filmDir,'.cache/voice-sources.json'),...value.tracks.map(t=>t.file)]};
+  }});
+  const report=saveAudioReview(ctx,value.mix);
+  const outputs=['声轨审听.md','声轨审听.json'].map(f=>path.join(ctx.filmDir,'review',f));
+  saveSfxReview(ctx,value.mix,value.sfxAudit);
+  if(value.sfxAudit)outputs.push(path.join(ctx.filmDir,'review','音效电平审计.json'));
+  rememberArtifacts(ctx.filmDir,{stage:'review:audio-notes',aspect:ctx.variant.aspect,signature:report.sha256,outputs,value:outputs});
+  if(report.errors.length)throw new Error(report.errors.join('；'));
+  log(`声轨审听状态：${report.status}（测量不代表实际听过）`);return value;
+}
+
+async function mixSoundtrackFresh(filmDir, { log = console.log } = {}) {
   // 声轨在画镜头之前做（第 7 道），只用到镜头时长，不要求镜头文件已经写好
   const ctx = loadFilm(filmDir, { requireShots: false });
   if (ctx.legacyFields.length) log(`  ! film.json 用了旧字段名，已按新名读取，建议改过来：${ctx.legacyFields.join('，')}`);
@@ -209,9 +231,9 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const { output } = await normalizeLoudness(premix, out, target);
   log(`  ✓ 混音完成（${tracks.length} 条音轨）`);
   log(output === null ? '  · 声轨没有可测响度，未做响度标准化' : `  ✓ 响度 ${output.toFixed(1)} LUFS（目标 ${target}）`);
-  if (sfx?.placements.length) await auditSfx({ tracks, D, cache, sfx, lib, shots: ctx.shots, log });
+  const sfxAudit=sfx?.placements.length?await auditSfx({ tracks, D, cache, sfx, lib, shots: ctx.shots, log }):null;
   writeVoiceSources(ctx, vo);
-  return { mix: out, tracks, voices };
+  return { mix: out, tracks, voices, loudness:output, sfxAudit };
 }
 
 /** 各音轨按起点和增益混成一条（末尾淡出），不做响度标准化。 */
@@ -249,6 +271,7 @@ function duckTracks(tracks, voices, dir, log) {
     for (let n = 2; used.has(dest); n++) dest = path.join(dir, String(n), name);
     used.add(dest);
     t.file = duckFile(t.file, dest, intervals, { start: t.start || 0 });
+    t.duckApplied=true;
     log(`  ✓ ${path.basename(t.file)} 随人声闪避`);
   }
 }
@@ -266,4 +289,5 @@ async function auditSfx({ tracks, D, cache, sfx, lib, shots, log }) {
   if (fx.length > 1) log(`  ! 有 ${fx.length} 条 ${SFX_TRACK}，听感审计按第一条的起点换算时间`);
   const rows = judgeSfx(sfx.placements, fxDb, bedDb, { quiet, offset: fx[0].start || 0 });
   for (const line of formatAudit(rows, shots, quiet)) log(line);
+  return rows.map(r=>({...r,quiet:quiet.has(r.name)}));
 }

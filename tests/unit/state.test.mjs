@@ -4,6 +4,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, recordProgress, readProgress, listProductions, migrateProgress } from '../../plugin/engine/core/state.mjs';
+import * as stateApi from '../../plugin/engine/core/state.mjs';
+
+test('同一批准重试只提交一次历史与定稿身份，输入变化拒绝',()=>{
+  assert.equal(typeof stateApi.commitSignoff,'function');
+  const {film}=project();const record={id:'user-turn-1',step:13,note:'明确通过',signature:'current',main:{s01:'hash'}};
+  const first=stateApi.commitSignoff(film,record),identity=first.approved.mainId;
+  stateApi.commitSignoff(film,record);
+  assert.equal(readProgress(film).history.length,1);assert.equal(readProgress(film).approved.mainId,identity);
+  assert.throws(()=>stateApi.commitSignoff(film,{...record,signature:'changed'}),/变化|不一致/);
+  const note={id:'note-only',note:'补充原结论',signature:'current'};
+  stateApi.commitSignoff(film,note);stateApi.commitSignoff(film,note);
+  assert.equal(readProgress(film).history.filter(h=>h.approvalId==='note-only').length,1);
+  fs.rmSync(path.dirname(path.dirname(film)),{recursive:true,force:true});
+});
 
 function project() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-state-'));

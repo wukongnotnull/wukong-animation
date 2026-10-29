@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { requireDep } from '../../core/deps.mjs';
 import { hasFfmpeg, openImagePipe } from '../../core/ffmpeg.mjs';
 import { ENGINE_VERSION } from '../../core/paths.mjs';
@@ -75,7 +76,7 @@ function buildHost(job) {
     .replace('{{CONFIG}}', JSON.stringify(config))
     .replace('{{W}}', job.W)
     .replace('{{H}}', job.H)
-    .replace('{{SCRIPTS}}', scripts.map((s) => `<script src="file://${s}"></script>`).join('\n'));
+    .replace('{{SCRIPTS}}', scripts.map((s) => `<script src="${pathToFileURL(s).href.replace(/"/g,'%22')}"></script>`).join('\n'));
   const file = path.join(job.workDir, `host-${job.proxy ? 'proxy' : 'full'}.html`);
   fs.writeFileSync(file, html);
   return file;
@@ -103,7 +104,7 @@ async function openShotPage(browser, job, hostFile, shot) {
 }
 
 async function loadShot(page, job, hostFile, shot, errors) {
-  await page.goto('file://' + hostFile);
+  await page.goto(pathToFileURL(hostFile).href);
   if (errors.length) throw new Error(`宿主页加载出错：${errors.join(' | ')}`);
   // 等字体就绪，避免前几帧用了 fallback 字体
   await page.evaluate(async (families) => {

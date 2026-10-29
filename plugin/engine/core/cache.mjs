@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { ensureDir } from './paths.mjs';
 
 // 文件部件只哈希文件名和内容，不哈希绝对路径：插件每个版本装在不同目录，
@@ -28,7 +29,8 @@ export function hashParts(parts) {
  */
 export function fontCssParts(css) {
   const files = [];
-  const text = css.replace(/url\('file:\/\/([^']+)'\)/g, (_, file) => {
+  const text = css.replace(/url\('file:\/\/([^']+)'\)/g, (_, encoded) => {
+    const file=fileURLToPath('file://'+encoded);
     files.push({ file });
     return `url(${path.basename(file)})`;
   });

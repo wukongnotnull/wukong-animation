@@ -2,6 +2,8 @@
 // 这个文件随片子一起进 git，换会话、隔几天再来，director 读它就能接着做。
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { atomicJson } from './evidence.mjs';
 
 /** 15 道工序（与 skills/director/SKILL.md 一致） */
 export const PRODUCTION_STEPS = {
@@ -60,7 +62,7 @@ export function migrateProgress(st) {
 function writeState(filmDir, st) {
   const f = fileOf(filmDir);
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(f, JSON.stringify(st, null, 2) + '\n');
+  atomicJson(f,st);
 }
 
 /** 读进度；旧流程的进度会换算成新编号并写回，导演直接读文件时看到的也是新编号。 */
@@ -95,11 +97,25 @@ export function recordApproval(filmDir, { main = null, variant = null, shots = n
   const st = readProgress(filmDir);
   const approved = st.approved || {};
   const next = main
-    ? { ...approved, main }
+    ? { ...approved, main, mainId: crypto.randomUUID() }
     : { ...approved, variants: { ...(approved.variants || {}), [variant]: { shots, main: approved.main || null } } };
   const out = { ...st, approved: next, updated: new Date().toISOString() };
   writeState(filmDir, out);
   return out;
+}
+
+/** 一个用户批准的工序历史和定稿身份一次写入；重试同一 id 不新增批准。 */
+export function commitSignoff(filmDir,{id,step,note,signature,main=null,variants=null}) {
+  const st=readProgress(filmDir),old=st.history.find(h=>h.approvalId===id);
+  if(old){
+    if(old.signature!==signature||old.step!==(step||st.step)||old.note!==note) throw new Error('同一批准对应的输入或结论发生变化，不一致，需核实当前审阅');
+    return st;
+  }
+  let approved=st.approved||{};
+  if(main) approved={...approved,main,mainId:crypto.randomUUID()};
+  if(variants) approved={...approved,variants:{...approved.variants,...Object.fromEntries(Object.entries(variants).map(([aspect,shots])=>[aspect,{shots,main:approved.main||null}]))}};
+  const now=new Date().toISOString(),next={...st,step:Math.max(st.step||0,step||0),approved,updated:now,history:[...st.history,{step:step||st.step,label:PRODUCTION_STEPS[step]||'',gate:REVIEW_GATES[step]||null,note,sha:null,at:now,approvalId:id,signature}]};
+  writeState(filmDir,next);return next;
 }
 
 const sameHashes = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);

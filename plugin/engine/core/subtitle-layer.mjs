@@ -2,6 +2,7 @@
 // 字幕不进镜头缓存：改字幕不用重渲镜头，只是烧录时整片重新编码一次。
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { requireDep } from './deps.mjs';
 import { run,generatedMixPadding,probeDuration } from './ffmpeg.mjs';
 import { prepareFonts } from './fonts.mjs';
@@ -75,7 +76,7 @@ export async function renderSubtitleLayers({ W, H, style, subs, workDir, log = (
   const browser = await chromium.launch({ args: ['--allow-file-access-from-files', '--force-color-profile=srgb', '--font-render-hinting=none'] });
   try {
     const tab = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
-    await tab.goto('file://' + page.file);
+    await tab.goto(pathToFileURL(page.file).href);
     const files = [], measurements = [];
     for (const s of subs) {
       const used = await tab.evaluate(([text, en]) => window.setSubtitle(text, en), [s.text, s.en || null]);

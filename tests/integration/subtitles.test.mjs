@@ -127,6 +127,10 @@ test('mode both: a burned and a clean mp4 plus the srt', opts, () => {
   assert.ok(maxDiff(bottomPixels(path.join(dir, 'out_有字幕.mp4'), 0.5), bottomPixels(clean, 0.5)) > 100);
   assert.ok(maxDiff(bottomPixels(path.join(dir, 'out_无字幕.mp4'), 0.5), bottomPixels(clean, 0.5)) < 30);
   assert.ok(fs.existsSync(path.join(dir, 'out_字幕.srt')));
+  const delivery=wka('delivery',dir,'--host','codex','--json');
+  assert.equal(delivery.status,0,delivery.stdout+delivery.stderr);
+  const delivered=JSON.parse(delivery.stdout);
+  for(const name of ['out_有字幕.mp4','out_无字幕.mp4','out_字幕.srt'])assert.equal(delivered.items.find(i=>i.path===path.join(dir,name)).status,'current');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

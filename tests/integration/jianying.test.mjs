@@ -67,6 +67,31 @@ const wkaWith = (env, drafts, ...args) =>
 
 const byType = (draft, type) => draft.tracks.filter((t) => t.type === type);
 
+test('纯草稿不拼全片，重复/CLI登记前中断不重导，用户编辑后不覆盖',opts,()=>{
+  const dir=makeFilm(),drafts=fs.mkdtempSync(path.join(os.tmpdir(),'wka-receipts-'));
+  try{
+    const first=wka(drafts,'final',dir,'--formats','jianying');assert.equal(first.status,0,first.stderr);
+    assert.ok(first.stdout.indexOf('写入前说明')>=0&&first.stdout.indexOf('写入前说明')<first.stdout.indexOf('draft-export] 开始'),'声音差异在草稿写入前披露');
+    const difference=JSON.parse(fs.readFileSync(path.join(dir,'review/草稿声音差异.json')));
+    assert.equal(difference.master.fadeOut,0.2);assert.equal(difference.master.targetLUFS,-18);
+    assert.equal(fs.existsSync(path.join(dir,'.cache/video.mp4')),false,'纯草稿无需拼全片');
+    const file=path.join(drafts,'jy-it/draft_info.json'),original=fs.readFileSync(file);
+    const twice=wka(drafts,'final',dir,'--formats','jianying');assert.equal(twice.status,0,twice.stderr);
+    assert.deepEqual(fs.readdirSync(drafts),['jy-it']);assert.deepEqual(fs.readFileSync(file),original);
+    fs.rmSync(path.join(dir,'.cache/operations.json'),{force:true});
+    const receipts=path.join(dir,'.wka/export-receipts');
+    for(const f of fs.readdirSync(receipts)){
+      const p=path.join(receipts,f),receipt=JSON.parse(fs.readFileSync(p));delete receipt.outputs;receipt.status='prepared';fs.writeFileSync(p,JSON.stringify(receipt));
+    }
+    const recovered=wka(drafts,'final',dir,'--formats','jianying');assert.equal(recovered.status,0,recovered.stderr);
+    assert.deepEqual(fs.readdirSync(drafts),['jy-it'],'利用草稿内完成回执补登记');
+    const edit=JSON.parse(original);edit.name='用户手改';fs.writeFileSync(file,JSON.stringify(edit));
+    const edited=wka(drafts,'final',dir,'--formats','jianying');assert.notEqual(edited.status,0);assert.match(edited.stderr,/user-modified|用户.*修改/);
+    assert.deepEqual(fs.readdirSync(drafts),['jy-it']);assert.equal(JSON.parse(fs.readFileSync(file)).name,'用户手改');
+    const forced=wka(drafts,'final',dir,'--formats','jianying','--force');assert.equal(forced.status,0,forced.stderr);assert.ok(fs.existsSync(path.join(drafts,'jy-it_v2')));
+  }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(drafts,{recursive:true,force:true});}
+});
+
 test('exports an editable 剪映 draft split by shot, audio source and subtitle', opts, () => {
   const dir = makeFilm();
   const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));

@@ -135,6 +135,7 @@ function save(ctx,proxy,report) {
 }
 
 export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,log=()=>{}}={}) {
+ log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · subtitle-preflight] 开始`);
  let report={version:1,errors:[],warnings:[],manual_required:[],images:[]},layers;
  try {
   const data=inputs(ctx,{proxy,subs});
@@ -154,6 +155,7 @@ export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,log=()=
  for(const msg of report.warnings) log('  ! '+msg);
  for(const msg of report.manual_required) log('  · 人工待查：'+msg);
  if(report.errors.length) throw new Error('字幕预检失败：'+report.errors.join('；'));
+ log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · subtitle-preflight] 完成`);
  return {report,layers,subs};
 }
 

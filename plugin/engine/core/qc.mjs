@@ -1,6 +1,9 @@
 // 量化技术质检（QC）：逐帧量出留白、点缀色面积、相邻帧差异、空帧，对照 style.json 的 qc 阈值。
 // 导演只需目视复核超标的帧（会拼成一张 qc-sheet.jpg）。
 import fs from 'node:fs';
+import { fileDigest,atomicJson,digest } from './evidence.mjs';
+import { readReviewNotes,qcReview } from './review-evidence.mjs';
+import { rememberArtifacts } from './operations.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { loadFilm } from './job.mjs';
@@ -70,7 +73,32 @@ export function qcConfig(style, aspect) {
   return { ...QC_DEFAULTS, ...qc, ...(byAspect[aspect] || {}) };
 }
 
-export async function runQc(filmDir, { proxy = false, fps = 10, aspect = null, log = console.log } = {}) {
+export async function runQc(filmDir,options={}) {
+  const {proxy=false,fps=10,aspect=null,log=console.log}=options;
+  const ctx=loadFilm(filmDir,{aspect}),video=path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4');
+  let raw;
+  try{raw=await runQcMeasured(filmDir,options);}
+  catch(e){raw={ok:false,issues:[{kind:'解码或检查失败',shot:'未验证',t:null,msg:e.message}],shots:[],contactSheet:null,report:e.message};}
+  let notes={},noteError=null;try{notes=readReviewNotes(ctx.filmDir);}catch(e){noteError=e.message;}
+  const issues=[...raw.issues,...(noteError?[{kind:'审阅记录无效',shot:'未验证',t:null,msg:noteError}]:[])];
+  const source=digest({video:fs.existsSync(video)?fileDigest(video):null,timing:fs.existsSync(path.join(ctx.variant.cacheDir,proxy?'timing-proxy.json':'timing.json'))?fileDigest(path.join(ctx.variant.cacheDir,proxy?'timing-proxy.json':'timing.json')):null,algorithm:fileDigest(new URL(import.meta.url))});
+  const disposition=qcReview(issues,{source,cfg:{...qcConfig(ctx.style,ctx.variant.aspect),fps,duration:ctx.totalDuration},notes});
+  const result={...raw,...disposition,ok:disposition.machineOk};
+  result.report=raw.report+'\n\n人工处置（不改变原始测量）：'+`\n未处理 ${disposition.unresolved.length}；需修复 ${disposition.needsFix.length}；有依据接受 ${disposition.accepted.length}；过期备注 ${disposition.staleNotes.length}`+
+    disposition.issues.map(i=>`\n- ${i.id} ${i.shot} ${i.t0??i.t??'全片'}–${i.t1??i.t??'全片'}s ${i.kind}：${i.msg}`).join('')+
+    disposition.accepted.map(i=>`\n- 人工接受 ${i.id}：${i.review.reason}；${i.review.reviewer}；${i.review.evidence}`).join('')+
+    disposition.invalidNotes.map(i=>`\n- 无效处置 ${i.finding}：${i.error}`).join('')+
+    (disposition.staleNotes.length?'\n旧备注本轮无匹配项（未再检出或来源已变，不等于确认已修复）。':'');
+  const base=path.join(ctx.filmDir,'review',ctx.variant.review('QC报告.json').slice(0,-5)+(proxy?'-proxy':''));
+  atomicJson(base+'.json',result);fs.writeFileSync(base+'.md',result.report+'\n');
+  const machineFile=path.join(ctx.variant.cacheDir,'qc.json');
+  const measured=fs.existsSync(machineFile)?JSON.parse(fs.readFileSync(machineFile,'utf8')):{};
+  atomicJson(machineFile,{...measured,...disposition});
+  rememberArtifacts(ctx.filmDir,{stage:'review:qc',aspect:ctx.variant.aspect,proxy,signature:source,value:base+'.md',outputs:[base+'.md',base+'.json',...(raw.contactSheet?[raw.contactSheet]:[])]});
+  log(result.report.slice(raw.report.length));return result;
+}
+
+async function runQcMeasured(filmDir, { proxy = false, fps = 10, aspect = null, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
   const cfg = qcConfig(ctx.style, ctx.variant.aspect);
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');

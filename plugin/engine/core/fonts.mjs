@@ -4,6 +4,7 @@
 // 下载来源依次是：WKA_FONT_MIRROR（自配镜像）→ GitHub → jsDelivr（国内通常能连上）。
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { FONT_CACHE_DIR, ensureDir } from './paths.mjs';
 
@@ -129,7 +130,7 @@ export function prepareFonts(fonts = [], { text = '', workDir, log = () => {} } 
     const file = ensureFontFile(f.family, { log });
     if (file) {
       const used = text ? subsetFont(file, text, path.join(workDir, 'fonts')) : file;
-      css += `@font-face{font-family:'${f.family}';src:url('file://${used}');font-display:block;}\n`;
+      css += `@font-face{font-family:'${f.family}';src:url('${pathToFileURL(used).href.replace(/'/g,'%27')}');font-display:block;}\n`;
       stacks[f.family] = [`'${f.family}'`, ...fallbacks, 'serif'].join(',');
       report.push(`${f.family}: ${used === file ? '完整字体' : '已子集化'}`);
     } else {

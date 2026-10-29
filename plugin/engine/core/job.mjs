@@ -1,6 +1,11 @@
 // 一次渲染任务：读 film.json → 解析风格 → 按镜头调度渲染（带缓存）→ 拼接 → 混音 → 导出。
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { fileDigest, treeEvidence } from './evidence.mjs';
+import { requireDep, resolveDep } from './deps.mjs';
+import { headlessShellFrom } from '../pipelines/remotion/entry.mjs';
 import { getRegistry, getStyles, loadModule } from './registry.mjs';
 import { resolveStyle } from './resolver.mjs';
 import { validate } from './validate.mjs';
@@ -131,6 +136,28 @@ export function shotHashes(filmDir, { aspect = null, log = () => {} } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { log });
   return Object.fromEntries(job.shots.map((s) => [s.id, shotHash(job, s)]));
+}
+
+/** 实际验证环境；缺少可核验的渲染器时不复用跨调用的画面证明。 */
+export function mainCheckConditions(filmDir) {
+  const ctx=loadFilm(filmDir),job=createRenderJob(ctx,{log:()=>{}});
+  try {
+    const exe=requireDep('playwright').chromium.executablePath();
+    const shell=headlessShellFrom(exe,fs);
+    const browser=[...new Set([exe,shell].filter(Boolean))].map(file=>({file,sha256:fileDigest(file)}));
+    const packages=['playwright',...(ctx.pipeline.name==='remotion'?['remotion','@remotion/renderer','@remotion/bundler','react']:[])].map(name=>({name,sha256:fileDigest(path.join(resolveDep(name),'package.json'))}));
+    const commands=['ffmpeg','ffprobe'].map(name=>{
+      const r=spawnSync(name,['-version'],{encoding:'utf8'});
+      if(r.status!==0) throw new Error(name+'不可用');
+      return r.stdout;
+    });
+    const fontDirs=process.platform==='darwin'?['/System/Library/Fonts','/Library/Fonts',path.join(os.homedir(),'Library/Fonts')]:['/usr/share/fonts','/usr/local/share/fonts',path.join(os.homedir(),'.fonts'),path.join(os.homedir(),'.local/share/fonts')];
+    return {platform:[process.platform,process.arch,os.release(),process.version],browser,packages,commands,
+      fonts:fontCssParts(job.fonts.css).map(p=>p?.file?{name:path.basename(p.file),sha256:fileDigest(p.file)}:p),fontState:job.fonts.report,
+      systemFonts:fontDirs.map(dir=>[dir,treeEvidence(dir)]),
+      engine:treeEvidence(ENGINE_ROOT,(rel,ent)=>ent.isDirectory()&&['node_modules','.cache'].includes(ent.name)),
+      size:ctx.film.size, fps:ctx.film.fps, timeline:job.timeline};
+  } catch { return null; }
 }
 
 async function pipelineModule(job) {

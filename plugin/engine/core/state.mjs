@@ -2,6 +2,7 @@
 // 这个文件随片子一起进 git，换会话、隔几天再来，director 读它就能接着做。
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 /** 15 道工序（与 skills/director/SKILL.md 一致） */
 export const PRODUCTION_STEPS = {
@@ -95,7 +96,7 @@ export function recordApproval(filmDir, { main = null, variant = null, shots = n
   const st = readProgress(filmDir);
   const approved = st.approved || {};
   const next = main
-    ? { ...approved, main }
+    ? { ...approved, main, mainId: crypto.randomUUID() }
     : { ...approved, variants: { ...(approved.variants || {}), [variant]: { shots, main: approved.main || null } } };
   const out = { ...st, approved: next, updated: new Date().toISOString() };
   writeState(filmDir, out);

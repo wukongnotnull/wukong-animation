@@ -90,7 +90,7 @@ codex plugin add wukong-animation@wukong-animation
 
 ### 其他 Agent 工具
 
-新增 portable 安装适配支持 Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具，完整引擎和风格随同一个技能包安装。当前在本分支提供源码构建与 CI 产物，尚未随正式 Release 发布。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.16.0 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.16.0) 里的 `wukong-animation-agent-skills-v0.16.0.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
 
 ## 拍你的第一支片
 

@@ -10,6 +10,8 @@
 
 ## 修订记录
 
+- v1.13.0（2026-10-29）：长片审片与交付可靠性优化：关键词同步区分实际来源和估算，字幕预检保留人工断句与双语稿；主版成功证明按当前输入/定稿/环境复用；恢复先核实阶段和产物，同一批准重试不重复存档，已确认的简报交付选择不再询问；声轨分段审听、QC 人工处置和草稿声音差异在交付前明确。15 道工序与 12 个审片节点不变（[#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[#94](https://github.com/wukongnotnull/wukong-animation/pull/94)、[#95](https://github.com/wukongnotnull/wukong-animation/pull/95)、[#96](https://github.com/wukongnotnull/wukong-animation/pull/96)）。
+
 - v1.12.0（2026-10-29）：适配 Codex / ChatGPT 桌面本地执行环境：从加载的 skill 解析插件路径，按宿主能力选择提问工具与文件链接；异步提问必须等待明确回复，无多选工具时使用多轮单选或文字收集返修意见。15 道工序与 12 个审片节点不变。
 
 - v1.11.0（2026-10-28）：新增第 14 道工序「改版」与审片节点 ⑪ 改版审片：简报可定「主画幅 + 副版」，主版终审后用同一套镜头和声轨排出副版画幅（`film.json` 的 `variants`、命令加 `--aspect`），随副版提交主版不变报告；原第 14 道剪映草稿顺延为第 15 道、节点 ⑪ 顺延为 ⑫，流程变为 15 道工序 · 12 个审片节点；返修流程增加「改版返修」；分镜规范增加「副版重排」表（[#89](https://github.com/wukongnotnull/wukong-animation/issues/89)）

@@ -47,7 +47,7 @@
 
 插件包含通用 Agent Plugins 清单、Codex 兼容清单和 `film`、`setup`、`styles` 技能。ChatGPT 桌面端需要使用能访问本地终端与文件的执行环境；安装插件不会自动赋予本地执行能力。
 
-本次改动发布到 GitHub 后，在终端运行：
+在终端运行：
 
 ```bash
 codex plugin marketplace add wukongnotnull/wukong-animation

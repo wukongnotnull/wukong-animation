@@ -12,16 +12,27 @@ const job = {
   shots: [
     { id: 's01', path: '/films/demo/shots/s01.tsx', duration: 2, start: 0 },
     { id: 's02', path: '/films/demo/shots/s02.tsx', duration: 1.25, start: 2 },
-    { id: 's03', path: '/films/demo/shots/s03.tsx', duration: 0.01, start: 3.25 },
+    { id: 's03', path: '/films/demo/shots/s03.tsx', duration: 0.1, start: 3.25 },
   ],
 };
 
 /** 从生成的源码里取出嵌入的镜头清单。 */
 const shotsOf = (src) => JSON.parse(src.match(/const SHOTS = (.*);\n/)[1]);
 
-test('每个镜头一个 Composition：id、帧数（四舍五入、至少 1 帧）、设计尺寸', () => {
+test('107 个非整数帧镜头按全片切点分配，不能累计舍入误差', () => {
+  const long = { ...job, shots: Array.from({ length: 107 }, (_, i) => ({ id: `s${i + 1}`, path: '/shot.tsx', duration: 1.02, start: i * 1.02 })) };
+  const shots = shotsOf(buildEntry(long, ''));
+  assert.equal(shots.reduce((sum, s) => sum + s.frames, 0), 3274);
+  let frames = 0;
+  for (const [i, shot] of shots.entries()) {
+    frames += shot.frames;
+    assert.equal(frames, Math.round((i + 1) * 1.02 * 30));
+  }
+});
+
+test('每个镜头一个 Composition：id、帧数（累计切点之差）、设计尺寸', () => {
   const shots = shotsOf(buildEntry(job, ''));
-  assert.deepEqual(shots.map((s) => [s.id, s.frames]), [['s01', 60], ['s02', 38], ['s03', 1]]);
+  assert.deepEqual(shots.map((s) => [s.id, s.frames]), [['s01', 60], ['s02', 38], ['s03', 3]]);
   assert.ok(shots.every((s) => s.s.designW === 1920 && s.s.designH === 1080 && s.s.fps === 30));
 });
 

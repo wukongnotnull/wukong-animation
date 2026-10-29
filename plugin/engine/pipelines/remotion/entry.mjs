@@ -2,13 +2,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { aspectOf, orientationOf } from '../../core/variants.mjs';
+import { buildFrameTimeline } from '../../core/timing.mjs';
 
 const SHOT_WRAPPER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'WkaShot.jsx');
 
 /** 字体 CSS 里静态文件地址的占位前缀；WkaShot 在页面里换成 staticFile() 的结果。 */
 export const STATIC_PREFIX = 'wka-static:';
 
-const frames = (seconds, fps) => Math.max(1, Math.round(seconds * fps));
 
 /**
  * 打包入口源码：每个镜头一个 Composition（设计尺寸、film.fps），外包 WkaShot 注入字体并等字体就绪。
@@ -18,9 +18,10 @@ const frames = (seconds, fps) => Math.max(1, Math.round(seconds * fps));
  */
 export function buildEntry(job, fontCss) {
   const fps = job.film.fps;
-  const shots = job.shots.map((sh) => ({
+  const native = buildFrameTimeline(job.shots, fps);
+  const shots = job.shots.map((sh, i) => ({
     id: sh.id,
-    frames: frames(sh.duration, fps),
+    frames: native.shots[i].frames,
     s: {
       id: sh.id, W: job.designW, H: job.designH, designW: job.designW, designH: job.designH,
       aspect: aspectOf([job.designW, job.designH]), orientation: orientationOf([job.designW, job.designH]),

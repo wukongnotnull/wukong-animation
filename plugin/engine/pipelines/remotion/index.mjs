@@ -6,6 +6,7 @@ import path from 'node:path';
 import { hasDep, requireDep, resolveDep } from '../../core/deps.mjs';
 import { hasFfmpeg, run } from '../../core/ffmpeg.mjs';
 import { ensureDir } from '../../core/paths.mjs';
+import { assertVideo } from '../../core/timing.mjs';
 import { buildEntry, headlessShellFrom, rewriteFontCss, webpackAliases } from './entry.mjs';
 
 const DEPS = ['remotion', '@remotion/bundler', '@remotion/renderer', 'react', 'react-dom'];
@@ -141,8 +142,9 @@ async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, 
         while (nextLog <= progress) nextLog += 0.25;
       },
     });
+    assertVideo(raw, { fps: job.film.fps, frames: shot.nativeFrames });
     if (post) {
-      await run(['-i', raw, '-vf', `fps=${job.fps},scale=${job.W}:${job.H}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
+      await run(['-i', raw, '-vf', `fps=${job.fps},tpad=stop_mode=clone:stop_duration=${2 / job.fps},trim=end_frame=${shot.frames},setpts=PTS-STARTPTS,scale=${job.W}:${job.H}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
       fs.rmSync(raw, { force: true });
     }
     fs.renameSync(part, out);

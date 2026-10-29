@@ -1,6 +1,6 @@
 # 阶段进度与中断恢复（FR-6）
 
-Status: Draft，待用户审阅本文件；不是实现许可。
+Status: Confirmed；用户在本会话明确回复“确认”，批准本文件。
 日期：2026-10-29；基线：main `d370839`。
 依据：[已批准 PRD](../prd.md) FR-6、[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。依赖 FR-5 的主版检查结果，向 FR-7 提供已确认产物。
 

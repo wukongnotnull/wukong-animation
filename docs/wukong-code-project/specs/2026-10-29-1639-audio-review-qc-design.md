@@ -1,6 +1,6 @@
 # 声轨审听、QC 处置与草稿声音差异（FR-8）
 
-Status: Draft，待用户审阅本文件；不是实现许可。
+Status: Confirmed；用户在本会话明确回复“确认”，批准本文件。
 日期：2026-10-29；基线：main `d370839`。
 依据：[已批准 PRD](../prd.md) FR-8、[体验报告](../reports/2026-10-29-codex-editing-experience.md)、[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。本文件的人工审阅记录不替代任何用户签批。
 

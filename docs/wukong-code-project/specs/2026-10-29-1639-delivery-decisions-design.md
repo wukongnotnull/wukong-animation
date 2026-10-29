@@ -1,6 +1,6 @@
 # 可验证交付与已确认决定复用（FR-7）
 
-Status: Draft，新增接口待用户审阅本文件；“简报选了就不重复问”已由用户单独明确确认，导演与简报规则已按该决定修正。
+Status: Confirmed；用户在本会话明确回复“确认”，批准本文件。
 日期：2026-10-29；基线：main `d370839`。
 依据：[已批准 PRD](../prd.md) FR-7、[issue #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。FR-6 回执提供产物状态；本设计负责交付链接与制作决定，不负责恢复执行。
 

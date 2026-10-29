@@ -107,7 +107,7 @@ export async function burnSubtitles(video, subs, out, { W, H, style, workDir, pr
   await run([
     ...inputs,
     ...videoMap, ...audioMap,
-    '-c:v', 'libx264', '-preset', proxy ? 'veryfast' : 'medium', '-crf', proxy ? '23' : '16', '-pix_fmt', 'yuv420p',
+    '-c:v', 'libx264', '-preset', proxy ? 'veryfast' : 'fast', '-crf', proxy ? '23' : '16', '-pix_fmt', 'yuv420p',
     '-movflags', '+faststart', out,
   ]);
   log(`  ✓ 已烧录字幕 ${subs.length} 条 → ${path.basename(out)}`);

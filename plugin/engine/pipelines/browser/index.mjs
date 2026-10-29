@@ -169,7 +169,7 @@ async function renderShot(browser, job, hostFile, { shot, out }, abort) {
     const n = shot.frames;
     enc = openImagePipe([
       '-f', 'image2pipe', '-framerate', String(job.fps), '-c:v', 'mjpeg', '-i', '-',
-      '-c:v', 'libx264', '-preset', job.proxy ? 'veryfast' : 'medium',
+      '-c:v', 'libx264', '-preset', job.proxy ? 'veryfast' : 'fast',
       '-crf', job.proxy ? '23' : '16', '-pix_fmt', 'yuv420p',
       '-r', String(job.fps), '-movflags', '+faststart', '-f', 'mp4', part,
     ]);

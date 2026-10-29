@@ -46,7 +46,8 @@ export function inspectVideo(file, { fps, frames }) {
     if (!Number.isFinite(result.fps) || !Number.isFinite(ratio(stream.avg_frame_rate)) || Math.abs(result.fps - fps) > 1e-6 || Math.abs(ratio(stream.avg_frame_rate) - fps) > 1e-6) errors.push(`实测帧率 ${stream.r_frame_rate}/${stream.avg_frame_rate}，期望 ${fps}fps`);
     const bad = data.frames.findIndex((f, i) => !Number.isFinite(Number(f.best_effort_timestamp_time)) || Math.abs(Number(f.best_effort_timestamp_time) - i / fps) > tolerance);
     if (bad >= 0) errors.push(`第 ${bad} 帧时间戳不连续：${data.frames[bad].best_effort_timestamp_time}，期望 ${(bad / fps).toFixed(6)}s（容差 ${tick}s）`);
-    if (!Number.isFinite(result.duration) || Math.abs(result.duration - frames / fps) > tolerance) errors.push(`视频轨时长 ${stream.duration}s，期望 ${frames / fps}s`);
+    // ffmpeg 8 的 mp4 封装在 B 帧片段上会把最后一帧的样本时长记短几个 tick（<1ms）；帧数和逐帧时间戳仍按 tick 严格检查。
+    if (!Number.isFinite(result.duration) || Math.abs(result.duration - frames / fps) > Math.max(tolerance, 0.001)) errors.push(`视频轨时长 ${stream.duration}s，期望 ${frames / fps}s`);
   } catch (e) { errors.push(`无法验证 ${path.basename(file)}：${e.message}`); }
   result.ok = errors.length === 0;
   return result;

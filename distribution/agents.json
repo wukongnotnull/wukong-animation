@@ -1,0 +1,650 @@
+{
+  "schemaVersion": 1,
+  "agents": [
+    {
+      "familyId": "claude-code",
+      "label": "Claude Code",
+      "projectPath": ".claude/skills",
+      "globalPath": "~/.claude/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "codex",
+      "label": "Codex",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "chatgpt-local",
+      "label": "ChatGPT 桌面本地执行",
+      "projectPath": null,
+      "globalPath": null,
+      "scopes": [],
+      "channel": "native",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/wukongnotnull/wukong-animation/blob/a91f910e9f59b3845a05eb8e58cc6d8eb26c54e4/.agents/plugins/marketplace.json",
+          "revision": "a91f910e9f59b3845a05eb8e58cc6d8eb26c54e4",
+          "checkedAt": "2026-10-29",
+          "capability": "既有原生插件安装契约"
+        }
+      ],
+      "limitations": "使用原生插件渠道；不等同于普通网页聊天。"
+    },
+    {
+      "familyId": "cursor",
+      "label": "Cursor",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.cursor/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "github-copilot",
+      "label": "GitHub Copilot",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.copilot/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "gemini-cli",
+      "label": "Gemini CLI",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.gemini/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "opencode",
+      "label": "OpenCode",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.config/opencode/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "cascade",
+      "label": "Devin Desktop / Windsurf",
+      "projectPath": ".devin/skills",
+      "globalPath": "~/.config/devin/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {
+        "devin": {},
+        "windsurf": {
+          "projectPath": ".windsurf/skills",
+          "globalPath": "~/.codeium/windsurf/skills"
+        }
+      },
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        },
+        {
+          "url": "https://docs.devin.ai/desktop/cascade/skills",
+          "revision": null,
+          "checkedAt": "2026-10-29",
+          "capability": "当前 .devin 目录及 legacy Windsurf 支持"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "antigravity",
+      "label": "Antigravity",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.gemini/antigravity/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {
+        "ide": {},
+        "cli": {
+          "globalPath": "~/.gemini/antigravity-cli/skills"
+        }
+      },
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "cline",
+      "label": "Cline",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "candidate",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "目录待具体加载代码或官方路径佐证；候选不允许写入、不计支持数。"
+    },
+    {
+      "familyId": "roo",
+      "label": "Roo Code",
+      "projectPath": ".roo/skills",
+      "globalPath": "~/.roo/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "kiro",
+      "label": "Kiro",
+      "projectPath": ".kiro/skills",
+      "globalPath": "~/.kiro/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。 自定义 CLI Agent 需手动添加 resources: [\"skill://.kiro/skills/**/SKILL.md\"]；IDE 通过导入包内 wukong-animation 子目录单独验证。"
+    },
+    {
+      "familyId": "droid",
+      "label": "Factory Droid",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.factory/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "amp",
+      "label": "Amp",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.config/agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "continue",
+      "label": "Continue",
+      "projectPath": ".continue/skills",
+      "globalPath": "~/.continue/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "goose",
+      "label": "Goose",
+      "projectPath": ".goose/skills",
+      "globalPath": "~/.config/goose/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "qwen-code",
+      "label": "Qwen Code",
+      "projectPath": ".qwen/skills",
+      "globalPath": "~/.qwen/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "kimi-code",
+      "label": "Kimi Code CLI",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "trae",
+      "label": "Trae",
+      "projectPath": ".trae/skills",
+      "globalPath": "~/.trae/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {
+        "international": {},
+        "cn": {
+          "globalPath": "~/.trae-cn/skills"
+        }
+      },
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "codebuddy",
+      "label": "CodeBuddy",
+      "projectPath": ".codebuddy/skills",
+      "globalPath": "~/.codebuddy/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "qoder",
+      "label": "Qoder",
+      "projectPath": ".qoder/skills",
+      "globalPath": "~/.qoder/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {
+        "international": {},
+        "cn": {
+          "globalPath": "~/.qoder-cn/skills"
+        }
+      },
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "augment",
+      "label": "Augment",
+      "projectPath": ".augment/skills",
+      "globalPath": "~/.augment/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "openclaw",
+      "label": "OpenClaw",
+      "projectPath": "skills",
+      "globalPath": "~/.openclaw/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "openhands",
+      "label": "OpenHands",
+      "projectPath": ".openhands/skills",
+      "globalPath": "~/.openhands/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "pi",
+      "label": "Pi",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "warp",
+      "label": "Warp",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    },
+    {
+      "familyId": "zed",
+      "label": "Zed",
+      "projectPath": ".agents/skills",
+      "globalPath": "~/.agents/skills",
+      "scopes": [
+        "project",
+        "global"
+      ],
+      "channel": "portable",
+      "qualification": "contract-supported",
+      "minimumVersion": null,
+      "variants": {},
+      "evidence": [
+        {
+          "url": "https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md",
+          "revision": "92a9a34ac3bf88e695e468b90c7bf32f163d32c8",
+          "checkedAt": "2026-10-29",
+          "capability": "安装路径契约依据；不代表客户端发现或渲染实测"
+        }
+      ],
+      "limitations": "需支持 Agent Skills 的版本，未确认数字下限；实际客户端未验证。"
+    }
+  ]
+}

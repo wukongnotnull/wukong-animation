@@ -9,7 +9,9 @@
     "setup": "npm ci --prefix plugin/engine --no-audit --no-fund",
     "test": "node --test tests/unit/*.test.mjs tests/integration/*.test.mjs",
     "smoke": "node tests/smoke/run.mjs",
-    "lint": "node tools/lint.mjs && node tools/build-docs.mjs --check",
-    "catalog": "node tools/build-catalog.mjs"
+    "lint": "node tools/lint.mjs && node tools/build-docs.mjs --check && node tools/build-agent-docs.mjs --check",
+    "catalog": "node tools/build-catalog.mjs",
+    "build:portable": "node tools/build-portable.mjs",
+    "install:agent": "node tools/install-agent.mjs"
   }
 }

@@ -88,6 +88,10 @@ codex plugin add wukong-animation@wukong-animation
 
 第一次运行 `setup` 需要下载一些文件（依赖包约 230 MB，另有浏览器内核），请耐心等它完成。
 
+### 其他 Agent 工具
+
+新增 portable 安装适配支持 Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具，完整引擎和风格随同一个技能包安装。当前在本分支提供源码构建与 CI 产物，尚未随正式 Release 发布。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+
 ## 拍你的第一支片
 
 在 Claude Code 里输入：

@@ -9,7 +9,7 @@
 //   wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]   新建风格（默认 ~/.wukong-animation/styles/）
 //   wka status [项目目录]             各片制作进度（恢复在制项目）
 //   wka resume <片目录> [--json]       核实已完成产物、失败阶段和待存档签批
-//   wka delivery <片目录> --host codex|claude [--aspect all|9:16] [--json]  生成存在性与新旧状态交付清单
+//   wka delivery <片目录> --host codex|claude|generic [--aspect all|9:16] [--json]  生成存在性与新旧状态交付清单
 //   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
 //   wka qc <片目录> [--proxy] [--aspect 9:16]       量化技术质检（QC）
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy] [--aspect 9:16]   静帧 + 接触表
@@ -420,7 +420,7 @@ async function cmdFinal(filmDir, o) {
 async function main() {
   switch (cmd) {
     case 'delivery': {
-      if(!pos[0]) throw new Error('用法：wka delivery <片目录> --host codex|claude [--json]');
+      if(!pos[0]) throw new Error('用法：wka delivery <片目录> --host codex|claude|generic [--json]');
       const report=writeDelivery(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
       log(opt('json')?JSON.stringify(report,null,2):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
       process.exitCode=report.ok?0:2;return;

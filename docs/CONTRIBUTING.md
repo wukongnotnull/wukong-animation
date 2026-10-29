@@ -55,3 +55,50 @@ node tools/new-kit.mjs webm-alpha --exporter --ext webm
 - 只使用 SIL OFL 等可商用开源字体（登记在 `engine/core/fonts.mjs` 的 `KNOWN_FONTS`，值写它在 google/fonts 仓库里的路径，如 `ofl/mashanzheng/MaShanZheng-Regular.ttf`；下载会自动走 GitHub → jsDelivr）。
 - 声音用 `engine/audio/synth.mjs` 合成，或使用明确可商用的素材并在示范片目录写明来源。
 - 风格用通用技法描述，不模仿特定画家、工作室或作品的具体画面。
+
+## 桌面插件本地试装
+
+安装器会复制整个 `plugin/`，所以从干净副本试装。若改动已提交，可在仓库终端运行以下命令（需要本机 `git`、`tar` 与支持 `codex plugin` 的 Codex）：
+
+```bash
+trial_dir="$(mktemp -d)/wukong-animation"
+mkdir -p "$trial_dir"
+git archive HEAD | tar -x -C "$trial_dir"
+codex plugin marketplace add "$trial_dir"
+codex plugin add wukong-animation@wukong-animation
+```
+
+尚未提交的改动不会进入 `git archive HEAD`。开发中需要包含未提交文件时，可用以下命令只复制 Git 跟踪文件和未忽略的新文件，排除本机依赖、缓存和成片；`trial_dir` 是任务专用临时变量：
+
+```bash
+trial_dir="$(mktemp -d)/wukong-animation"
+python3 - "$trial_dir" <<'PY'
+import pathlib, shutil, subprocess, sys
+root = pathlib.Path.cwd()
+dest = pathlib.Path(sys.argv[1])
+paths = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"])
+for item in paths.split(b"\0"):
+    if not item:
+        continue
+    rel = pathlib.Path(item.decode())
+    source = root / rel
+    if not source.is_file():
+        continue
+    target = dest / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+PY
+codex plugin marketplace add "$trial_dir"
+codex plugin add wukong-animation@wukong-animation
+```
+
+在桌面插件目录确认安装并启用，然后打开新聊天，选择一个**不在试装副本或插件缓存中**的作品目录。验证：
+
+1. 「用 wukong-animation 检查环境」只检查；「检查并配置环境」才下载 npm 依赖与 Chromium。检查失败应明确列出缺项。
+2. 「用 wukong-animation 推荐动画风格」能列出水墨、Keynote 与规划项，不自动开拍或安装依赖。
+3. 「用 wukong-animation 拍一支水墨短片」检查环境、识别在制项目，随后按导演流程等待各节点确认。
+4. 无选择卡片工具时退回文字；异步卡片的默认值或等待超时不能当签批。文件链接能在当前宿主打开。
+
+维护时同步 `plugin/plugin.json`、`plugin/.codex-plugin/plugin.json`、`plugin/.claude-plugin/plugin.json` 与 Claude marketplace 的版本；同步两个 OpenAI 清单的展示字段及 onboarding 路径。运行 `node --test tests/integration/desktop-plugin.test.mjs` 检查安装契约与复制后的路径独立性，再运行 `npm test` 和 `npm run lint`。真实桌面 UI 的技能发现、设置入口与音视频预览需要按上面步骤单独验收。
+
+官方格式参考：[插件打包与本地 marketplace](https://developers.openai.com/plugins/build/plugins)。

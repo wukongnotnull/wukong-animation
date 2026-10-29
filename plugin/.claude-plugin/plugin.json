@@ -1,6 +1,6 @@
 {
   "name": "wukong-animation",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "代码七十二变：72 种动画风格，Claude 用代码逐帧渲染短片，不用视频模型。",
   "author": {
     "name": "悟空非空也"

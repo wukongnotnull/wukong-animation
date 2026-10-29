@@ -1,8 +1,8 @@
 # wukong-animation 产品需求文档
 
-Status: Draft
+Status: Confirmed
 Last updated: 2026-10-29
-本次待审范围：主流 Agent 安装覆盖（FR-9～FR-14）；既有 FR-1～FR-8 的批准及交付事实保持不变。
+本轮已确认范围：主流 Agent 安装覆盖（FR-9～FR-14），用户明确回复“同意”；既有 FR-1～FR-8 的批准及交付事实保持不变。
 关联：[安装覆盖 #98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[体验优化 #93](https://github.com/wukongnotnull/wukong-animation/issues/93)
 
 ## 1. 背景与问题
@@ -50,7 +50,7 @@ wukong-animation 面向通过代码制作动画短片的创作者，已经具备
 
 “首批/第二批/第三批”为建议拆分，每批先独立 spec 审阅，不把本 PRD 作为一次性跨模块修改的许可。
 
-### 主流 Agent 安装覆盖（本次新增，待审）
+### 主流 Agent 安装覆盖（已确认）
 
 | 编号 | 优先级 | 用户可见行为 |
 | --- | --- | --- |
@@ -131,12 +131,13 @@ PRD 已获批，首批 FR-1/FR-2 通过 PR #94、第二批 FR-3/FR-4 通过 PR #
 
 用户另行明确要求“简报选了，就不要重复问”，director/BRIEF 已遵循：已选草稿直接准备导出，已选只交成片直接结束，只有交付未明确才询问；实际依赖/目录/剪映运行阻塞只处理对应事项。真实审片节点继续保留。
 
-本轮 FR-9～FR-14 待用户审阅批准。获批后再设计安装分发、资源定位与宿主适配的确切接口及实施计划。27 工具族是目标清单，本轮调查不宣称已完成新的安装能力；#98 与 #93 分别记录新增平台覆盖与既有人工播放待办。当前 v0.15.0 的已发布状态不受此 Draft 影响。
+用户已明确回复“同意”，批准本轮 FR-9～FR-14；接下来编写安装分发、资源定位与宿主适配的具体 spec，分别审阅后才写实施计划和代码。27 工具族是目标清单，本轮调查不宣称已完成新的安装能力；#98 与 #93 分别记录新增平台覆盖与既有人工播放待办。当前 v0.15.0 的已发布状态不受此 Draft 影响。
 
 ## 10. 修订记录
 
 | 日期 | 修订 | 原因 | 跟踪 |
 | --- | --- | --- | --- |
+| 2026-10-29 | 确认 FR-9～FR-14，进入具体 spec 设计 | 用户明确回复“同意” | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98) |
 | 2026-10-29 | 新增待审 FR-9～FR-14：至少25工具族安装覆盖、完整资源、生命周期、宿主能力与分级验证；既有批准不变 | 用户要求主流 Agent 可安装，平台越多越好 | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98) |
 | 2026-10-29 | 第三批四份 spec 获批并完成实现；宿主播放保留人工验证 | 用户明确回复“确认”，按 TDD 实施 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #96](https://github.com/wukongnotnull/wukong-animation/pull/96) |
 | 2026-10-29 | 记录第二批合并与第三批四份待审设计；修正简报交付选择不重复询问的规则 | 用户要求推进 FR-5～FR-8，并明确确认“简报选了就不要重复问” | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #95](https://github.com/wukongnotnull/wukong-animation/pull/95) |

@@ -1,0 +1,25 @@
+{
+  "name": "wukong-animation",
+  "version": "0.14.0",
+  "description": "代码七十二变：动画风格库与本地制作流程，用代码逐帧渲染短片，不用视频生成模型。",
+  "author": { "name": "悟空非空也" },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "wukong-animation · 代码七十二变",
+    "shortDescription": "用代码在本机制作动画短片",
+    "longDescription": "从制作简报、画风、剧本、分镜、声音到字幕和成片的本地动画制作流程。支持水墨写意与发布会 Keynote，每个审片节点由用户确认。需要可访问本地终端和文件的桌面执行环境、Node.js 20+ 与 ffmpeg；渲染依赖通过 setup 安装到本机。",
+    "developerName": "悟空非空也",
+    "category": "Creativity",
+    "defaultPrompt": [
+      "用 wukong-animation 检查并配置本地动画制作环境",
+      "用 wukong-animation 拍一支关于秋天离别的水墨短片，20 秒",
+      "用 wukong-animation 推荐适合产品发布的动画风格"
+    ]
+  },
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
+  }
+}

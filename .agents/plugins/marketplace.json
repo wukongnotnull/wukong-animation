@@ -1,0 +1,20 @@
+{
+  "name": "wukong-animation",
+  "interface": {
+    "displayName": "wukong-animation · 代码七十二变"
+  },
+  "plugins": [
+    {
+      "name": "wukong-animation",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Creativity"
+    }
+  ]
+}

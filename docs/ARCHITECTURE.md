@@ -4,16 +4,20 @@
 
 ```
 wukong-animation/                          # GitHub 仓库
-├── .claude-plugin/marketplace.json   # 指向 ./plugin
+├── .agents/plugins/marketplace.json # Codex / ChatGPT 桌面来源，指向 ./plugin
+├── .claude-plugin/marketplace.json   # Claude Code 来源，指向 ./plugin
 ├── plugin/                        # ★ 只有这里分发给用户
+│   ├── plugin.json                # Agent Plugins 1.0：身份、展示、setup onboarding
+│   ├── .codex-plugin/plugin.json   # Codex 兼容清单
 │   ├── .claude-plugin/plugin.json
 │   ├── catalog.json               # 自动生成：72 变索引
 │   ├── skills/                    # 只有一层：skills/<id>/SKILL.md
+│   │   ├── film/ setup/ styles/   # 跨宿主入口
 │   │   ├── director/              # 通用流程
 │   │   ├── new-style/
 │   │   ├── ink-wash/              # SKILL · STYLE · TECH · style.json · scripts/ · examples/
 │   │   └── keynote/               # 第 70 变，remotion 管线；scripts/ 是 TSX 组件
-│   ├── commands/                  # film · styles · setup
+│   ├── commands/                  # Claude Code 入口：film · styles · setup
 │   └── engine/
 │       ├── bin/wka.mjs           # CLI
 │       ├── templates/             # wka 用的模板：film/ · brief.md · style-skill/
@@ -53,6 +57,14 @@ wukong-animation/                          # GitHub 仓库
 ```
 
 仓库里的示范片（`plugin/skills/<id>/examples/<片名>/`）目录结构相同，但**只提交源文件**：`.wka/`、`stills/`、`review/`、生成的配音和字幕、成片都被 `.gitignore` 挡掉。用户项目会把 `.wka/state.json` 提交进 git，用来恢复在制进度；示范片是定稿后的成品，不需要进度文件。
+
+## 桌面插件边界
+
+三个清单共用同一份 `skills/`、`catalog.json` 和 `engine/`，插件版本保持一致。通用清单固定从根目录 `skills/` 发现技能，并把 `setup` 声明为安装后的设置入口；Codex 兼容清单显式声明 `./skills/`。Claude Code 保留原 commands。
+
+跨宿主技能从当前加载文件的位置上移两级解析插件根目录，不依赖 `CLAUDE_PLUGIN_ROOT` 或源码仓库路径。引擎已有基于 `import.meta.url` 的路径解析，所以安装到缓存后无需更改引擎。所有影片写到用户选定的工程目录；插件缓存只存程序文件。审片使用宿主可用的提问工具，缺失时文字确认；异步提问也必须等待用户真实回复。
+
+本次只支持具有终端和文件访问能力的桌面本地执行环境，不包含远程 MCP 或云端渲染服务。
 
 ## 一次渲染的数据流
 

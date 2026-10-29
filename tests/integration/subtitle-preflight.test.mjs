@@ -40,6 +40,7 @@ for(const pipeline of ['browser','remotion']) {
    const bad=cli('subtitles',dir,'--preview');assert.notEqual(bad.status,0);assert.match(bad.stderr,/分句拼接/);
    fs.rmSync(path.join(dir,'subtitle-layout.json'));
    const fixed=cli('subtitles',dir,'--preview');assert.equal(fixed.status,0,fixed.stderr);
+   const accepted=cli('signoff',dir,'字幕人工确认','--step','11');assert.equal(accepted.status,0,accepted.stderr);
    // 修改样式后，不得沿用旧预检签批。
    film.subtitles.style={bottom:0.2};fs.writeFileSync(filmFile,JSON.stringify(film));
    const stale=cli('signoff',dir,'字幕确认','--step','11');assert.notEqual(stale.status,0);assert.match(stale.stderr,/过期/);

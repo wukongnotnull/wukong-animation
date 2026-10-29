@@ -86,12 +86,15 @@ PRD 已获批，首批 FR-1/FR-2 通过 PR #94、第二批 FR-3/FR-4 通过 PR #
 - [FR-7 可验证交付与制作决定](specs/2026-10-29-1639-delivery-decisions-design.md)
 - [FR-8 声轨审听、QC 处置与草稿声音差异](specs/2026-10-29-1639-audio-review-qc-design.md)
 
-新增接口仍需明确审阅批准。用户另行明确要求“简报选了，就不要重复问”，已直接修正 director/BRIEF 的冲突规则：已选草稿直接准备导出，已选只交成片直接结束，只有交付未明确才询问；实际依赖/目录/剪映运行阻塞只处理对应事项。这不等于上述四份 spec 或其余接口已获批准。
+用户随后明确回复“确认”，批准上述四份文件，已按[第三批计划](plans/2026-10-29-1847-phase-three.md)实现，待当前 PR #96 的最终 CI 与人工宿主打开验证。实现与证据边界见[第三批验证记录](reports/2026-10-29-phase-three-validation.md)。
+
+用户另行明确要求“简报选了，就不要重复问”，director/BRIEF 已遵循：已选草稿直接准备导出，已选只交成片直接结束，只有交付未明确才询问；实际依赖/目录/剪映运行阻塞只处理对应事项。真实审片节点继续保留。
 
 ## 10. 修订记录
 
 | 日期 | 修订 | 原因 | 跟踪 |
 | --- | --- | --- | --- |
+| 2026-10-29 | 第三批四份 spec 获批并完成实现；宿主播放保留人工验证 | 用户明确回复“确认”，按 TDD 实施 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #96](https://github.com/wukongnotnull/wukong-animation/pull/96) |
 | 2026-10-29 | 记录第二批合并与第三批四份待审设计；修正简报交付选择不重复询问的规则 | 用户要求推进 FR-5～FR-8，并明确确认“简报选了就不要重复问” | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #95](https://github.com/wukongnotnull/wukong-animation/pull/95) |
 | 2026-10-29 | 更新首批合并事实，进入第二批两份 spec 审阅；功能需求不变 | 用户采纳编写词级同步与字幕预检设计 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #94](https://github.com/wukongnotnull/wukong-animation/pull/94) |
 | 2026-10-29 | 状态改为 Confirmed，记录用户批准，首批进入 spec | 用户明确回复“批准”；本次只记审批状态，不扩大范围 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93) |

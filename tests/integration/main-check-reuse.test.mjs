@@ -16,9 +16,9 @@ for (const style of ['ink-wash', 'keynote']) test(`${style} 主版证明复用�
   fs.mkdirSync(path.join(dir, 'shots'));
   const browser = style === 'ink-wash', ext = browser ? 'js' : 'jsx';
   const file = path.join(dir, 'shots', `s01.${ext}`);
-  const source = browser ? 'wk.shot({render(ctx,t,s){ctx.fillStyle="white";ctx.fillRect(0,0,s.W,s.H)}});' : 'import React from "react"; export default function Shot(){return <div style={{background:"white",width:"100%",height:"100%"}}/>}';
+  const source = browser ? 'wk.shot({render(ctx,t,s){void s.cueIn("pulse");ctx.fillStyle="white";ctx.fillRect(0,0,s.W,s.H)}});' : 'import React from "react"; export default function Shot({s}){void s.cueIn("pulse");return <div style={{background:"white",width:"100%",height:"100%"}}/>}';
   fs.writeFileSync(file, source);
-  const film = { title: 'proof', style, size: [160,90], fps: 10, seed: 1, variants: { '9:16': {} }, shots: [{id:'s01',file:`shots/s01.${ext}`,duration:0.4}] };
+  const film = { title: 'proof', style, size: [160,90], fps: 10, seed: 1,cues:{pulse:[0,0.2]}, variants: { '9:16': {} }, shots: [{id:'s01',file:`shots/s01.${ext}`,duration:0.4}] };
   fs.writeFileSync(path.join(dir,'film.json'), JSON.stringify(film));
   await render(dir,{log:()=>{}});
   recordApproval(dir,{main:snapshotMain(dir,{log:()=>{}}).hashes});
@@ -29,6 +29,16 @@ for (const style of ['ink-wash', 'keynote']) test(`${style} 主版证明复用�
   const b=await checkMainUnchanged(dir,{aspect:'9:16',log:s=>logs.push(s)});
   assert.equal(b.reused,true); assert.equal(b.verifiedAt,a.verifiedAt);
   assert.ok(!logs.some(s=>/缓存命中|渲染.*镜头用时/.test(s)), '证明命中不调用主版渲染');
+  film.cues.pulse=[0.1,0.3];fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
+  assert.equal((await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}})).reused,false,'使用的cue变化重新测量');
+  const beforeManifest=fs.readFileSync(path.join(dir,'.cache/manifest.json'));
+  for(const settings of [{fps:20},{size:[320,180]}]){
+    fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({...film,...settings}));
+    const changed=await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}});
+    assert.equal(changed.ok,false);assert.equal(changed.timingChanged,true);
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache/manifest.json')),beforeManifest,'旧定稿条件变化不自动重渲');
+  }
+  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
   const manifest=JSON.parse(fs.readFileSync(path.join(dir,'.cache/manifest.json')));
   const segment=manifest.shots.s01.file,segmentBytes=fs.readFileSync(segment);
   const replacement=path.join(dir,'replacement.mp4');

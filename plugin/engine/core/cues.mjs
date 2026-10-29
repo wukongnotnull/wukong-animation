@@ -3,7 +3,7 @@
 // 一旦出现动态参数（s.cueIn(name)）或直接读 cues 对象，就无法静态确定，返回 null 表示"全部 cue 都算"。
 import fs from 'node:fs';
 
-const CALL = /\bcue(In|Out|Chars)\s*\(\s*([^)]*?)\s*\)/g;
+const CALL = /\bcue(In|Out|Chars|Frame)\s*\(\s*([^)]*?)\s*\)/g;
 // cueChars('名') 记成这个标记，pickCues 再展开成所有 名#n
 const CHARS_MARK = '#*';
 const LITERAL = /^(['"`])([^'"`\\$]*)\1$/;

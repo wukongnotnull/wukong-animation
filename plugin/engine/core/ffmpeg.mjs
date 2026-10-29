@@ -79,11 +79,26 @@ export function probeDuration(file) {
   return parseFloat(r.stdout) || 0;
 }
 
-/** 拼接前由调用方核对片段；仅量化已有PTS/DTS到输出帧网格，保持B帧顺序和全部视频帧。 */
+/** 拼接前由调用方核对片段；量化PTS并按最大重排深度生成单调DTS，保持B帧顺序和全部视频帧。 */
 export async function concatVideo(segments, { fps, list, out }) {
   fs.writeFileSync(list, segments.map(file => `file '${file.replace(/'/g, "'\\''")}'`).join('\n'));
   // concat demuxer 的 duration 精度为微秒。90kHz轨道逐镜累加后会出现数个tick的偏移。
+  const delay = Math.max(0,...[...new Set(segments)].map(file=>{
+    const r=spawnSync('ffprobe',['-v','error','-select_streams','v:0','-show_entries','stream=has_b_frames','-of','json',file],{encoding:'utf8'});
+    if(r.status!==0) throw new Error(`无法读取B帧重排深度：${file}`);
+    const depth=JSON.parse(r.stdout).streams?.[0]?.has_b_frames;
+    if(!Number.isInteger(depth)) throw new Error(`缺少B帧重排信息：${file}`);
+    return depth;
+  }));
   const grid = `TB*${fps}`;
   await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy',
-    '-bsf:v', `setts=pts=round(PTS*${grid})/(${grid}):dts=round(DTS*${grid})/(${grid}):duration=1/(${grid})`, out]);
+    '-bsf:v', `setts=pts=round(PTS*${grid})/(${grid}):dts=(N-${delay})/(${grid}):duration=1/(${grid})`, out]);
+}
+
+/** 仅引擎生成混音的半帧量化尾隙：编码时补静音，不改原文件或掩盖更大的音频短缺。 */
+export function generatedMixPadding(audio, duration, fps) {
+  if (!/[\\/]\.cache[\\/]mix\.wav$/.test(audio)) return [];
+  const gap=duration-probeDuration(audio);
+  if(gap<=0 || gap>0.5/fps+1/48000) return [];
+  return ['-af',`apad=pad_dur=${gap+1/48000}`];
 }

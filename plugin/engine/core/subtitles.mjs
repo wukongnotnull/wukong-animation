@@ -36,61 +36,54 @@ export function subtitleSettings(film, variant = null) {
     mode: s.mode || 'none',
     file: variant ? variant.subtitlesFile : s.file || 'subtitles.srt',
     maxChars: (own && s.max_chars) || MAX_CHARS_BY_ASPECT[aspect],
+    ...(s.protected_terms ? { protectedTerms: s.protected_terms } : {}),
     bilingual: !!s.bilingual,
     enFile: variant ? variant.enFile : 'subtitles.en.json',
     maxCharsEn: (own && s.max_chars_en) || MAX_CHARS_EN_BY_ASPECT[aspect],
   };
 }
 
-const DIGIT = /[0-9]/;
-/** 3.5、1,000 里的 . 和 , 夹在两个数字之间，不是断句点。 */
-const inNumber = (chars, i) => (chars[i] === '.' || chars[i] === ',') && DIGIT.test(chars[i - 1] || '') && DIGIT.test(chars[i + 1] || '');
-
-/** 按句内标点切开，标点跟着前一段。 */
-function clauses(text) {
-  const out = [];
-  const chars = [...text];
-  let cur = '';
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
-    cur += ch;
-    if (BREAK_AFTER.test(ch) && !inNumber(chars, i)) {
-      out.push(cur);
-      cur = '';
-    }
+/** 最长保护词优先；ASCII术语/数字作为整体，其他文字按Unicode字符。 */
+export function subtitleUnits(text, protectedTerms = []) {
+  const terms = [...new Set(protectedTerms.filter(Boolean))].sort((a,b)=>b.length-a.length);
+  const out=[];
+  for(let i=0;i<text.length;) {
+    const term=terms.find(t=>text.startsWith(t,i));
+    const token=term || text.slice(i).match(/^(?:[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[A-Za-z0-9]+(?:[-_./+#]+[A-Za-z0-9]+)*[+#]*)/u)?.[0];
+    const unit=token || String.fromCodePoint(text.codePointAt(i));
+    out.push({text:unit,protected:!!token});i+=unit.length;
   }
-  if (cur) out.push(cur);
   return out;
 }
 
-/** 超长的一段按字数硬切，标点跟着前一个字。 */
-function hardSplit(seg, maxChars) {
-  const out = [];
-  let cur = '';
-  for (const ch of seg) {
-    if (countChars(ch) && countChars(cur) === maxChars) {
-      out.push(cur);
-      cur = '';
-    }
-    cur += ch;
+function clauses(text, terms) {
+  const out=[];let cur='';
+  for(const unit of subtitleUnits(text,terms)) {
+    cur+=unit.text;
+    if(!unit.protected && BREAK_AFTER.test(unit.text)) {out.push(cur);cur='';}
   }
-  if (cur) out.push(cur);
+  if(cur) out.push(cur);
   return out;
 }
 
-/** 一条人声拆成若干段：先在标点处切、贪心合并到 maxChars，仍超长的再硬切。 */
-function splitLine(text, maxChars) {
-  const pieces = [];
-  let cur = '';
-  for (const c of clauses(text.trim())) {
-    if (cur && countChars(cur) + countChars(c) > maxChars) {
-      pieces.push(cur);
-      cur = '';
-    }
-    cur += c;
+function hardSplit(seg,maxChars,terms) {
+  const out=[];let cur='';
+  for(const unit of subtitleUnits(seg,terms)) {
+    if(cur && countChars(cur)+countChars(unit.text)>maxChars) {out.push(cur);cur='';}
+    cur+=unit.text;
   }
-  if (cur) pieces.push(cur);
-  return pieces.flatMap((p) => (countChars(p) > maxChars ? hardSplit(p, maxChars) : [p])).filter((p) => countChars(p));
+  if(cur) out.push(cur);
+  return out;
+}
+
+function splitLine(text,maxChars,terms) {
+  const pieces=[];let cur='';
+  for(const c of clauses(text.trim(),terms)) {
+    if(cur && countChars(cur)+countChars(c)>maxChars) {pieces.push(cur);cur='';}
+    cur+=c;
+  }
+  if(cur) pieces.push(cur);
+  return pieces.flatMap(p=>countChars(p)>maxChars?hardSplit(p,maxChars,terms):[p]).filter(p=>countChars(p));
 }
 
 /**
@@ -159,8 +152,14 @@ export function checkEnglish(pairs, { maxChars }) {
 }
 
 /** 英文按各段中文字数的比例，在词边界切成 n 段（词不够时后面的段为空）。 */
-function splitWords(en, weights) {
-  const words = en.trim().split(/\s+/).filter(Boolean);
+function splitWords(en, weights, terms = []) {
+  const raw=en.trim().split(/\s+/).filter(Boolean), words=[];
+  const phrases=terms.filter(t=>t.includes(' ')).sort((a,b)=>b.length-a.length);
+  for(let i=0;i<raw.length;) {
+    const term=phrases.find(t=>raw.slice(i,i+t.split(/\s+/).length).join(' ')===t);
+    words.push(term || raw[i]);i+=term?term.split(/\s+/).length:1;
+  }
+  if(words.length<weights.length) throw new Error('英文保护单元不足以对应字幕条目；请调整中文字幕断句或英文分条，不删词或生成空条');
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   // 每个词结束处在整句里的字符位置
   const ends = [];
@@ -189,7 +188,7 @@ function splitWords(en, weights) {
  * 不重新翻译；某句人声的主版英文有空条时，这句的副版英文留空（attachEnglish 会报待填）。
  * @returns {{zh: string, en: string}[]} 与 variantSubs 逐条对应
  */
-export function splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs }) {
+export function splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs, protectedTerms = [] }) {
   const ranges = voices.map((v, i) => cues[v.cue || `vo${i + 1}`]).filter(Boolean);
   const voiceOf = (sub) => {
     const mid = (sub.start + sub.end) / 2;
@@ -208,7 +207,7 @@ export function splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, vari
     if (voice === -1) continue;
     const parts = groups.get(voice) || [];
     if (!parts.length || parts.some((p) => !p)) continue;
-    splitWords(parts.join(' '), idx.map((i) => countChars(variantSubs[i].text))).forEach((e, k) => (en[idx[k]] = e));
+    splitWords(parts.join(' '), idx.map((i) => countChars(variantSubs[i].text)), protectedTerms).forEach((e, k) => (en[idx[k]] = e));
   }
   return variantSubs.map((s, i) => ({ zh: s.text, en: en[i] }));
 }
@@ -221,13 +220,13 @@ export const englishSrt = (subs) => formatSrt(subs.map((s) => ({ ...s, text: s.e
  * @param {object} cues film.json 的 cues（wka soundtrack 写入的人声实测入出点）
  * @returns {{index:number,start:number,end:number,text:string}[]} 按入点排序
  */
-export function buildSubtitles(voices, cues, { maxChars }) {
+export function buildSubtitles(voices, cues, { maxChars, protectedTerms = [] }) {
   const subs = voices.flatMap((v, i) => {
     const name = v.cue || `vo${i + 1}`;
     const range = cues[name];
     if (!range) throw new Error(`人声「${v.text}」没有声音同步点 ${name}，先运行 wka soundtrack`);
     const [start, end] = range;
-    const pieces = splitLine(v.text, maxChars);
+    const pieces = splitLine(v.text, maxChars, protectedTerms);
     const total = pieces.reduce((n, p) => n + countChars(p), 0);
     let done = 0;
     return pieces.map((p) => {
@@ -263,7 +262,7 @@ export function parseSrt(text) {
 }
 
 /** @returns {{errors: string[], warnings: string[]}} errors 要中断，warnings 打印后继续 */
-export function checkSubtitles(subs, { duration, maxChars }) {
+export function checkSubtitles(subs, { duration, maxChars, protectedTerms = [] }) {
   const errors = [];
   const warnings = [];
   subs.forEach((s, i) => {
@@ -279,5 +278,13 @@ export function checkSubtitles(subs, { duration, maxChars }) {
     const next = subs[i + 1];
     if (next && next.start < s.end) warnings.push(`${n}与第 ${next.index} 条重叠 ${(s.end - next.start).toFixed(2)} 秒`);
   });
+  const terms=[...new Set(['A-roll','B-roll','Remotion','Codex',...protectedTerms])];
+  for(let i=0;i<subs.length-1;i++) {
+    for(const gap of ['', ' ']) {
+      const left=subs[i].text.trim(), right=subs[i+1].text.trim(), joined=left+gap+right;
+      const term=terms.find(t=>{const at=joined.lastIndexOf(t,left.length);return at>=0 && at<left.length && at+t.length>left.length+gap.length;});
+      if(term) {warnings.push(`第 ${subs[i].index}/${subs[i+1].index} 条可能拆开保护词 ${term}；建议合并或调整切点，未覆盖手改`);break;}
+    }
+  }
   return { errors, warnings };
 }

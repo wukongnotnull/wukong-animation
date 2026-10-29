@@ -199,3 +199,21 @@ test('splitEnglishForVariant leaves subtitles outside every voice range blank in
   const pairs = splitEnglishForVariant({ voices, cues, mainSubs, mainPairs, variantSubs: mainSubs });
   assert.deepEqual(pairs.map((p) => p.en), ['A one', '', '']);
 });
+
+test('hard split keeps A-roll and Remotion intact', () => {
+  for (const term of ['A-roll', 'B-roll', 'Remotion', 'C++']) {
+    const subs = buildSubtitles([{text:'一二三四五六七八九十'+term,at:0}],{vo1:[0,4]},{maxChars:12});
+    assert.ok(subs.some(s=>s.text.includes(term)),JSON.stringify(subs));
+  }
+});
+
+test('自定义多词/中文术语和单个超长术语完整保留',()=>{
+ const protectedTerms=['OpenAI Codex','视觉编排表'];
+ for(const text of ['一二OpenAI Codex三四','一二视觉编排表三四','一二3.5三四','一二1,000三四']) {
+  const subs=buildSubtitles([{text,at:0}],{vo1:[0,4]},{maxChars:4,protectedTerms});
+  const target=text.includes('OpenAI')?'OpenAI Codex':text.includes('视觉')?'视觉编排表':text.includes('3.5')?'3.5':'1,000';
+  assert.ok(subs.some(s=>s.text.includes(target)),JSON.stringify(subs));
+ }
+ const check=checkSubtitles([{index:1,start:0,end:1,text:'Re'},{index:2,start:1,end:2,text:'motion'}],{duration:2,maxChars:12});
+ assert.match(check.warnings.join(' '),/Remotion/);
+});

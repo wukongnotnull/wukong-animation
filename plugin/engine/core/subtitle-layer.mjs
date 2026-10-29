@@ -3,10 +3,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { requireDep } from './deps.mjs';
-import { run } from './ffmpeg.mjs';
+import { run,generatedMixPadding,probeDuration } from './ffmpeg.mjs';
 import { prepareFonts } from './fonts.mjs';
 import { fileURLToPath } from 'node:url';
 import { ensureDir } from './paths.mjs';
+import { hashParts, fontCssParts } from './cache.mjs';
 
 const DEFAULTS = {
   font: { family: 'Noto Sans SC', fallback: ['PingFang SC', 'Noto Sans CJK SC', 'sans-serif'] },
@@ -39,8 +40,9 @@ function buildPage({ W, H, style, fonts, workDir }) {
     W,
     H,
     size,
-    bottom: Math.round(style.bottom * H),
-    maxWidth: Math.round(W * MAX_WIDTH),
+    bottom: Math.round(style.bottom * H) + (style.safe_area ? Math.ceil(size * style.stroke.width) : 0),
+    maxWidth: Math.round(Math.min(W * MAX_WIDTH, style.safe_area ? style.safe_area[2] * W - 2 * Math.ceil(size * style.stroke.width) : W)),
+    safeArea: style.safe_area ? {x:style.safe_area[0]*W,w:style.safe_area[2]*W} : null,
     family: fonts.stacks[style.font.family],
     familyEn: fonts.stacks[enFont.family],
     color: style.color,
@@ -54,25 +56,27 @@ function buildPage({ W, H, style, fonts, workDir }) {
   return { file, size };
 }
 
-async function renderPngs({ W, H, style, subs, workDir, log }) {
+export function prepareSubtitleFonts({style,subs,workDir,log=()=>{}}) {
+  const bilingual=subs.some(s=>s.en);
+  const families=[style.font,...(bilingual && style.font_en && style.font_en.family!==style.font.family?[style.font_en]:[])];
+  return prepareFonts(families,{text:subs.map(s=>s.text+(s.en || '')).join(''),workDir,log});
+}
+export function subtitleFontSignature(fonts) { return hashParts([...fontCssParts(fonts.css),fonts.stacks,process.platform]); }
+
+export async function renderSubtitleLayers({ W, H, style, subs, workDir, log = ()=>{} }) {
   let chromium;
-  try {
-    ({ chromium } = requireDep('playwright'));
-  } catch {
-    throw new Error('烧录字幕需要 browser 管线依赖（playwright + Chromium），运行 /wukong-animation:setup 安装');
-  }
-  // 英文字体只在真有英文行时才准备（单语片子不多下载、不多打日志）
-  const bilingual = subs.some((s) => s.en);
-  const families = [style.font, ...(bilingual && style.font_en && style.font_en.family !== style.font.family ? [style.font_en] : [])];
-  const fonts = prepareFonts(families, { text: subs.map((s) => s.text + (s.en || '')).join(''), workDir, log });
-  for (const r of fonts.report) log(`  字幕字体 ${r}`);
+  try { ({chromium}=requireDep('playwright')); }
+  catch { throw new Error('烧录/预检字幕需要 playwright + Chromium，请运行 wka setup'); }
+  ensureDir(workDir);
+  const fonts=prepareSubtitleFonts({style,subs,workDir,log});
+  for(const r of fonts.report) log(`  字幕字体 ${r}`);
   const page = buildPage({ W, H, style, fonts, workDir });
   const dir = ensureDir(path.join(workDir, 'subtitles'));
   const browser = await chromium.launch({ args: ['--allow-file-access-from-files', '--force-color-profile=srgb', '--font-render-hinting=none'] });
   try {
     const tab = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
     await tab.goto('file://' + page.file);
-    const files = [];
+    const files = [], measurements = [];
     for (const s of subs) {
       const used = await tab.evaluate(([text, en]) => window.setSubtitle(text, en), [s.text, s.en || null]);
       if (used.zh < page.size) log(`  ! 第 ${s.index} 条${s.en ? '中文' : ''}一行放不下，字号从 ${page.size}px 缩到 ${used.zh}px`);
@@ -80,8 +84,9 @@ async function renderPngs({ W, H, style, subs, workDir, log }) {
       const f = path.join(dir, `${String(s.index).padStart(4, '0')}.png`);
       await tab.screenshot({ path: f, omitBackground: true });
       files.push(f);
+      measurements.push({index:s.index,...used});
     }
-    return files;
+    return {files,measurements,fonts,fontSignature:subtitleFontSignature(fonts),requestedSize:page.size};
   } finally {
     await browser.close();
   }
@@ -91,12 +96,13 @@ async function renderPngs({ W, H, style, subs, workDir, log }) {
  * 把字幕烧录到 video 上，写到 out。
  * @param {object} o { W, H, style（style.json）, workDir, proxy, audio?（同时混入的声轨）, log }
  */
-export async function burnSubtitles(video, subs, out, { W, H, style, workDir, proxy = false, audio = null, log = console.log }) {
-  const pngs = subs.length ? await renderPngs({ W, H, style: subtitleStyle(style), subs, workDir, log }) : [];
+export async function burnSubtitles(video, subs, out, { W, H, style, workDir, proxy = false, audio = null, prepared = null, fps = 30, log = console.log }) {
+  const layers = prepared || (subs.length ? await renderSubtitleLayers({ W, H, style: subtitleStyle(style), subs, workDir, log }) : {files:[]});
+  const pngs = layers.files;
   const inputs = ['-i', video, ...pngs.flatMap((f) => ['-i', f]), ...(audio ? ['-i', audio] : [])];
   const chain = pngs.map((_, i) => `[${i ? `v${i}` : '0:v'}][${i + 1}:v]overlay=0:0:enable='between(t,${subs[i].start},${subs[i].end})'[v${i + 1}]`);
   const videoMap = pngs.length ? ['-filter_complex', chain.join(';'), '-map', `[v${pngs.length}]`] : ['-map', '0:v'];
-  const audioMap = audio ? ['-map', `${pngs.length + 1}:a`, '-c:a', 'aac', '-b:a', '192k', '-shortest'] : [];
+  const audioMap = audio ? ['-map', `${pngs.length + 1}:a`, '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(audio,probeDuration(video),fps), '-shortest'] : [];
   await run([
     ...inputs,
     ...videoMap, ...audioMap,

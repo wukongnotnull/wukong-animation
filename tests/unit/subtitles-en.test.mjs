@@ -1,7 +1,7 @@
 // 中英双语字幕：英文稿 subtitles.en.json 的同步、核对、检查，外挂英文 srt。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt, parseSrt } from '../../plugin/engine/core/subtitles.mjs';
+import { subtitleSettings, subtitleOutputs, syncEnglish, attachEnglish, checkEnglish, englishSrt, parseSrt, splitEnglishForVariant } from '../../plugin/engine/core/subtitles.mjs';
 
 const subs = (...texts) => texts.map((text, i) => ({ index: i + 1, start: i, end: i + 0.8, text }));
 
@@ -67,4 +67,10 @@ test('英文稿格式不对：不是数组、en 不是字符串，给出能看�
   assert.throws(() => attachEnglish(subs('甲'), { zh: '甲' }), /subtitles\.en\.json 要是数组/);
   assert.throws(() => attachEnglish(subs('甲'), [{ zh: '甲', en: 42 }]), /第 1 条的 en 要是文字/);
   assert.throws(() => syncEnglish(subs('甲'), [{ zh: '甲', en: 42 }]), /第 1 条的 en 要是文字/);
+});
+
+test('副版英文保护多词术语，不够分条时明确报错而不生成空条',()=>{
+ const input={voices:[{cue:'v01'}],cues:{v01:[0,2]},mainSubs:[{start:0,end:2,text:'甲乙'}],mainPairs:[{zh:'甲乙',en:'OpenAI Codex works well'}],variantSubs:[{start:0,end:1,text:'甲'},{start:1,end:2,text:'乙'}],protectedTerms:['OpenAI Codex']};
+ const result=splitEnglishForVariant(input);assert.ok(result.some(p=>p.en.includes('OpenAI Codex')));assert.equal(result.map(p=>p.en).join(' '),'OpenAI Codex works well');
+ input.mainPairs[0].en='OpenAI Codex';assert.throws(()=>splitEnglishForVariant(input),/保护单元不足/);
 });

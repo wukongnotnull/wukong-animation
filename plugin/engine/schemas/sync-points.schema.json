@@ -1,0 +1,83 @@
+{
+  "type": "object",
+  "required": [
+    "version",
+    "points"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "voice",
+          "text",
+          "method"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "voice": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "pattern": ".+"
+          },
+          "occurrence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "aligned",
+              "estimated"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "audio_sha256",
+              "text_sha256"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "audio_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "text_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "range": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

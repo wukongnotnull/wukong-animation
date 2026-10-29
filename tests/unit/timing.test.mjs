@@ -111,3 +111,35 @@ test('拼接消除微秒时长累积的PTS误差，保持全部视频帧', async
     assert.equal(result.ok,true,result.errors.join('；'));
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('不同B帧重排深度的短片段拼接仍保持CFR和片长',async()=>{
+ const fs=await import('node:fs'),path=await import('node:path'),os=await import('node:os');
+ const {spawnSync}=await import('node:child_process');
+ const {concatVideo}=await import('../../plugin/engine/core/ffmpeg.mjs');
+ const {inspectVideo}=await import('../../plugin/engine/core/timing.mjs');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-dts-reorder-'));
+ try {
+  const clips=[];
+  for(const [i,frames,bf] of [[0,2,0],[1,41,3]]) {
+   const file=path.join(dir,`${i}.mp4`);
+   const r=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=red:s=16x16:r=13','-frames:v',String(frames),'-bf',String(bf),file]);assert.equal(r.status,0,String(r.stderr));clips.push(file);
+  }
+  const out=path.join(dir,'out.mp4');await concatVideo(clips,{fps:13,list:path.join(dir,'list.txt'),out});
+  const r=inspectVideo(out,{fps:13,frames:43});assert.equal(r.ok,true,r.errors.join('；'));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('半帧静音尾隙只用于引擎混音，原文件不变且更大缺失不补',async()=>{
+ const fs=await import('node:fs'),path=await import('node:path'),os=await import('node:os');
+ const {spawnSync}=await import('node:child_process');const {generatedMixPadding}=await import('../../plugin/engine/core/ffmpeg.mjs');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-mix-gap-'));fs.mkdirSync(path.join(dir,'.cache'));
+ try {
+  const mix=path.join(dir,'.cache','mix.wav');
+  const r=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','anullsrc=r=48000:cl=stereo','-t','1',mix]);assert.equal(r.status,0,String(r.stderr));
+  const before=fs.readFileSync(mix);
+  assert.ok(generatedMixPadding(mix,1.02,15).includes('-af'));
+  assert.deepEqual(generatedMixPadding(mix,1.2,15),[]);
+  const raw=path.join(dir,'user.wav');fs.copyFileSync(mix,raw);assert.deepEqual(generatedMixPadding(raw,1.02,15),[]);
+  assert.deepEqual(fs.readFileSync(mix),before);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

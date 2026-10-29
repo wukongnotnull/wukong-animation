@@ -53,3 +53,7 @@ test('pickCues expands cueChars to every 名#n cue (sorted keys, like other cues
   assert.deepEqual(Object.keys(pickCues(cues, [shot])), ['四#1', '四#10', '四#2']);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('cueFrame literal participates in cue dependencies', () => {
+  assert.deepEqual([...usedCueNames(["s.cueFrame('word:materials')"])], ['word:materials']);
+});

@@ -57,7 +57,7 @@
   function cueOf(name, meta, i) {
     const c = cues[name];
     if (!c) throw new Error(`没有声音同步点 "${name}"。已有：${Object.keys(cues).join('、') || '（无）'}。先运行 wka soundtrack`);
-    return c[i] - meta.start;
+    return c[i] - (name.startsWith('word:') ? meta.renderStart : meta.start);
   }
   // 逐字同步点：wka soundtrack 给 voices[].chars 为 true 的句子写出 名#1、名#2……
   function charsOf(name, meta) {
@@ -71,6 +71,10 @@
     return {
       /** 同步点入点（相对本镜头，秒）：wk.seg(t, s.cueIn('第二句'), s.cueOut('第二句')) */
       cueIn: (name) => cueOf(name, meta, 0),
+      cueFrame: (name) => {
+        if (!name.startsWith('word:') || !Object.hasOwn(meta.wordFrames || {}, name)) throw new Error(`没有词首帧 ${name}，请检查 sync-points.json`);
+        return meta.wordFrames[name];
+      },
       /** 同步点出点（相对本镜头，秒） */
       cueOut: (name) => cueOf(name, meta, 1),
       /** 逐字同步点（相对本镜头，秒）：[{ in, out }, …]，一个字一项，标点不算 */

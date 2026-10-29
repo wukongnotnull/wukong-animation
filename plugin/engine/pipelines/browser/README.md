@@ -23,3 +23,7 @@
 ## WebGL
 
 用 SwiftShader 软件渲染（`--use-angle=swiftshader`），无 GPU 的服务器上也能跑，但复杂 shader 会慢。
+
+## 时间与帧数
+
+引擎为每镜提供 `frames` 和 `startFrame`：先对全片累计切点取整，再相减分配帧数。管线按 `frames` 绘制，局部时间为 `frame / job.fps`；原始 `duration/start` 与声音 cue 不改。零帧分配会在渲染前拒绝。片段和拼接视频经真实帧数、CFR 时间戳验证后，生成 `review/时间轴检查*.md`；缓存片段也要重新验证。

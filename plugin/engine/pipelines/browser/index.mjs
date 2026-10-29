@@ -165,7 +165,7 @@ async function renderShot(browser, job, hostFile, { shot, out }, abort) {
   try {
     let errors;
     ({ page, errors } = await openShotPage(browser, job, hostFile, shot));
-    const n = Math.max(1, Math.round(shot.duration * job.fps));
+    const n = shot.frames;
     enc = openImagePipe([
       '-f', 'image2pipe', '-framerate', String(job.fps), '-c:v', 'mjpeg', '-i', '-',
       '-c:v', 'libx264', '-preset', job.proxy ? 'veryfast' : 'medium',
@@ -213,7 +213,7 @@ export async function renderStills(job, points, outDir) {
       const { page, errors } = await openShotPage(browser, job, hostFile, shot);
       try {
         for (const p of pts) {
-          const t = Math.min(p.t, shot.duration - 1e-3);
+          const t = Math.min(p.t, (shot.frames - 1) / job.fps);
           const buf = await renderFrame(page, shot, t, Math.round(t * job.fps), 'image/png');
           if (errors.length) throw new Error(`镜头 ${id} @${t}s 出错：${errors.join(' | ')}`);
           const f = path.join(outDir, `${id}-${t.toFixed(2)}s.png`);

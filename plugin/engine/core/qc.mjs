@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { loadFilm } from './job.mjs';
+import { checkTiming } from './timing.mjs';
 import { run, drawLabel } from './ffmpeg.mjs';
 import { ensureDir } from './paths.mjs';
 import { labelPngs } from './labels.mjs';
@@ -75,12 +76,21 @@ export async function runQc(filmDir, { proxy = false, fps = 10, aspect = null, l
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   if (!fs.existsSync(video)) throw new Error(`还没有渲染结果：${path.relative(ctx.filmDir, video)}。先运行 wka render${proxy ? ' --proxy' : ''}${ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`}`);
 
+  const timing = checkTiming(ctx, { proxy, log });
+  if (!timing.ok) {
+    const report = '时间轴未通过/未验证，暂停像素镜号归属：' + timing.errors.join('；');
+    const issues = timing.errors.map(msg => ({ kind: '时间轴', shot: '未验证', t: null, msg }));
+    fs.writeFileSync(path.join(ctx.variant.cacheDir, 'qc.json'), JSON.stringify({ timing, issues }, null, 2));
+    log(report);
+    return { ok: false, shots: [], issues, contactSheet: null, report };
+  }
   const [W0, H0] = ctx.film.size;
   const w = 240, h = Math.round((240 * H0) / W0 / 2) * 2;
   const paper = cfg.paper ? hex(cfg.paper) : null;
   const accent = cfg.accent ? hex(cfg.accent) : null;
-  const boundaries = ctx.shots.slice(1).map((s) => s.start);
-  const shotAt = (t) => [...ctx.shots].reverse().find((s) => t >= s.start - 1e-6) || ctx.shots[0];
+  const actualShots = ctx.shots.map((s, i) => ({ ...s, start: timing.shots[i].startFrame / timing.fps }));
+  const boundaries = actualShots.slice(1).map((s) => s.start);
+  const shotAt = (t) => [...actualShots].reverse().find((s) => t >= s.start - 1e-6) || ctx.shots[0];
 
   const frames = [];
   let prevLum = null;
@@ -177,7 +187,7 @@ export async function runQc(filmDir, { proxy = false, fps = 10, aspect = null, l
     if (contactSheet) lines.push(`  超标帧接触表：${path.relative(process.cwd(), contactSheet)}`);
   } else lines.push('  ✓ 全部通过');
   const report = lines.join('\n');
-  fs.writeFileSync(path.join(ctx.variant.cacheDir, 'qc.json'), JSON.stringify({ cfg, shots, issues: merged, cuts, frames }, null, 1));
+  fs.writeFileSync(path.join(ctx.variant.cacheDir, 'qc.json'), JSON.stringify({ timing, cfg, shots, issues: merged, cuts, frames }, null, 1));
   log(report);
   return { ok: merged.length === 0, shots, issues: merged, contactSheet, report };
 }

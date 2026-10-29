@@ -54,6 +54,10 @@ export class ShotCache {
     if (hit && hit.hash === hash && fs.existsSync(hit.file)) return hit.file;
     return null;
   }
+  invalidate(key) {
+    delete this.data.shots[key];
+    fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
+  }
   store(key, hash, file) {
     const old = this.data.shots[key];
     if (old && old.file !== file && fs.existsSync(old.file)) fs.rmSync(old.file);

@@ -7,12 +7,13 @@ import { validate } from './validate.mjs';
 import { ShotCache, hashParts, fontCssParts } from './cache.mjs';
 import { prepareFonts, collectText } from './fonts.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, ensureDir } from './paths.mjs';
-import { run, drawLabel } from './ffmpeg.mjs';
+import { run, drawLabel, concatVideo } from './ffmpeg.mjs';
 import { pickCues } from './cues.mjs';
 import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 import { labelPngs } from './labels.mjs';
 import { resolveVariant, overrideShotPath } from './variants.mjs';
+import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFailure, requireTiming, checkOutputTiming, checkAnimaticTiming } from './timing.mjs';
 
 const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
 
@@ -71,11 +72,15 @@ export function outputSize(film, proxy = false) {
 function createRenderJob(ctx, { proxy = false, log }) {
   const [W0, H0] = ctx.film.size;
   const { W, H, fps } = outputSize(ctx.film, proxy);
+  const timeline = buildFrameTimeline(ctx.shots, fps);
+  const native = buildFrameTimeline(ctx.shots, ctx.film.fps);
+  const shots = ctx.shots.map((s, i) => ({ ...s, frames: timeline.shots[i].frames, nativeFrames: native.shots[i].frames, startFrame: timeline.shots[i].startFrame }));
   const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
   return {
     ...ctx,
+    shots, timeline,
     W,
     H,
     designW: W0,
@@ -111,7 +116,7 @@ function shotHash(job, shot) {
     ...job.styleScripts.map((f) => ({ file: f })),
     ...job.filmScripts.map((f) => ({ file: f })),
     { file: shot.path },
-    { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id },
+    { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id, timingVersion: TIMING_VERSION, frames: shot.frames, nativeFrames: shot.nativeFrames, startFrame: shot.startFrame },
     ...fontCssParts(job.fonts.css),
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
@@ -122,7 +127,7 @@ function shotHash(job, shot) {
 export function shotHashes(filmDir, { aspect = null, log = () => {} } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { log });
-  return Object.fromEntries(ctx.shots.map((s) => [s.id, shotHash(job, s)]));
+  return Object.fromEntries(job.shots.map((s) => [s.id, shotHash(job, s)]));
 }
 
 async function pipelineModule(job) {
@@ -143,12 +148,18 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   const keyOf = (s) => (proxy ? `${s.id}-proxy` : s.id);
   const todo = [];
   const segments = [];
-  for (const shot of ctx.shots) {
+  for (const shot of job.shots) {
     const hash = shotHash(job, shot);
     // --only 指定的镜头强制重渲；其余镜头一律走缓存（代码变了的镜头哈希会变，自然会重渲）
     const forced = force || (only && only.includes(shot.id));
     const hit = !forced && cache.lookup(keyOf(shot), hash);
     if (hit) {
+      try { assertVideo(hit, { fps: job.fps, frames: shot.frames }); }
+      catch (e) {
+        cache.invalidate(keyOf(shot));
+        timingFailure(ctx, new Error(`${shot.id}：${e.message}；请重渲此镜头`), { proxy, log });
+        throw e;
+      }
       segments.push(hit);
       log(`  ${shot.id} 缓存命中`);
     } else {
@@ -161,16 +172,29 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   if (todo.length) {
     const mod = await pipelineModule(job);
     const t0 = Date.now();
-    await mod.renderShots(job, todo, { onDone: ({ shot, hash, out }) => cache.store(keyOf(shot), hash, out) });
+    try {
+      await mod.renderShots(job, todo, { onDone: ({ shot, hash, out }) => {
+        assertVideo(out, { fps: job.fps, frames: shot.frames });
+        cache.store(keyOf(shot), hash, out);
+      } });
+    } catch (e) {
+      timingFailure(ctx, e, { proxy, log });
+      throw e;
+    }
     log(`  渲染 ${todo.length} 个镜头用时 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   }
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');
-  fs.writeFileSync(list, segments.map((s) => `file '${s}'`).join('\n'));
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
-  await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
+  try {
+    await concatVideo(segments, { fps: job.fps, list, out: video });
+  } catch (e) {
+    timingFailure(ctx, e, { proxy, log });
+    throw e;
+  }
+  recordTiming(ctx, video, segments, { proxy, log });
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
-  const shotSegments = ctx.shots.map((s, i) => ({ id: s.id, start: s.start, duration: s.duration, file: segments[i] }));
+  const shotSegments = job.timeline.shots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
   return { video, job, segments: shotSegments };
 }
 
@@ -238,11 +262,12 @@ const ANIMATIC_FPS = 12;
  */
 export async function animatic(filmDir, { proxy = false, aspect = null, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
+  const timeline = buildFrameTimeline(ctx.shots, ANIMATIC_FPS);
   const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, aspect, log });
   const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
   const contactSheet = sheet ? path.join(reviewDir, ctx.variant.review('接触表.jpg')) : null;
   if (sheet) fs.copyFileSync(sheet, contactSheet);
-  const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String(ctx.shots[i].duration), '-i', f]);
+  const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String((timeline.shots[i].frames + 1) / ANIMATIC_FPS), '-i', f]);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
   const hasAudio = fs.existsSync(audio);
   if (hasAudio) inputs.push('-i', audio);
@@ -252,12 +277,13 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
   const labelBase = files.length + (hasAudio ? 1 : 0);
   if (labels) inputs.push(...labels.flatMap((f) => ['-i', f]));
   const frame = (i) => (labels
-    ? `[${i}:v]format=yuv420p[f${i}];[f${i}][${labelBase + i}:v]overlay=20:20,format=yuv420p[v${i}]`
-    : `[${i}:v]format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);
+    ? `[${i}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p[f${i}];[f${i}][${labelBase + i}:v]overlay=20:20,format=yuv420p[v${i}]`
+    : `[${i}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);
   const filter = files.map((_, i) => frame(i)).join(';') + `;${files.map((_, i) => `[v${i}]`).join('')}concat=n=${files.length}:v=1:a=0[v]`;
   const audioArgs = hasAudio ? ['-map', `${files.length}:a`, '-c:a', 'aac', '-b:a', '192k'] : [];
   const out = path.join(reviewDir, ctx.variant.review('动态分镜.mp4'));
   await run([...inputs, '-filter_complex', filter, '-map', '[v]', ...audioArgs, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', out]);
+  checkAnimaticTiming(ctx, out, timeline, log);
   log(`  动态分镜 → ${path.relative(ctx.filmDir, out)}（${files.length} 镜 · ${ctx.totalDuration.toFixed(1)}s${hasAudio ? ' · 含声轨' : ''}）`);
   return { file: out, contactSheet, hasAudio };
 }
@@ -265,6 +291,7 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
 /** 导出：调用 film.json 里声明的各个导出器。 */
 export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, log = console.log }) {
   const ctx = loadFilm(filmDir, { aspect });
+  requireTiming(ctx, { proxy });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   const base = ctx.variant.exportName;
   const outputs = [];
@@ -276,6 +303,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     const target = path.join(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`);
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const out = (await mod.encodeOutput({ video, audio, out: target, fps: ctx.film.fps, proxy, timeline })) || target;
+    if (name === 'mp4') checkOutputTiming(ctx, out, { proxy, log });
     log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);
     outputs.push(out);
   }

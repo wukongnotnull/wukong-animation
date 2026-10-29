@@ -8,6 +8,7 @@ import { ShotCache } from './cache.mjs';
 import { ensureDir } from './paths.mjs';
 import { loadFilm, render, shotHashes } from './job.mjs';
 import { readProgress } from './state.mjs';
+import { buildFrameTimeline, inspectVideo } from './timing.mjs';
 
 /** 逐帧画面差异的下限：每帧 PSNR 都高于它，就算画面没变 */
 export const PSNR_PASS = 50;
@@ -90,7 +91,7 @@ function reportText(aspect, rows) {
  * 主版还没签批过、或处理的就是主版时返回 null。比对不通过不中断，只在报告和日志里写明。
  */
 export async function checkMainUnchanged(filmDir, { aspect, log = console.log } = {}) {
-  const { variant } = loadFilm(filmDir, { aspect });
+  const { variant, shots, film } = loadFilm(filmDir, { aspect });
   if (variant.isMain) return null;
   const approved = readProgress(filmDir).approved?.main;
   if (!approved) {
@@ -99,7 +100,15 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   }
   const current = shotHashes(filmDir);
   const changed = Object.keys(current).filter((id) => current[id] !== approved[id]);
-  const segments = changed.length ? (await render(filmDir, { log })).segments : [];
+  const native = buildFrameTimeline(shots, film.fps);
+  const timingChanged = changed.some(id => {
+    const snap = path.join(SNAPSHOT_DIR(filmDir), `${id}.mp4`);
+    const shot = native.shots.find(s => s.id === id);
+    return fs.existsSync(snap) && !inspectVideo(snap, { fps: film.fps, frames: shot.frames }).ok;
+  });
+  if (timingChanged) log('  ! 已签批主版帧长/帧率变化，不自动重渲主版；请明确重出主版并在第 13 道重新审阅，原快照保留');
+  else if (changed.length) log('  · 已签批主版哈希变化，按原快照比对；比对不代表重新签批');
+  const segments = changed.length && !timingChanged ? (await render(filmDir, { log })).segments : [];
   const rows = [];
   for (const id of Object.keys(current)) {
     if (!changed.includes(id)) {
@@ -111,6 +120,10 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
       rows.push({ id, result: 'missing', psnr: null });
       continue;
     }
+    if (timingChanged) {
+      rows.push({ id, result: 'fail', psnr: null });
+      continue;
+    }
     const psnr = await psnrMin(snap, segments.find((s) => s.id === id).file);
     rows.push({ id, result: psnr > PSNR_PASS ? 'pass' : 'fail', psnr });
   }
@@ -118,5 +131,5 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   fs.writeFileSync(file, reportText(variant.aspect, rows));
   const failed = rows.filter((r) => r.result !== 'same' && r.result !== 'pass');
   log(`${failed.length ? '  ! 主版不变比对有问题' : '  ✓ 主版画面没有变化'}：${file}`);
-  return { ok: !failed.length, rows, file };
+  return { ok: !failed.length, timingChanged, rows, file };
 }

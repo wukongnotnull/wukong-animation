@@ -1,5 +1,6 @@
 // ffmpeg / ffprobe 的薄封装。
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 
 export function hasFfmpeg() {
   return spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0;
@@ -76,4 +77,13 @@ export function probeDuration(file) {
     encoding: 'utf8',
   });
   return parseFloat(r.stdout) || 0;
+}
+
+/** 拼接前由调用方核对片段；仅量化已有PTS/DTS到输出帧网格，保持B帧顺序和全部视频帧。 */
+export async function concatVideo(segments, { fps, list, out }) {
+  fs.writeFileSync(list, segments.map(file => `file '${file.replace(/'/g, "'\\''")}'`).join('\n'));
+  // concat demuxer 的 duration 精度为微秒。90kHz轨道逐镜累加后会出现数个tick的偏移。
+  const grid = `TB*${fps}`;
+  await run(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy',
+    '-bsf:v', `setts=pts=round(PTS*${grid})/(${grid}):dts=round(DTS*${grid})/(${grid}):duration=1/(${grid})`, out]);
 }

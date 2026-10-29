@@ -182,6 +182,7 @@ test('a variant signed off before the main version changed is stale: final refus
   const dir = makeFilm();
   ok(wka('render', dir));
   ok(wka('signoff', dir, '终审通过', '--step', '13'));
+  ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
   ok(wka('signoff', dir, '副版通过', '--step', '14'));
   assert.ok(state(dir).approved.variants['9:16'].shots.s01);
 

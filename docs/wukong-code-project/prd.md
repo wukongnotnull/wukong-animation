@@ -9,7 +9,7 @@ Last updated: 2026-10-29
 
 wukong-animation 面向通过代码制作动画短片的创作者，已经具备简报、剧本、声音、镜头、字幕、横竖改版与草稿交付流程。本次客户最终签批了全部交付物，但反复遇到不能打开审片文件、字幕遮挡、后段同步漂移、列举词出现滞后，以及等待阶段难以判断的问题。
 
-事实与源码依据见 [体验报告](reports/2026-10-29-codex-editing-experience.md)。当前 Remotion 独立镜头帧数舍入与逐镜代理降帧均可引入累计时长误差；最终客户工程对时长做了量化规避。现有测试尚未覆盖此类长序列。
+事实与源码依据见 [体验报告](reports/2026-10-29-codex-editing-experience.md)。回溯时发现 Remotion 独立镜头帧数舍入与逐镜代理降帧可引入累计时长误差，客户工程曾通过时长量化规避。该首批问题现已由 [PR #94](https://github.com/wukongnotnull/wukong-animation/pull/94) 修复并补齐长序列验证；其余体验需求继续分批推进。
 
 这是本仓库首份 PRD，当前只记录本次需求，不反向宣称所有历史功能已通过产品验收。用户于 2026-10-29 在本会话明确回复“批准”，确认本文件及首批 FR-1/FR-2 的推进；各批 spec 仍分别审阅。
 
@@ -79,11 +79,12 @@ FR-8 的建议验收：声轨提交记录包含开场与各段落的实际审听
 
 ## 9. 待定事项
 
-PRD 已获批，当前进入首批 FR-1/FR-2 spec 编写。时间轴接口、极短镜头策略、校验复用格式、迁移与具体测试矩阵在各批 spec 定义，本 PRD 不预先批准接口。后续批次按第 4 节顺序推进，各批 spec 获批后才实施。
+PRD 已获批，首批 FR-1/FR-2 已通过 PR #94 合并到 main。用户已采纳编写第二批设计：FR-3 词级同步和 FR-4 字幕预检分别形成待审 spec；各自接口与实施范围需明确批准后才实现。第三批按第 4 节顺序继续推进，本 PRD 不预先批准未审阅的接口。
 
 ## 10. 修订记录
 
 | 日期 | 修订 | 原因 | 跟踪 |
 | --- | --- | --- | --- |
+| 2026-10-29 | 更新首批合并事实，进入第二批两份 spec 审阅；功能需求不变 | 用户采纳编写词级同步与字幕预检设计 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[PR #94](https://github.com/wukongnotnull/wukong-animation/pull/94) |
 | 2026-10-29 | 状态改为 Confirmed，记录用户批准，首批进入 spec | 用户明确回复“批准”；本次只记审批状态，不扩大范围 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93) |
 | 2026-10-29 | 首次建立，记录试用体验与分批可靠性优化需求；状态 Draft | 根据完整客户会话及当前源码诊断，先确认产品目标再实施 | [#93](https://github.com/wukongnotnull/wukong-animation/issues/93) |

@@ -25,6 +25,8 @@ test('portable bundle is closed, deterministic, movable and contains only one di
  const moved=path.join(tmp,'移动 副本');fs.renameSync(out,moved);
  r=spawnSync(process.execPath,[path.join(moved,'wukong-animation/engine/bin/wka.mjs'),'list','styles'],{cwd:tmp,encoding:'utf8'});
  assert.equal(r.status,0,r.stderr);assert.match(r.stdout,/ink-wash/);
+ r=spawnSync(process.execPath,[path.join(moved,'wukong-animation/engine/bin/wka.mjs'),'new','style','portable-demo','--name','便携风格','--dest',path.join(tmp,'user-styles')],{encoding:'utf8'});
+ assert.equal(r.status,0,r.stderr);assert.ok(fs.existsSync(path.join(tmp,'user-styles/portable-demo/INSTRUCTIONS.md')));
 });
 
 test('installer exposes explicit profiles and blocks an unqualified candidate',()=>{

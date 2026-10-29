@@ -16,6 +16,8 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 - `specs/`：各交付文件的填写规范（`BRIEF.md`、`STORY.md`、`STORYBOARD.md`、`FILM.md`、`SHOT.md`）
 - `references/`：术语表 `GLOSSARY.md`、流程修订记录 `CHANGELOG.md`
 
+先读取同目录 [HOSTS.md](HOSTS.md)，按本次会话实际工具核对能力与交付方式。
+
 ## 一、引擎命令
 
 本 skill 目录的上两级是插件根目录。下文的 `wka` 指：
@@ -52,7 +54,7 @@ node <插件根目录>/engine/bin/wka.mjs
 
 **`--aspect`**：不写就是主版（`film.json` 的 `size`）；写副版画幅（`film.json` 的 `variants` 里的键）就处理副版，缓存放 `.cache/<后缀>/`，审阅文件、成片的文件名带 `-<后缀>`（如 `review/小样-9x16.mp4`），字幕文件带 `.<后缀>`（如 `subtitles.9x16.srt`）。副版只在第 14 道「改版」用，见该道细则。
 
-恢复与交付辅助命令：`wka resume <片目录> [--json]` 核对阶段和已完成产物；`wka delivery <片目录> --host codex|claude [--aspect all|9:16] [--json]` 生成文件存在性、新旧状态及宿主链接清单。它们不会替用户签批。阶段日志中的画幅是实际计算的画幅；副版准备时的「主版验证」仍是在检查主版，不是副版渲染进度。
+恢复与交付辅助命令：`wka resume <片目录> [--json]` 核对阶段和已完成产物；`wka delivery <片目录> --host codex|claude|generic [--aspect all|9:16] [--json]` 生成文件存在性、新旧状态及宿主链接清单。它们不会替用户签批。阶段日志中的画幅是实际计算的画幅；副版准备时的「主版验证」仍是在检查主版，不是副版渲染进度。
 
 ## 二、对用户说话
 

@@ -88,7 +88,7 @@ export function operate(action,opt={},context={}) {
  if(Object.keys(base.variants).length&&!opt.variant)fail(2,'此工具需显式 --variant：'+Object.keys(base.variants).join(', '));
  const profile={...base,...base.variants[opt.variant]};
  const home=context.home||os.homedir();
- if(opt.scope==='project'&&(!opt.project||!path.isAbsolute(opt.project)||!fs.statSync(opt.project).isDirectory()))fail(2,'--project 必须是已存在的绝对目录');
+ if(opt.scope==='project'&&(!opt.project||!path.isAbsolute(opt.project)||!exists(opt.project)||!fs.statSync(opt.project).isDirectory()))fail(2,'--project 必须是已存在的绝对目录');
  const root=fs.realpathSync(opt.scope==='project'?opt.project:home);
  const rel=opt.scope==='project'?profile.projectPath:profile.globalPath?.replace(/^~\//,'');
  if(!rel||path.isAbsolute(rel)||rel.split(/[\\/]/).includes('..'))fail(2,'profile 路径无效');

@@ -30,7 +30,8 @@ export function build(out) {
   const stat=fs.lstatSync(path.join(ROOT,source));if(!stat.isFile())throw new Error('运行资源必须是普通文件：'+source);
   let relative=source.slice('plugin/'.length).replace(/(^|\/)SKILL\.md$/,'$1INSTRUCTIONS.md');
   let data=fs.readFileSync(path.join(ROOT,source));
-  if(source.endsWith('.md'))data=Buffer.from(data.toString('utf8').replaceAll('SKILL.md','INSTRUCTIONS.md'));
+  // 仅转换已重命名的指令文件名 token，不改普通文字/脚本中的相似子串。
+  if(source.endsWith('.md'))data=Buffer.from(data.toString('utf8').replace(/(?<![A-Za-z0-9_.-])SKILL\.md(?![A-Za-z0-9_.-])/g,'INSTRUCTIONS.md'));
   write(path.join(bundle,relative),data);
  }
  for(const name of ['SKILL.md'])write(path.join(bundle,name),fs.readFileSync(path.join(ROOT,'distribution/portable',name)));

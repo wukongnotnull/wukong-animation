@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // wka —— wukong-animation 引擎命令行。
-//   wka setup                         安装依赖到 ~/.wukong-animation/deps/<版本>/
+//   wka setup                         按锁文件安装依赖到用户目录（按版本和环境隔离）
 //   wka check                         检查环境与所有插槽
 //   wka list [styles|pipelines|kits|exporters]
 //   wka init-project [目录]           git 初始化工程（第 1 道工序）
@@ -27,7 +27,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
-import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
+import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
+import { dependencyInfo } from '../core/deps.mjs';
+import { setupDependencies } from '../core/setup.mjs';
 import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
 import { render, preview, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
 import { cleanRenderCache } from '../core/cache.mjs';
@@ -80,6 +82,10 @@ async function cmdCheck() {
   log(`  用户目录 ${HOME}`);
   const reg = getRegistry();
   let bad = 0;
+  try {
+    const deps = dependencyInfo();
+    log(`  依赖目录 ${deps.root}（${deps.source} · ${deps.identity.slice(0, 12)}）`);
+  } catch (e) { log(`  ✗ 依赖未就绪：${e.message}`); bad++; }
   log('\n基础工具');
   const tools = [
     ['ffmpeg', hasFfmpeg(), '必需：编码与混音'],
@@ -120,18 +126,7 @@ async function cmdCheck() {
 }
 
 function cmdSetup() {
-  ensureDir(DEPS_DIR);
-  const pkg = JSON.parse(fs.readFileSync(path.join(ENGINE_ROOT, 'package.json'), 'utf8'));
-  fs.writeFileSync(
-    path.join(DEPS_DIR, 'package.json'),
-    JSON.stringify({ name: 'wukong-animation-deps', private: true, dependencies: pkg.dependencies }, null, 2)
-  );
-  log(`安装 npm 依赖到 ${DEPS_DIR} …`);
-  const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: DEPS_DIR, stdio: 'inherit' });
-  if (npm.status !== 0) fail('npm install 失败，请检查网络后重试');
-  log('安装 Chromium …');
-  const pw = spawnSync('npx', ['playwright', 'install', 'chromium'], { cwd: DEPS_DIR, stdio: 'inherit' });
-  if (pw.status !== 0) fail('Chromium 安装失败');
+  setupDependencies({ log });
   if (!hasFfmpeg()) log('! 还缺 ffmpeg：macOS 用 brew install ffmpeg，Ubuntu 用 sudo apt install ffmpeg');
   if (!hasGit()) log('! 推荐安装 git，用于为每个审片节点做定版存档');
   if (spawnSync('python3', ['-c', 'import fontTools'], { stdio: 'ignore' }).status !== 0) {

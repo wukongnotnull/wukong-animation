@@ -8,7 +8,7 @@ description: 用户首次安装 wukong-animation、要求安装或检查本地�
 本文件位于 `<插件根目录>/skills/setup/SKILL.md`。先取得**当前加载的本文件所在目录的真实路径**，再上移两级目录得到插件根目录，使用其中的 `engine/bin/wka.mjs`，不要依赖宿主的插件路径变量或固定的源码仓库路径。
 
 1. 确认能访问本地终端与文件，并检查 `node --version`。需要 Node.js 20 或更高版本；没有 Node 或版本过低时，给出 [Node.js 下载页](https://nodejs.org/)，请用户安装后再继续。没有本地执行能力时说明需要桌面本地执行环境。
-2. 用户选择「设置」或明确请求配置环境时，运行下列命令。它会下载 npm 依赖与 Chromium，保存在 `~/.wukong-animation/deps/<引擎版本>/`；设置了 `WUKONG_ANIMATION_HOME` 时使用该目录。如果用户只要求检查，不运行 `setup`，直接执行下一步。
+2. 用户选择「设置」或明确请求配置环境时，运行下列命令。它按插件自带的锁文件安装 npm 依赖，放在 `~/.wukong-animation/deps/<引擎版本>/<环境与锁身份>/`；设置了 `WUKONG_ANIMATION_HOME` 时使用该目录。Chromium 由锁定的 Playwright 安装到其浏览器缓存。旧版依赖目录保留，升级到新的锁身份后第一次需要运行 setup；同身份已完成的安装会复用。如果用户只要求检查，不运行 `setup`，直接执行下一步。
 
    ```bash
    node "<插件根目录>/engine/bin/wka.mjs" setup

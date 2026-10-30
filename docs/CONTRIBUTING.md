@@ -6,11 +6,13 @@
 
 | 命令 | 做什么 |
 | --- | --- |
-| `npm run setup` | 安装引擎依赖（`plugin/engine/node_modules`） |
+| `npm run setup` | 按锁文件安装引擎依赖并登记完成凭据（`plugin/engine/node_modules`） |
 | `npm test` | 单元测试 + 集成测试 |
 | `npm run smoke` | 冒烟测试；`npm run smoke -- <风格id>` 只跑一个风格，`-- --update` 更新基准图 |
 | `npm run lint` | 结构与清单校验 + 工具包文档是否最新 |
 | `npm run catalog` | 重新生成 `plugin/catalog.json` |
+
+开发依赖统一使用 `npm run setup`；直接执行 npm ci 不会登记安装凭据。用户的 `wka setup` 使用随插件分发的同一清单与锁文件，但安装在用户目录，按锁摘要、平台、架构和 Node 主版本隔离。旧版依赖目录保留，第一次切换到新身份需要 setup；`wka check` 会显示实际来源，不能用父目录或全局同名包补齐缺失依赖。
 
 ## 新增一种风格
 

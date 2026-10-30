@@ -38,7 +38,7 @@ wukong-animation/                          # GitHub 仓库
 
 ```
 ~/.wukong-animation/
-├── deps/<引擎版本>/    # npm 依赖与 Chromium（插件升级不受影响）
+├── deps/<引擎版本>/<环境与锁身份>/  # npm 锁定依赖；安装完成后才发布
 ├── cache/fonts/        # 按需下载的字体
 └── styles/<id>/        # 用户自定义风格
 

@@ -123,3 +123,10 @@ test('a package outside the chosen root is rejected even after selecting a valid
   assert.throws(() => deps.requireDep('outsider'), /范围|目录|来源/);
   assert.throws(() => deps.resolveDep('outsider'), /范围|目录|来源/);
 });
+
+test('an entire node_modules symlink outside the installation is not trusted', async t => {
+  const f = fixture(t); await f.install(f.engine);
+  const outside = path.join(f.dir, 'outside-modules'); fs.renameSync(path.join(f.engine, 'node_modules'), outside);
+  fs.symlinkSync(outside, path.join(f.engine, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+  const deps = await f.load(); assert.throws(() => deps.requireDep('alpha'), /范围|来源/);
+});

@@ -45,6 +45,7 @@ export function verifyDependencyFiles(root, input) {
     if (digest(fs.readFileSync(path.join(root, name))) !== sha) throw new Error(`${root}：${name} 与当前插件不一致，请重新运行 wka setup`);
   }
   const modules = fs.realpathSync(path.join(root, 'node_modules'));
+  if (!modules.startsWith(fs.realpathSync(root) + path.sep)) throw new Error(`${root}：node_modules 的来源超出安装目录范围`);
   for (const [name, { version, optional }] of Object.entries(input.expected)) {
     const base = path.join(root, 'node_modules', name);
     if (optional && !fs.existsSync(base)) continue;

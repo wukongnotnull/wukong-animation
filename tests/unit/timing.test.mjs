@@ -143,3 +143,28 @@ test('半帧静音尾隙只用于引擎混音，原文件不变且更大缺失�
   assert.deepEqual(fs.readFileSync(mix),before);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('ffmpeg 8 把 B 帧片段末帧样本记短不到 1ms：仍算通过；帧数、时间戳和更大的时长差照旧拒绝', { skip: process.platform === 'win32' && '用 POSIX 脚本冒充 ffprobe' }, async () => {
+ const fs=await import('node:fs'),path=await import('node:path'),os=await import('node:os');
+ const {inspectVideo}=await import('../../plugin/engine/core/timing.mjs');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-ffmpeg8-'));
+ const oldPath=process.env.PATH;
+ // 真实 ffmpeg 8.0.1 编码春江花月夜 s06 小样的实测值：116 帧、time_base 1/15360、duration_ts 118779（少 5 tick）
+ const probe=(frames,duration,shift=0)=>JSON.stringify({streams:[{r_frame_rate:'15/1',avg_frame_rate:'15/1',time_base:'1/15360',duration:String(duration)}],
+  frames:Array.from({length:frames},(_,i)=>({best_effort_timestamp_time:((i+(i===frames-1?shift:0))/15).toFixed(6)}))});
+ const fake=(json)=>{fs.writeFileSync(path.join(dir,'probe.json'),json);};
+ fs.writeFileSync(path.join(dir,'ffprobe'),`#!/bin/sh\ncat "${path.join(dir,'probe.json')}"\n`,{mode:0o755});
+ process.env.PATH=dir+path.delimiter+oldPath;
+ try {
+  const expected={fps:15,frames:116};
+  fake(probe(116,'7.733008'));
+  const ok=inspectVideo(path.join(dir,'s06.mp4'),expected);
+  assert.equal(ok.ok,true,ok.errors.join('；'));
+  fake(probe(116,'7.731'));
+  assert.match(inspectVideo('x.mp4',expected).errors.join(' '),/视频轨时长 7\.731s/);
+  fake(probe(115,'7.666667'));
+  assert.match(inspectVideo('x.mp4',expected).errors.join(' '),/实测 115 帧，期望 116 帧/);
+  fake(probe(116,'7.733008',0.5));
+  assert.match(inspectVideo('x.mp4',expected).errors.join(' '),/第 115 帧时间戳不连续/);
+ } finally { process.env.PATH=oldPath; fs.rmSync(dir,{recursive:true,force:true}); }
+});

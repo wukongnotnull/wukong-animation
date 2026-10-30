@@ -16,7 +16,7 @@
 |---|---|---|
 | 分辨率 | film.json `size` | × 0.5 |
 | 帧率 | film.json `fps` | ÷ 2 |
-| 编码 | libx264 crf 16 medium | crf 23 veryfast |
+| 编码 | libx264 crf 16 fast | crf 23 veryfast |
 
 环境变量 `WKA_WORKERS` 可调并行页面数（默认 min(2, CPU 数)）。
 

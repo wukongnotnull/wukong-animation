@@ -4,8 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { check } from '../../plugin/engine/pipelines/browser/index.mjs';
 
 const cli=path.resolve('plugin/engine/bin/wka.mjs');
+const browserReady=(await check()).ok;
+const pythonReady=spawnSync('python3',['-c','import pyJianYingDraft'],{stdio:'ignore'}).status===0;
 const run=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WKA_JIANYING_PROCESS:'wka-nonexistent-test-process'}});
 test('A3/A9 final CLI reports missing items with exit 2 and only writes four reports',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-cli-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
@@ -21,7 +24,7 @@ test('A3/A9 final CLI reports missing items with exit 2 and only writes four rep
   const fail=run('delivery',dir,'--final','--json');assert.equal(fail.status,1);assert.match(fail.stderr,/review/);
 });
 
-test('A4/A5/A11 real video, SRT and draft export bind existing signoff nodes and retain edits',t=>{
+test('A4/A5/A11 real video, SRT and draft export bind existing signoff nodes and retain edits',{skip:!browserReady?'browser 管线依赖未安装':!pythonReady?'python3 里没有 pyJianYingDraft':false},t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-real-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const home=path.join(dir,'home'),drafts=path.join(dir,'drafts');fs.mkdirSync(path.join(home,'styles','delivery-fixture'),{recursive:true});fs.mkdirSync(drafts);fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'.wka'));
   const style=JSON.parse(fs.readFileSync('plugin/skills/ink-wash/style.json'));Object.assign(style,{id:'delivery-fixture',fonts:[],scripts:[]});

@@ -329,7 +329,7 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], log = console.log }) {
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], unknownReasons = [], log = console.log }) {
   const ctx = loadFilm(filmDir, { aspect });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   if(wanted.some(f=>f!=='jianying')) requireTiming(ctx,{proxy});
@@ -349,8 +349,8 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     let generation=null;
     if(!proxy)try {
       const kind=name==='jianying'?'draft':'video',flavor=kind==='video'?(suffix.includes('有字幕')?'burned':'clean'):null;
-      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{}),...(flavor==='burned'?{bilingual:!!ctx.film.subtitles?.bilingual}:{})};
-      generation=captureFinalGeneration(ctx.filmDir,{slot,fontFiles,inputFiles:[audio,...(timeline?[...timeline.shots,...timeline.tracks].map(t=>t.file):[])].filter(Boolean),descriptor:{slot,aspect:ctx.variant.aspect,kind,format:name,flavor,projection,contractDigest:digest(projection)}});
+      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{}),...(flavor==='burned'?{bilingual:!!ctx.film.subtitles?.bilingual}:{})};
+      generation=captureFinalGeneration(ctx.filmDir,{slot,fontFiles,unknownReasons,inputFiles:[audio,...(timeline?[...timeline.shots,...timeline.tracks].map(t=>t.file):[])].filter(Boolean),descriptor:{slot,aspect:ctx.variant.aspect,kind,format:name,flavor,projection,contractDigest:digest(projection)}});
     }catch(e){log(`  ! 交付来源未取证，保留导出任务：${e.message}`);}
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const signature=digest({target,draftRoot:name==='jianying'?(process.env.WKA_JIANYING_DRAFTS||path.join(os.homedir(),'Movies/JianyingPro/User Data/Projects/com.lveditor.draft')):null,video:video&&fileDigest(video),audio:audio&&fileDigest(audio),timeline,inputs:timeline?[...timeline.shots,...timeline.tracks].map(t=>[t.file,fileDigest(t.file)]):[],exporter:treeEvidence(exp.dir),name,suffix,proxy,settings:ctx.film.export});

@@ -40,6 +40,7 @@ export function audioReview({mix,duration,notes={version:1}}) {
   return {version:1,sha256,windows,errors,sectionsDeclared:sections.length>0,status:stale?'stale':errors.length?'invalid':windows.some(w=>w.status==='needs-fix')?'needs-fix':!sections.length||windows.some(w=>w.status==='not-listened')?'not-listened':'accepted',manualRequired:!sections.length?['音乐段落划分未声明，不能认为段落审听完成']:[],boundary:'人工记录仅声明所列范围；RMS/LUFS 测量不代表实际听过'};
 }
 const SOFT=new Set(['留白不足','点缀过多','点缀色超量','闪烁','突变/闪烁','硬切过多','音效相对电平','音效被盖住']);
+export const isSoftFinding=kind=>SOFT.has(kind);
 export function qcReview(issues,{source,cfg,notes={}}) {
   const rows=issues.map(issue=>({...issue,id:digest({version:1,source,cfg,issue})}));
   const accepted=[],needsFix=[],unresolved=[],staleNotes=[],invalidNotes=[];

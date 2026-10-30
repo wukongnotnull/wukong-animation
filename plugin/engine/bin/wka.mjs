@@ -44,7 +44,7 @@ import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 import { runStage, lockProduction, recoveryStatus,rememberArtifacts,implementationState } from '../core/operations.mjs';
 import { writeDelivery,readDecisions,decisionConflicts } from '../core/delivery.mjs';
-import { writeFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, captureFinalProxy, withGenerationFonts, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
+import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, finalFontUnknown, captureFinalProxy, withGenerationFonts, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
 import { draftAudioDifference } from '../core/review-evidence.mjs';
 import { digest, fileDigest, readJson, atomicJson,treeEvidence } from '../core/evidence.mjs';
 
@@ -391,12 +391,12 @@ async function cmdFinal(filmDir, o) {
     const burned = await runStage(ctx.filmDir,{stage:'subtitle-burn',aspect:ctx.variant.aspect,proxy:!!o.proxy,force:o.force,signature:digest({video:fileDigest(video),subs,style:ctx.style.subtitles,layers:checked?.report?.signature}),log,run:async()=>{
       const value=await burnSubtitles(video,subs,out,{W:job.W,H:job.H,style:ctx.style,workDir:job.workDir,proxy:o.proxy,prepared:checked?.layers,log});return {value,outputs:[value]};}});
     checkOutputTiming(ctx, burned, { proxy: o.proxy, log });
-    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),log })));
+    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),unknownReasons:finalFontUnknown(job.fonts,checked?.report),log })));
   }
   // 已有烧录版时，无字幕版只多出一个 mp4
   if (visual.length && names.clean !== null) {
     const cleanFormats = names.burned === null ? visual : ['mp4'];
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts), log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts),unknownReasons:finalFontUnknown(job.fonts), log })));
   }
   if (drafts.length) {
     const difference=draftAudioDifference(ctx,tracks,loudness??null);
@@ -404,7 +404,7 @@ async function cmdFinal(filmDir, o) {
     log(`[${ctx.variant.aspect} 高清 · draft-export] 写入前说明：${difference.report.note}\n${difference.files[0]}`);
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
     const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs, subtitleMeasurements: checked.report.measurements } : {}) };
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report), log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),unknownReasons:finalFontUnknown(job.fonts,checked?.report), log })));
   }
   if (names.srt !== null && !o.proxy && !draftOnly) {
     const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srt}.srt`);
@@ -434,7 +434,7 @@ async function main() {
       if(opt('record')&&!opt('final'))throw new Error('--record 需要 --final');
       if(opt('record'))recordFinalEvidence(pos[0]);
       const report=(opt('final')?writeFinalDelivery:writeDelivery)(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
-      log(opt('json')?JSON.stringify(report,null,2):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
+      log(opt('json')?JSON.stringify(report,null,2):opt('final')?formatFinalDelivery(report):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
       process.exitCode=report.ok?0:2;return;
     }
     case 'resume': {
@@ -477,7 +477,8 @@ async function main() {
       const deliveryApproval=revision?prepareFinalApproval(pos[0],{id,step,revision,source:'用户明确签批（signoff）',note,openEvidence:opt('open-status')?{status:opt('open-status'),source:note}:null}):null;
       const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===13||step===14?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
       if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
-      atomicJson(pendingFile,{id,step,note,signature,status:'prepared'});
+      const deliveryProof=deliveryApproval?{deliveryApproval:deliveryApproval.existing&&pending?.deliveryApproval?.review?pending.deliveryApproval:deliveryApproval}:{};
+      atomicJson(pendingFile,{id,step,note,signature,status:'prepared',...deliveryProof});
       if (step === FINAL_REVIEW_STEP) {
         const ctx=loadFilm(pos[0]);requireTiming(ctx,{log});await requireSubtitlePreflight(ctx,{proxy:false});
       }
@@ -503,9 +504,9 @@ async function main() {
       if(!prior&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
       commitSignoff(pos[0],{id,step,note,signature,main,variants});
       if(deliveryApproval)commitFinalApproval(pos[0],deliveryApproval);
-      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:'pending'});
+      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:'pending',...deliveryProof});
       const sha = commitSnapshot(pos[0], note, { log });
-      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:sha?'committed':'not-confirmed',sha});
+      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:sha?'committed':'not-confirmed',sha,...deliveryProof});
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
       void sha;
       return;
@@ -564,7 +565,7 @@ async function main() {
       const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(mix,job.timeline.duration,job.fps), '-shortest'] : ['-i', video, '-c', 'copy'];
       const out = await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart']);
       checkOutputTiming(job, out, { proxy, log });
-      try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
+      try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts),finalFontUnknown(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
       registerReview(pos[0],'proxy',[out],aspectOpt(),true);
       log(`小样：${out}`);
       return;

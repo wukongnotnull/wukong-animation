@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import * as delivery from '../../plugin/engine/core/delivery.mjs';
 import * as final from '../../plugin/engine/core/final-delivery.mjs';
+import { rememberArtifacts } from '../../plugin/engine/core/operations.mjs';
+import { digest, fileDigest } from '../../plugin/engine/core/evidence.mjs';
 
 function fixture(t) {
   const prior=process.env.WKA_JIANYING_PROCESS;process.env.WKA_JIANYING_PROCESS='wka-nonexistent-test-process';
@@ -159,4 +161,80 @@ test('A10 saved generation receipt recovers ledger failure without generating me
   assert.equal(fs.readFileSync(file,'utf8'),'video');fs.rmdirSync(path.join(dir,'.wka/final-delivery.json'));
   assert.deepEqual(final.recordFinalEvidence(dir),[generation.id]);assert.deepEqual(final.recordFinalEvidence(dir),[]);
   assert.equal(fs.readFileSync(file,'utf8'),'video');
+});
+
+test('A7 dynamic audio and missing fonts remain unknown without touching operations',t=>{
+  const dir=fixture(t),file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));film.audio={build:'audio/build.mjs'};fs.writeFileSync(file,JSON.stringify(film));
+  const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean'}),out=path.join(dir,'影片.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
+  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].freshness,'unknown');assert.match(report.items[0].reasons.join(' '),/audio.build/);assert.match(report.items[0].reasons.join(' '),/字体/);assert.equal(fs.existsSync(path.join(dir,'.cache/operations.json')),false);
+});
+
+test('A10 unstable scan and a running native editor reject approval',t=>{
+  const dir=fixture(t),draft=draftArtifact(dir),file=path.join(draft,'draft_content.json'),read=fs.readFileSync;
+  let count=0;t.mock.method(fs,'readFileSync',function(name,...args){const bytes=read.call(fs,name,...args);if(name===file&&count++===0)fs.appendFileSync(file,' ');return bytes;});
+  assert.throws(()=>final.deliverySnapshot(draft),/扫描期间/);t.mock.restoreAll();
+  if(process.platform==='darwin') {
+    process.env.WKA_JIANYING_PROCESS=path.basename(process.execPath);
+    const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
+    assert.throws(()=>final.prepareFinalApproval(dir,{id:'running',step:15,revision,source:'用户',note:'通过'}),/仍在运行/);
+  }
+});
+
+test('A8 complete pending version proof can be recorded after state commit, never a vague note',t=>{
+  const dir=fixture(t);draftArtifact(dir);
+  const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'recover-15',step:15,revision,source:'用户本次明确验收',note:'通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:15,approvalId:'recover-15'}]}));
+  fs.writeFileSync(path.join(dir,'.wka/pending-approval.json'),JSON.stringify({id:'recover-15',deliveryApproval:prepared,status:'prepared'}));
+  const state=fs.readFileSync(path.join(dir,'.wka/state.json'));final.recordFinalEvidence(dir);
+  assert.equal(final.finalDeliveryReport(dir).items.find(i=>i.kind==='draft').acceptance,'accepted');
+  assert.deepEqual(fs.readFileSync(path.join(dir,'.wka/state.json')),state);
+});
+
+test('A11 font URLs preserve parentheses in actual work directory',()=>{
+  assert.deepEqual(final.finalFontFiles({css:"@font-face{src:url('file:///tmp/film%20(%E4%B8%AD)/font.ttf');}"}),['/tmp/film (中)/font.ttf']);
+});
+
+test('A5 known current QC hard errors cannot be bypassed by a final approval note',t=>{
+  const dir=fixture(t),file=path.join(dir,'影片.mp4');fs.mkdirSync(path.join(dir,'.cache'));fs.mkdirSync(path.join(dir,'review'));
+  const video=path.join(dir,'.cache/video.mp4');fs.writeFileSync(video,'video');fs.writeFileSync(file,'video');
+  final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'shots/s01.js')]}),path:file,stage:'encode:mp4',technical:{status:'passed'}});
+  const qc=path.join(dir,'review/QC报告.json');fs.writeFileSync(qc,JSON.stringify({issues:[{kind:'空帧',shot:'s01',t:0.5,msg:'no content'}]}));
+  const source=digest({video:fileDigest(video),timing:null,algorithm:fileDigest(path.resolve('plugin/engine/core/qc.mjs'))});
+  rememberArtifacts(dir,{stage:'review:qc',aspect:'16:9',signature:source,outputs:[qc],value:qc});
+  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');
+  assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:13,revision:report.reviewSets[13].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);
+});
+
+test('A6 a word anchor actually referenced by the picture invalidates that picture',t=>{
+  const dir=fixture(t),shot=path.join(dir,'shots/s01.js');fs.writeFileSync(shot,"wk.shot({render(ctx,t,s){s.cueIn('word:anchor');}});");
+  const sync=path.join(dir,'sync-points.json'),points={version:1,points:[{id:'anchor',voice:'v',text:'词',method:'estimated',range:[0,0.2]}]};fs.writeFileSync(sync,JSON.stringify(points));
+  const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[shot]}),out=path.join(dir,'影片.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
+  points.points[0].range=[0.1,0.3];fs.writeFileSync(sync,JSON.stringify(points));
+  assert.equal(final.finalDeliveryReport(dir).items[0].freshness,'changed');
+});
+
+test('A10 structurally corrupt dependency evidence is diagnosed as a ledger error',t=>{
+  const dir=fixture(t);draftArtifact(dir);const file=path.join(dir,'.wka/final-delivery.json'),data=JSON.parse(fs.readFileSync(file));data.artifacts[0].dependencies={groups:null,unknown:123};fs.writeFileSync(file,JSON.stringify(data));
+  assert.throws(()=>final.finalDeliveryReport(dir),/账本/);
+});
+
+test('A7 actual encoder identity is recorded and unknown tool changes do not pass as current',t=>{
+  const dir=fixture(t),generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'shots/s01.js')]});
+  assert.ok(generation.tool.executables?.some(e=>e.name==='ffmpeg'&&e.sha256));
+  const out=path.join(dir,'影片.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
+  const file=path.join(dir,'.wka/final-delivery.json'),data=JSON.parse(fs.readFileSync(file));data.artifacts[0].tool.executables[0].sha256='changed';fs.writeFileSync(file,JSON.stringify(data));
+  const item=final.finalDeliveryReport(dir).items[0];assert.equal(item.freshness,'unknown');assert.match(item.reasons.join(' '),/工具/);
+});
+
+test('A8 legacy external draft stays visible and a new explicit review can adopt its current bytes',t=>{
+  const dir=fixture(t),draft=draftArtifact(dir);
+  rememberArtifacts(dir,{stage:'draft-export',aspect:'16:9',signature:'legacy',outputs:[draft],value:draft});
+  fs.rmSync(path.join(dir,'.wka/final-delivery.json'));fs.rmSync(path.join(dir,'.wka/final-delivery-receipts'),{recursive:true});
+  const state=path.join(dir,'.wka/state.json');fs.writeFileSync(state,JSON.stringify({flow:5,history:[{step:15,approvalId:'old',note:'草稿通过'}]}));
+  let report=final.finalDeliveryReport(dir),item=report.items.find(i=>i.kind==='draft');
+  assert.equal(item.path,draft);assert.equal(item.availability,'present');assert.equal(item.acceptance,'historical-only');assert.ok(item.link);
+  const prepared=final.prepareFinalApproval(dir,{id:'new-real-review',step:15,revision:report.reviewSets[15].deliveryRevision,source:'用户本次明确复核',note:'已保存退出，已打开检查当前历史草稿',openEvidence:{status:'opened',source:'用户实际打开反馈'}});
+  fs.writeFileSync(state,JSON.stringify({flow:5,history:[{step:15,approvalId:'old',note:'草稿通过'},{step:15,approvalId:'new-real-review'}]}));final.commitFinalApproval(dir,prepared);
+  report=final.finalDeliveryReport(dir);item=report.items.find(i=>i.kind==='draft');assert.equal(item.acceptance,'accepted');assert.equal(item.freshness,'current');
 });

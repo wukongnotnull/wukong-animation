@@ -92,7 +92,7 @@ export const finalFontFiles=(...styles)=>[...new Set(styles.flatMap(s=>fontPaths
 // 分组投影独立于全局 operations 签名；只观察声明输入，未知外部执行明确阻塞。
 function dependencies(dir,slot,fontFiles=[]) {
   const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),settings=subtitleSettings(ctx.film,ctx.variant),groups={},unknown=[];
-  const sub=slot.kind==='subtitle',visual=!sub,caption=slot.kind==='draft'||slot.flavor==='burned';
+  const sub=slot.kind==='subtitle',visual=!sub,caption=settings.mode!=='none'&&(slot.kind==='draft'||slot.flavor==='burned');
   const files=names=>names.map(f=>sourceFile(path.resolve(dir,f)));
   if(visual) {
     const scripts=[...ctx.shots.map(s=>s.path),...ctx.styleScripts,...ctx.filmScripts];
@@ -126,10 +126,25 @@ function dependencies(dir,slot,fontFiles=[]) {
   return {groups,unknown:[...new Set(unknown)],boundary:'declared-inputs',fontFiles};
 }
 
-export function captureFinalGeneration(dir,{slot,fontFiles=[]}={}) {
-  const contract=finalContract(dir),target=contract.slots.find(s=>s.slot===slot);
+export function captureFinalGeneration(dir,{slot,fontFiles=[],descriptor=null,inputFiles=[]}={}) {
+  const contract=finalContract(dir),target=contract.slots.find(s=>s.slot===slot)||descriptor;
   if(!target)throw new Error(`不是当前交付槽位：${slot}`);
-  return {id:crypto.randomUUID(),slot,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:dependencies(dir,target,fontFiles),tool:{node:process.version,platform:process.platform,arch:process.arch}};
+  const deps=dependencies(dir,target,fontFiles);
+  if(inputFiles.length)deps.groups.actualInputs=inputFiles.map(sourceFile);
+  return {id:crypto.randomUUID(),slot,descriptor:target,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:deps,tool:{node:process.version,platform:process.platform,arch:process.arch}};
+}
+
+export function captureFinalProxy(dir,{aspect=null}={}) {
+  const ctx=loadFilm(dir,{requireShots:false,aspect}),slot=`${ctx.variant.aspect}/source/proxy`,projection={slot};
+  return captureFinalGeneration(dir,{slot,descriptor:{slot,aspect:ctx.variant.aspect,kind:'video',format:'mp4',flavor:'clean',projection,contractDigest:digest(projection)}});
+}
+export function withGenerationFonts(dir,generation,fontFiles) {
+  const current=dependencies(dir,generation.descriptor,fontFiles);
+  generation.dependencies.fontFiles=fontFiles;
+  generation.dependencies.groups.fonts=current.groups.fonts;
+  generation.dependencies.unknown=generation.dependencies.unknown.filter(r=>r!=='实际画面字体来源缺失');
+  if(current.unknown.includes('实际画面字体来源缺失'))generation.dependencies.unknown.push('实际画面字体来源缺失');
+  return generation;
 }
 
 function sourceStatus(dir,slot,artifact) {
@@ -138,6 +153,7 @@ function sourceStatus(dir,slot,artifact) {
   if(artifact.provenance==='external-edit')return {freshness:'current',reasons:['外部修改并验收；不声称与引擎源工程逐项一致']};
   if(!artifact.dependencies)return {freshness:'unknown',reasons:['生成时逐项来源证据缺失']};
   const now=dependencies(dir,slot,artifact.dependencies.fontFiles),changed=[];
+  if(artifact.dependencies.groups.actualInputs)now.groups.actualInputs=artifact.dependencies.groups.actualInputs.map(e=>sourceFile(e.path));
   for(const [name,old] of Object.entries(artifact.dependencies.groups))if(digest(old)!==digest(now.groups[name]))changed.push(name);
   if(artifact.contractDigest!==slot.contractDigest)changed.push('相关交付要求');
   if(changed.length)return {freshness:'changed',reasons:changed.map(n=>`相关输入已变：${n}`)};
@@ -156,11 +172,16 @@ function appendArtifact(dir,data,artifact) {
 
 // 仅由成功导出/字幕写入边界调用。回执先存，账本写入失败仍可 --record 安全重试。
 export function recordFinalArtifact(dir,{generation,path:file,stage,technical={status:'unknown',checks:[],errors:[]}}) {
-  const contract=finalContract(dir),slot=contract.slots.find(s=>s.slot===generation.slot);
+  const contract=finalContract(dir),slot=contract.slots.find(s=>s.slot===generation.slot)||generation.descriptor;
   if(!slot)throw new Error('生成后交付要求已取消，保留产物，待核实');
   const artifact={id:generation.id,slot:generation.slot,path:path.resolve(file),aspect:slot.aspect,format:slot.format,flavor:slot.flavor,generatedAt:new Date().toISOString(),snapshot:deliverySnapshot(file),contractDigest:generation.contractDigest,dependencies:generation.dependencies,tool:generation.tool,stage,provenance:'generated',technical,openStatus:'not-tested'};
-  atomicJson(path.join(path.resolve(dir),'.wka/final-delivery-receipts',artifact.id+'.json'),artifact);
-  return appendArtifact(dir,ledger(dir),artifact);
+  const receipt=path.join(path.resolve(dir),'.wka/final-delivery-receipts',artifact.id+'.json');
+  let data;try{data=ledger(dir);}catch(e){atomicJson(receipt,artifact);throw e;}
+  const identity=a=>digest({slot:a.slot,path:a.path,snapshot:a.snapshot,contract:a.contractDigest,dependencies:a.dependencies,tool:a.tool,stage:a.stage,technical:a.technical,provenance:a.provenance});
+  const previous=data.artifacts.filter(a=>a.slot===artifact.slot).at(-1);
+  if(previous&&identity(previous)===identity(artifact))return previous;
+  atomicJson(receipt,artifact);
+  return appendArtifact(dir,data,artifact);
 }
 
 export function recordFinalEvidence(dir) {
@@ -203,10 +224,14 @@ function reviewSets(dir,contract,items,data) {
   const operations=json(path.join(dir,'.cache/operations.json'),{stages:{}}),bindings=[];
   for(const aspect of [...new Set(contract.slots.map(s=>s.aspect))].filter(a=>a!==contract.mainAspect)) {
     const ctx=loadFilm(dir,{requireShots:false,aspect}),stage=Object.values(operations.stages||{}).find(s=>s.aspect===aspect&&s.proxy&&s.stage==='review:proxy'&&s.status==='completed');
-    const file=stage?.outputs?.[0]?.file||path.join(dir,'review',ctx.variant.review('小样.mp4'));
+    const source=data.artifacts.filter(a=>a.slot===`${aspect}/source/proxy`).at(-1);
+    const file=source?.path||stage?.outputs?.[0]?.file||path.join(dir,'review',ctx.variant.review('小样.mp4'));
     const obs=observed(file),target=contract.slots.find(s=>s.aspect===aspect&&s.kind==='video');
     const preflight=json(path.join(dir,'review',ctx.variant.review('字幕预检-proxy.json')),null);
-    bindings.push({slot:`${aspect}/source/proxy`,aspect,path:file,snapshot:obs.snapshot,stageId:stage?.id||null,contract:contract.slots.filter(s=>s.aspect===aspect&&s.kind!=='draft').map(s=>s.projection),dependencies:target?dependencies(dir,target,finalFontFiles(preflight)):null});
+    const deps=target?dependencies(dir,target,source?.dependencies?.fontFiles||finalFontFiles(preflight)):null;
+    for(const sub of contract.slots.filter(s=>s.aspect===aspect&&s.kind==='subtitle'))Object.assign(deps.groups,dependencies(dir,sub).groups);
+    const generated=source&&digest(source.snapshot)===digest(obs.snapshot)&&['picture','audio','renderer','fonts'].every(g=>digest(source.dependencies?.groups[g]||null)===digest(deps?.groups[g]||null));
+    bindings.push({slot:`${aspect}/source/proxy`,aspect,path:file,snapshot:obs.snapshot,stageId:generated?source.id:null,contract:contract.slots.filter(s=>s.aspect===aspect&&s.kind!=='draft').map(s=>s.projection),dependencies:deps});
   }
   result[14]={step:14,bindings,deliveryRevision:digest({step:14,bindings})};
   return result;
@@ -267,7 +292,7 @@ function acceptance(dir,item,artifact,data,history) {
   if(artifact?.provenance==='generated'&&item.aspect!==finalContract(dir).mainAspect&&item.kind!=='draft'&&item.freshness==='current'&&artifact.technical.status==='passed') {
     for(const approval of [...data.approvals].reverse().filter(a=>a.step===14)) {
       const binding=approval.bindings.find(b=>b.aspect===item.aspect);
-      if(!binding||!history.some(h=>h.approvalId===approval.id&&h.step===14)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
+      if(!binding||binding.dependencies?.unknown.length||!history.some(h=>h.approvalId===approval.id&&h.step===14)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
       const groups=item.kind==='subtitle'?['zh',...(item.format==='en'?['en']:[])]:['picture','audio',...(item.flavor==='burned'?['zh','en','layout']:[])];
       if(groups.every(g=>digest(binding.dependencies?.groups[g]||null)===digest(artifact.dependencies?.groups[g]||null)))return {acceptance:'accepted',approval:{id:approval.id,type:'inherited',source:approval.source,at:approval.at},openStatus:'not-tested',reason:'来源已批准，高清生成核验通过'};
     }

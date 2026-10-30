@@ -1,0 +1,57 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const cli=path.resolve('plugin/engine/bin/wka.mjs');
+const run=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WKA_JIANYING_PROCESS:'wka-nonexistent-test-process'}});
+test('A3/A9 final CLI reports missing items with exit 2 and only writes four reports',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-cli-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}]}));
+  const out=run('delivery',dir,'--final','--json','--host','generic');
+  assert.equal(out.status,2,out.stderr);const report=JSON.parse(out.stdout);
+  assert.equal(report.version,2);assert.equal(report.ok,false);assert.equal(report.scope,'all');
+  assert.equal(report.items[0].link,undefined);
+  assert.deepEqual(fs.readdirSync(path.join(dir,'review')).sort(),['最终交付审计.json','最终交付审计.md','最终交付清单.json','最终交付清单.md']);
+  assert.equal(fs.existsSync(path.join(dir,'.wka')),false);assert.equal(fs.existsSync(path.join(dir,'.cache')),false);
+  const bytes=fs.readFileSync(path.join(dir,'review/最终交付清单.json'));void bytes;
+  fs.rmSync(path.join(dir,'review'),{recursive:true});fs.writeFileSync(path.join(dir,'review'),'blocks writing');
+  const fail=run('delivery',dir,'--final','--json');assert.equal(fail.status,1);assert.match(fail.stderr,/review/);
+});
+
+test('A4/A5/A11 real video, SRT and draft export bind existing signoff nodes and retain edits',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-real-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const home=path.join(dir,'home'),drafts=path.join(dir,'drafts');fs.mkdirSync(path.join(home,'styles','delivery-fixture'),{recursive:true});fs.mkdirSync(drafts);fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'.wka'));
+  const style=JSON.parse(fs.readFileSync('plugin/skills/ink-wash/style.json'));Object.assign(style,{id:'delivery-fixture',fonts:[],scripts:[]});
+  fs.writeFileSync(path.join(home,'styles/delivery-fixture/style.json'),JSON.stringify(style));
+  fs.writeFileSync(path.join(dir,'shots/s01.js'),'wk.shot({render(ctx,t,s){ctx.fillStyle="white";ctx.fillRect(0,0,s.W,s.H);ctx.fillStyle="black";ctx.fillRect(10,10,30,30);}});');
+  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'delivery',style:'delivery-fixture',size:[320,180],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}],export:{name:'交付 #%',formats:['mp4']}}));
+  const decisions={version:1,...Object.fromEntries(Object.entries({delivery:'video-and-draft',aspects:['16:9'],subtitles:{mode:'none',bilingual:false}}).map(([k,value])=>[k,{status:'confirmed',value,source:'测试中的明确用户选择'}]))};
+  fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
+  const call=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WUKONG_ANIMATION_HOME:home,WKA_JIANYING_DRAFTS:drafts,WKA_JIANYING_PROCESS:'wka-nonexistent-test-process'}});
+  const ok=result=>assert.equal(result.status,0,result.stdout+result.stderr);
+  ok(call('final',dir));
+  assert.ok(fs.existsSync(path.join(dir,'.wka/final-delivery.json')),'真实导出应登记证据');
+  let result=call('delivery',dir,'--final','--json'),report=JSON.parse(result.stdout);
+  assert.equal(result.status,2);assert.equal(report.status,'partial');assert.ok(report.items[0].link);
+  const revision=report.reviewSets[13].deliveryRevision;
+  ok(call('signoff',dir,'本次用户明确终审通过','--step','13','--approval-id','real-13','--delivery-revision',revision));
+  ok(call('signoff',dir,'本次用户明确终审通过','--step','13','--approval-id','real-13','--delivery-revision',revision));
+  ok(call('final',dir,'--formats','jianying'));
+  report=JSON.parse(call('delivery',dir,'--final','--json').stdout);const draft=report.items.find(i=>i.kind==='draft');
+  assert.ok(draft.path);const content=path.join(draft.path,'draft_content.json'),marker=fs.readFileSync(path.join(draft.path,'.wka-complete.json'));
+  const edited=JSON.parse(fs.readFileSync(content));edited.name='真实磁盘手改';fs.writeFileSync(content,JSON.stringify(edited));
+  const old=call('signoff',dir,'草稿已打开核对','--step','15','--delivery-revision',report.reviewSets[15].deliveryRevision);assert.equal(old.status,1);assert.match(old.stderr,/版本已变化/);
+  report=JSON.parse(call('delivery',dir,'--final','--json').stdout);
+  ok(call('signoff',dir,'用户明确报告已打开检查并保存退出','--step','15','--approval-id','real-15','--delivery-revision',report.reviewSets[15].deliveryRevision,'--open-status','opened'));
+  result=call('delivery',dir,'--final','--json');report=JSON.parse(result.stdout);assert.equal(result.status,0,result.stdout);assert.equal(report.status,'accepted');
+  assert.equal(report.items.find(i=>i.kind==='draft').openStatus,'opened');assert.deepEqual(fs.readFileSync(path.join(draft.path,'.wka-complete.json')),marker);
+  edited.name='验收后再次改变';fs.writeFileSync(content,JSON.stringify(edited));result=call('delivery',dir,'--final','--json');assert.equal(result.status,2);assert.equal(JSON.parse(result.stdout).items.find(i=>i.kind==='draft').acceptance,'changed-after-acceptance');
+  const filmFile=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(filmFile));film.subtitles={mode:'srt'};fs.writeFileSync(filmFile,JSON.stringify(film));
+  decisions.subtitles.value.mode='srt';fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
+  fs.writeFileSync(path.join(dir,'subtitles.srt'),'1\n00:00:00,000 --> 00:00:01,000\n中文\n');
+  ok(call('final',dir));report=JSON.parse(call('delivery',dir,'--final','--json').stdout);
+  const subtitle=report.items.find(i=>i.kind==='subtitle');assert.equal(subtitle.freshness,'current');assert.equal(fs.readFileSync(subtitle.path,'utf8'),fs.readFileSync(path.join(dir,'subtitles.srt'),'utf8'));
+});

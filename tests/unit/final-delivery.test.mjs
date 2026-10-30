@@ -112,3 +112,51 @@ test('A8 legacy step and vague note are history only, old flow bytes remain unch
   assert.equal(item.acceptance,'historical-only');assert.match(item.reasons.join(' '),/历史已验收/);
   assert.deepEqual(fs.readFileSync(state),bytes);
 });
+
+test('A5 native variant inherits only approved exact source, never claims native playback',t=>{
+  const dir=fixture(t),file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));film.variants={'9:16':{}};fs.writeFileSync(file,JSON.stringify(film));
+  const decisions=JSON.parse(fs.readFileSync(path.join(dir,'.wka/decisions.json')));decisions.aspects.value.push('9:16');fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
+  const font=path.join(dir,'font.ttf');fs.writeFileSync(font,'font');fs.mkdirSync(path.join(dir,'review'));
+  const proxy=path.join(dir,'review/小样-9x16.mp4');fs.writeFileSync(proxy,'proxy');
+  const slot='9:16/source/proxy',projection={slot};
+  final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot,fontFiles:[font],descriptor:{slot,aspect:'9:16',kind:'video',format:'mp4',flavor:'clean',projection,contractDigest:'source'}}),path:proxy,stage:'review:proxy',technical:{status:'passed',checks:['timing'],errors:[]}});
+  const revision=final.finalDeliveryReport(dir).reviewSets[14].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'source-14',step:14,revision,source:'用户明确批准副版小样',note:'小样通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:14,approvalId:'source-14'}]}));final.commitFinalApproval(dir,prepared);
+  const native=path.join(dir,'影片-9x16.mp4');fs.writeFileSync(native,'native');
+  final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'9:16/video/mp4/clean',fontFiles:[font]}),path:native,stage:'encode:mp4',technical:{status:'passed',checks:['timing'],errors:[]}});
+  let item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.equal(item.acceptance,'accepted');assert.equal(item.approval.type,'inherited');assert.equal(item.openStatus,'not-tested');
+  fs.appendFileSync(path.join(dir,'shots/s01.js'),'// change');item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.notEqual(item.acceptance,'accepted');
+});
+
+test('A6 variant overrides and notes do not stale main; shared picture does',t=>{
+  const dir=fixture(t),file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));film.variants={'9:16':{}};fs.writeFileSync(file,JSON.stringify(film));
+  fs.writeFileSync(path.join(dir,'shots/s01.9x16.js'),'variant');
+  const decisions=JSON.parse(fs.readFileSync(path.join(dir,'.wka/decisions.json')));decisions.aspects.value.push('9:16');fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
+  for(const aspect of ['16:9','9:16']) {
+    const generation=final.captureFinalGeneration(dir,{slot:`${aspect}/video/mp4/clean`,fontFiles:[path.join(dir,'film.json')]}),out=path.join(dir,aspect.replace(':','x')+'.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
+  }
+  fs.appendFileSync(path.join(dir,'shots/s01.9x16.js'),' changed');fs.writeFileSync(path.join(dir,'review-notes.json'),'{"version":1}');
+  let report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'current');assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='9:16').freshness,'changed');
+  fs.appendFileSync(path.join(dir,'shots/s01.js'),' changed');report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'changed');
+});
+
+test('A10 identical successful export reuses evidence identity and record retries preserve approval',t=>{
+  const dir=fixture(t),file=path.join(dir,'影片.mp4'),font=path.join(dir,'font.ttf');fs.writeFileSync(font,'font');
+  const save=()=>{const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[font]});fs.writeFileSync(file,'same bytes');return final.recordFinalArtifact(dir,{generation,path:file,stage:'encode:mp4',technical:{status:'passed'}});};
+  const first=save(),second=save();assert.equal(first.id,second.id);
+  const revision=final.finalDeliveryReport(dir).reviewSets[13].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'same-13',step:13,revision,source:'用户',note:'通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:13,approvalId:'same-13'}]}));final.commitFinalApproval(dir,prepared);
+  save();assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
+  final.recordFinalEvidence(dir);assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
+});
+
+test('A10 saved generation receipt recovers ledger failure without generating media',t=>{
+  const dir=fixture(t),file=path.join(dir,'影片.mp4'),generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean'});
+  fs.writeFileSync(file,'video');fs.mkdirSync(path.join(dir,'.wka/final-delivery.json'));
+  assert.throws(()=>final.recordFinalArtifact(dir,{generation,path:file,stage:'encode:mp4',technical:{status:'passed'}}),/final-delivery/);
+  assert.equal(fs.readFileSync(file,'utf8'),'video');fs.rmdirSync(path.join(dir,'.wka/final-delivery.json'));
+  assert.deepEqual(final.recordFinalEvidence(dir),[generation.id]);assert.deepEqual(final.recordFinalEvidence(dir),[]);
+  assert.equal(fs.readFileSync(file,'utf8'),'video');
+});

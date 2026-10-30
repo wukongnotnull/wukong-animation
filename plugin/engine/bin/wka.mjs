@@ -44,6 +44,7 @@ import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 import { runStage, lockProduction, recoveryStatus,rememberArtifacts,implementationState } from '../core/operations.mjs';
 import { writeDelivery,readDecisions,decisionConflicts } from '../core/delivery.mjs';
+import { writeFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, captureFinalProxy, withGenerationFonts, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
 import { draftAudioDifference } from '../core/review-evidence.mjs';
 import { digest, fileDigest, readJson, atomicJson,treeEvidence } from '../core/evidence.mjs';
 
@@ -390,12 +391,12 @@ async function cmdFinal(filmDir, o) {
     const burned = await runStage(ctx.filmDir,{stage:'subtitle-burn',aspect:ctx.variant.aspect,proxy:!!o.proxy,force:o.force,signature:digest({video:fileDigest(video),subs,style:ctx.style.subtitles,layers:checked?.report?.signature}),log,run:async()=>{
       const value=await burnSubtitles(video,subs,out,{W:job.W,H:job.H,style:ctx.style,workDir:job.workDir,proxy:o.proxy,prepared:checked?.layers,log});return {value,outputs:[value]};}});
     checkOutputTiming(ctx, burned, { proxy: o.proxy, log });
-    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,log })));
+    outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),log })));
   }
   // 已有烧录版时，无字幕版只多出一个 mp4
   if (visual.length && names.clean !== null) {
     const cleanFormats = names.burned === null ? visual : ['mp4'];
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect,force:o.force, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: cleanFormats, suffix: names.clean, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts), log })));
   }
   if (drafts.length) {
     const difference=draftAudioDifference(ctx,tracks,loudness??null);
@@ -403,19 +404,23 @@ async function cmdFinal(filmDir, o) {
     log(`[${ctx.variant.aspect} 高清 · draft-export] 写入前说明：${difference.report.note}\n${difference.files[0]}`);
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
     const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs, subtitleMeasurements: checked.report.measurements } : {}) };
-    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force, log })));
+    outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report), log })));
   }
   if (names.srt !== null && !o.proxy && !draftOnly) {
     const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srt}.srt`);
+    const generation=captureFinalGeneration(ctx.filmDir,{slot:`${ctx.variant.aspect}/subtitle/zh`});
     fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
     registerReview(filmDir,'sidecar-srt',[srt],o.aspect);
+    saveFinalSubtitle(ctx,generation,srt,'review:sidecar-srt');
     log(`  导出 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
   if (names.srtEn && !o.proxy && !draftOnly) {
     const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srtEn}.srt`);
+    const generation=captureFinalGeneration(ctx.filmDir,{slot:`${ctx.variant.aspect}/subtitle/en`});
     fs.writeFileSync(srt, englishSrt(subs));
     registerReview(filmDir,'sidecar-en',[srt],o.aspect);
+    saveFinalSubtitle(ctx,generation,srt,'review:sidecar-en');
     log(`  导出英文 srt → ${path.basename(srt)}`);
     outs.push(srt);
   }
@@ -426,7 +431,9 @@ async function main() {
   switch (cmd) {
     case 'delivery': {
       if(!pos[0]) throw new Error('用法：wka delivery <片目录> --host codex|claude|generic [--json]');
-      const report=writeDelivery(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
+      if(opt('record')&&!opt('final'))throw new Error('--record 需要 --final');
+      if(opt('record'))recordFinalEvidence(pos[0]);
+      const report=(opt('final')?writeFinalDelivery:writeDelivery)(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
       log(opt('json')?JSON.stringify(report,null,2):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
       process.exitCode=report.ok?0:2;return;
     }
@@ -464,8 +471,11 @@ async function main() {
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
       }
       const pendingFile=path.join(path.resolve(pos[0]),'.wka/pending-approval.json');
-      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===13||step===14?shotHashes(pos[0]):null});
       const pending=readJson(pendingFile),id=String(opt('approval-id')||(pending?.status!=='completed'&&pending?.note===note?pending.id:crypto.randomUUID()));
+      const revision=opt('delivery-revision');
+      if(revision===true)throw new Error('--delivery-revision 需要完整摘要');
+      const deliveryApproval=revision?prepareFinalApproval(pos[0],{id,step,revision,source:'用户明确签批（signoff）',note,openEvidence:opt('open-status')?{status:opt('open-status'),source:note}:null}):null;
+      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===13||step===14?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
       if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
       atomicJson(pendingFile,{id,step,note,signature,status:'prepared'});
       if (step === FINAL_REVIEW_STEP) {
@@ -492,6 +502,7 @@ async function main() {
       if(!prior&&step===FINAL_REVIEW_STEP){const snapshot=snapshotMain(pos[0],{log});if(snapshot.missing.length)throw new Error('缺少完整定稿快照，签批存档未提交');main=snapshot.hashes;}
       if(!prior&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
       commitSignoff(pos[0],{id,step,note,signature,main,variants});
+      if(deliveryApproval)commitFinalApproval(pos[0],deliveryApproval);
       atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:'pending'});
       const sha = commitSnapshot(pos[0], note, { log });
       atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:sha?'committed':'not-confirmed',sha});
@@ -543,6 +554,7 @@ async function main() {
       if (!pos[0]) fail('用法：wka render <片目录>');
       const proxy = !!opt('proxy');
       await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
+      const sourceGeneration=proxy?captureFinalProxy(pos[0],{aspect:aspectOpt()}):null;
       const { video, job } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), aspect: aspectOpt(), log });
       if (!proxy) return;
       // 小样配上声轨，放进 review/ 交给用户审阅
@@ -552,6 +564,7 @@ async function main() {
       const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(mix,job.timeline.duration,job.fps), '-shortest'] : ['-i', video, '-c', 'copy'];
       const out = await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart']);
       checkOutputTiming(job, out, { proxy, log });
+      try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
       registerReview(pos[0],'proxy',[out],aspectOpt(),true);
       log(`小样：${out}`);
       return;
@@ -608,6 +621,10 @@ function registerReview(filmDir,stage,outputs,aspect=null,proxy=false){
   const ctx=loadFilm(filmDir,{requireShots:false,aspect});
   rememberArtifacts(ctx.filmDir,{stage:'review:'+stage,aspect:ctx.variant.aspect,proxy,outputs,value:outputs,signature:digest(outputs.map(file=>fileDigest(file)))});
 }
+function saveFinalSubtitle(ctx,generation,file,stage){
+  try{recordFinalArtifact(ctx.filmDir,{generation,path:file,stage,technical:{status:'passed',checks:['字幕完整性及实际写入'],errors:[]}});}
+  catch(e){log(`  ! 字幕已生成，交付证据未存档，待核实：${e.message}`);}
+}
 function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
   const settings=subtitleSettings(ctx.film,ctx.variant),base=preflightBase(ctx,{proxy,layout});
   const outputs=[base+'.md',base+'.json',path.join(ctx.filmDir,settings.file),...(settings.bilingual?[path.join(ctx.filmDir,settings.enFile)]:[]),...(checked.report.contactSheet?[checked.report.contactSheet]:[]),...checked.report.images.flatMap(i=>[i.file,...(i.guides?[i.guides]:[])])];
@@ -615,7 +632,7 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
 }
 async function execute(){
   const writes=['signoff','qc','still','animatic','render','soundtrack','subtitles','final'];
-  const unlock=writes.includes(cmd)&&pos[0]?lockProduction(pos[0]):()=>{};
+  const unlock=(writes.includes(cmd)||(cmd==='delivery'&&opt('final')&&opt('record')))&&pos[0]?lockProduction(pos[0]):()=>{};
   if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
   try{await main();}finally{unlock();}
 }

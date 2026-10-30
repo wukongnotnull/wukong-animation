@@ -1,9 +1,9 @@
 # 剪映草稿交付可靠性修复设计
 
-Status: Draft
+Status: Confirmed
 Last updated: 2026-10-30
 基线：`main fe921d7`。关联：[体验优化 #93](https://github.com/wukongnotnull/wukong-animation/issues/93)。
-用户已确认优先修草稿交付；本文件的具体设计尚待批准。依据：[实拍复盘](../reports/2026-10-30-production-delivery-review.md)及已确认 PRD 的 FR-1/FR-4/FR-7。属于既有行为修复，不新增产品需求编号。
+用户于 2026-10-30 明确回复“确认这份修复 spec，按计划开始修复草稿交付的三项问题”，批准本文件。依据：[实拍复盘](../reports/2026-10-30-production-delivery-review.md)及已确认 PRD 的 FR-1/FR-4/FR-7。属于既有行为修复，不新增产品需求编号。
 
 ## 1. 问题与目标
 

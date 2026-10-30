@@ -7,6 +7,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { check } from '../../plugin/engine/pipelines/browser/index.mjs';
+import { inspectVideo } from '../../plugin/engine/core/timing.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WKA = path.join(ROOT, 'plugin/engine/bin/wka.mjs');
@@ -39,6 +40,42 @@ const setCues = (dir, cues) => {
   const f = path.join(dir, 'film.json');
   fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), cues }));
 };
+
+test('a truncated shot manifest recovers on rerun without changing protected files', opts, (t) => {
+  const dir = makeFilm({ s01: SHOT('ctx.fillRect(5, 5, 20, 20);') });
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const first = wka('render', dir);
+  assert.equal(first.status, 0, first.stderr);
+  const manifestFile = path.join(dir, '.cache', 'manifest.json');
+  const existing = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).shots.s01;
+  const protectedPaths = ['film.json', 'shots/s01.js'];
+  for (const [rel, body] of Object.entries({
+    'audio/original.wav': 'original audio', '.cache/mix.wav': 'existing mix',
+    '.cache/approved/s01.mp4': 'approved snapshot', '.cache/9x16/manifest.json': '{"shots":{}}',
+    '.wka/state.json': '{"flow":5,"step":0,"history":[]}',
+    'assets/reference.txt': 'reference', 'review/approved.mp4': 'reviewed video', 'out.mp4': 'delivered video',
+  })) {
+    const file = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, body);
+    protectedPaths.push(rel);
+  }
+  const before = protectedPaths.map(rel => fs.readFileSync(path.join(dir, rel)));
+  fs.writeFileSync(manifestFile, '{"shots":');
+  fs.writeFileSync(existing.file, 'broken media must be regenerated');
+  const recovered = wka('render', dir);
+  assert.equal(recovered.status, 0, recovered.stderr);
+  assert.match(recovered.stdout + recovered.stderr, /缓存索引失效.*重新生成/);
+  assert.ok((recovered.stdout + recovered.stderr).includes(manifestFile));
+  assert.doesNotMatch(recovered.stdout, /s01 缓存命中/);
+  const entry = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).shots.s01;
+  const check = inspectVideo(entry.file, { fps: 10, frames: 10 });
+  assert.equal(check.ok, true, check.errors.join('\n'));
+  for (const [i, rel] of protectedPaths.entries()) assert.deepEqual(fs.readFileSync(path.join(dir, rel)), before[i], rel);
+  const again = wka('render', dir);
+  assert.equal(again.status, 0, again.stderr);
+  assert.match(again.stdout, /s01 缓存命中/);
+});
 
 test('a shot that fails mid-render leaves no partial segment and no running ffmpeg', opts, () => {
   const dir = makeFilm({

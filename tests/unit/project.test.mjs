@@ -84,3 +84,76 @@ test('a tracked .gitignore the user deleted without committing is not committed 
   assert.ok(logs.some((m) => /请自己提交/.test(m)));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+function unbornRepo(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-first-commit-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const g = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  for (const args of [['init', '-q'], ['config', 'user.name', 'test'], ['config', 'user.email', 'test@example.com'], ['config', 'commit.gpgsign', 'false']]) {
+    const r = g(...args);
+    assert.equal(r.status, 0, r.stderr);
+  }
+  const file = path.join(dir, 'user-script.sh');
+  fs.writeFileSync(file, '#!/bin/sh\necho staged\n');
+  assert.equal(g('add', '--', 'user-script.sh').status, 0);
+  assert.equal(g('update-index', '--chmod=+x', '--', 'user-script.sh').status, 0);
+  fs.writeFileSync(file, '#!/bin/sh\necho unstaged\n');
+  const index = g('ls-files', '--stage', '--', 'user-script.sh').stdout;
+  const working = fs.readFileSync(file);
+  const diff = g('diff', '--', 'user-script.sh').stdout;
+  return { dir, g, checkUnrelated() {
+    assert.equal(g('ls-files', '--stage', '--', 'user-script.sh').stdout, index);
+    assert.deepEqual(fs.readFileSync(file), working);
+    assert.equal(g('diff', '--', 'user-script.sh').stdout, diff);
+    assert.match(g('diff', '--cached', '--name-only').stdout, /user-script\.sh/);
+  } };
+}
+
+test('first commit contains only .gitignore and preserves staged and unstaged user content', (t) => {
+  const { dir, g, checkUnrelated } = unbornRepo(t);
+  initProject(dir, { log: () => {} });
+  assert.equal(g('ls-tree', '-r', '--name-only', 'HEAD').stdout.trim(), '.gitignore');
+  checkUnrelated();
+});
+
+test('a fresh empty repository still creates its initial ignore-only commit', (t) => {
+  const { dir, g } = unbornRepo(t);
+  assert.equal(g('rm', '--cached', '-f', '--', 'user-script.sh').status, 0);
+  fs.unlinkSync(path.join(dir, 'user-script.sh'));
+  const logs = [];
+  initProject(dir, { log: message => logs.push(message) });
+  assert.equal(g('ls-tree', '-r', '--name-only', 'HEAD').stdout.trim(), '.gitignore');
+  assert.ok(logs.some(message => message.includes('已创建初始提交')));
+});
+
+test('failed initial commit keeps unrelated index entries and worktree differences', (t) => {
+  const { dir, g, checkUnrelated } = unbornRepo(t);
+  const hooks = path.join(dir, 'reject-hooks');
+  fs.mkdirSync(hooks);
+  fs.writeFileSync(path.join(hooks, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  assert.equal(g('config', 'core.hooksPath', hooks).status, 0);
+  const logs = [];
+  initProject(dir, { log: message => logs.push(message) });
+  assert.notEqual(g('rev-parse', '--verify', 'HEAD').status, 0);
+  checkUnrelated();
+  assert.ok(logs.some(message => message.includes('初始提交失败')));
+  assert.equal(logs.some(message => message.includes('已创建初始提交')), false);
+});
+
+test('missing identity leaves an unborn repository and its user index untouched', (t) => {
+  const { dir, g, checkUnrelated } = unbornRepo(t);
+  // 只隔离此同步调用的 Git 配置，避免本机全局身份让缺身份场景失真。
+  for (const key of ['user.name', 'user.email']) assert.equal(g('config', '--unset-all', key).status, 0);
+  const oldGlobal = process.env.GIT_CONFIG_GLOBAL, oldSystem = process.env.GIT_CONFIG_NOSYSTEM;
+  process.env.GIT_CONFIG_GLOBAL = path.join(dir, 'absent-global-config');
+  process.env.GIT_CONFIG_NOSYSTEM = '1';
+  const logs = [];
+  try { initProject(dir, { log: message => logs.push(message) }); }
+  finally {
+    if (oldGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL; else process.env.GIT_CONFIG_GLOBAL = oldGlobal;
+    if (oldSystem === undefined) delete process.env.GIT_CONFIG_NOSYSTEM; else process.env.GIT_CONFIG_NOSYSTEM = oldSystem;
+  }
+  assert.notEqual(g('rev-parse', '--verify', 'HEAD').status, 0);
+  checkUnrelated();
+  assert.ok(logs.some(message => message.includes('尚未配置 git 身份')));
+});

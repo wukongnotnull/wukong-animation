@@ -32,7 +32,7 @@ for(const pipeline of ['browser','remotion']) {
     const r=cli('render',dir,...(aspect?['--aspect',aspect]:[]),...(proxy?['--proxy']:[]));assert.equal(r.status,0,r.stderr+r.stdout.slice(-2500));
     const out=path.join(dir,'.cache',...(aspect?['9x16']:[]),proxy?'video-proxy.mp4':'video.mp4');
     const decoded=spawnSync('ffmpeg',['-v','error','-i',out,'-vf','scale=1:1','-pix_fmt','rgb24','-f','rawvideo','-'],{maxBuffer:1e6});assert.equal(decoded.status,0,String(decoded.stderr));
-    const rate=proxy?Math.round(fps/2):fps;
+    const rate=proxy?Math.min(15,fps):fps;
     for(let channel=0;channel<3;channel++) {
      let first=-1;for(let n=0;n<decoded.stdout.length/3;n++) if(decoded.stdout[n*3+channel]>180){first=n;break;}
      assert.ok(first>=0);

@@ -90,7 +90,7 @@ codex plugin add wukong-animation@wukong-animation
 
 ### 其他 Agent 工具
 
-Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.18.0 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.18.0) 里的 `wukong-animation-agent-skills-v0.18.0.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.19.0 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.0) 里的 `wukong-animation-agent-skills-v0.19.0.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
 
 ## 拍你的第一支片
 
@@ -173,6 +173,9 @@ Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完�
 
 **会用到 AI 视频生成吗？**
 不会。所有画面都是代码一帧一帧绘制的，所以同一份工程每次渲染出来的结果完全一样，改一个镜头也只需要重新渲染那一个镜头。
+
+**修改一镜也要整片重渲吗？**
+日常先看静帧或局部小样，完整预览和终稿在你明确要求时生成。小样最多 960 长边、15fps，默认低并发；终稿保持原定画质。未改镜头和已验证的相同片段会复用，每镜保留最新小样与高清缓存。需要空间时告诉助手清理可再生渲染缓存，不要自行删除整个 `.cache`。
 
 **字体下载失败怎么办？**
 字体会自动从 GitHub 或 jsDelivr 下载。如果两个都连不上，可以设置环境变量 `WKA_FONT_MIRROR`，指向一个与 [google/fonts](https://github.com/google/fonts) 目录结构相同的镜像地址。

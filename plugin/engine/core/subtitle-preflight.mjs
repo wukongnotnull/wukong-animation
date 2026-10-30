@@ -6,6 +6,7 @@ import {renderSubtitleLayers,subtitleStyle,prepareSubtitleFonts,subtitleFontSign
 import {subtitleSettings,parseSrt,attachEnglish,checkSubtitles} from './subtitles.mjs';
 import {validate} from './validate.mjs';
 import {requireTiming,buildFrameTimeline} from './timing.mjs';
+import { outputFps } from './render-profile.mjs';
 import {hashParts} from './cache.mjs';
 import {run} from './ffmpeg.mjs';
 
@@ -64,7 +65,7 @@ function readRegions(ctx) {
 }
 
 function inputs(ctx,{proxy,subs=null,layout=false}) {
- const timing=layout?buildFrameTimeline(ctx.shots,proxy?Math.max(1,Math.round(ctx.film.fps/2)):ctx.film.fps):requireTiming(ctx,{proxy});
+ const timing=layout?buildFrameTimeline(ctx.shots,outputFps(ctx.film,proxy)):requireTiming(ctx,{proxy});
  const settings=subtitleSettings(ctx.film,ctx.variant);
  const textFile=path.join(ctx.filmDir,settings.file);
  if(!fs.existsSync(textFile)) throw new Error(`还没有 ${settings.file}，先运行 wka subtitles 生成字幕，再预检`);

@@ -1,7 +1,7 @@
 // browser 管线：Chromium 逐帧 seek → JPEG → ffmpeg(libx264)。
 // 接口（所有管线一致）：check() / renderShots(job, todo, {onDone}) / renderStills(job, points, outDir)
 import fs from 'node:fs';
-import os from 'node:os';
+import { renderWorkers } from '../../core/render-profile.mjs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { requireDep } from '../../core/deps.mjs';
@@ -135,7 +135,7 @@ export async function renderShots(job, todo, { onDone } = {}) {
   const { chromium } = requireDep('playwright');
   const hostFile = buildHost(job);
   const browser = await chromium.launch({ args: LAUNCH_ARGS });
-  const workers = Math.max(1, Math.min(todo.length, Number(process.env.WKA_WORKERS) || Math.min(2, os.cpus().length)));
+  const workers = Math.min(todo.length, renderWorkers(job));
   const queue = [...todo];
   // 任何一个镜头失败，其余 worker 在下一帧停下；等所有 worker 都收拾干净再关浏览器
   const abort = { error: null };
@@ -171,6 +171,7 @@ async function renderShot(browser, job, hostFile, { shot, out }, abort) {
       '-f', 'image2pipe', '-framerate', String(job.fps), '-c:v', 'mjpeg', '-i', '-',
       '-c:v', 'libx264', '-preset', job.proxy ? 'veryfast' : 'fast',
       '-crf', job.proxy ? '23' : '16', '-pix_fmt', 'yuv420p',
+      ...(job.proxy || job.daily ? ['-threads', '2'] : []),
       '-r', String(job.fps), '-movflags', '+faststart', '-f', 'mp4', part,
     ]);
     const t0 = Date.now();

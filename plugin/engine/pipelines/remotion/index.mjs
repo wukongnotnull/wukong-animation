@@ -1,12 +1,11 @@
 // remotion 管线：生成每镜一个 Composition 的入口 → @remotion/bundler 打包一次 → 逐镜 renderMedia 成无声 H.264 片段。
 // 接口（所有管线一致）：check() / renderShots(job, todo, {onDone}) / renderStills(job, points, outDir)
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { hasDep, requireDep, resolveDep } from '../../core/deps.mjs';
 import { hasFfmpeg, run } from '../../core/ffmpeg.mjs';
 import { ensureDir } from '../../core/paths.mjs';
-import { assertVideo } from '../../core/timing.mjs';
+import { renderWorkers } from '../../core/render-profile.mjs';
 import { buildEntry, headlessShellFrom, rewriteFontCss, webpackAliases } from './entry.mjs';
 
 const DEPS = ['remotion', '@remotion/bundler', '@remotion/renderer', 'react', 'react-dom'];
@@ -104,8 +103,8 @@ async function withBrowser(job, fn) {
 const shotLabel = (shot) => `镜头 ${shot.id} (${shot.file})`;
 
 export async function renderShots(job, todo, { onDone } = {}) {
-  const concurrency = Number(process.env.WKA_WORKERS) || Math.min(2, os.cpus().length);
-  await withBrowser(job, async (env) => {
+  const concurrency = renderWorkers(job);
+  await withBrowser({ ...job, shots: todo.map(item => item.shot) }, async (env) => {
     for (const item of todo) {
       await renderShot(job, item, env, concurrency);
       onDone?.(item);
@@ -126,7 +125,7 @@ export function renderScale(job) {
 async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, browserExecutable: exe, compositionOf }, concurrency) {
   const part = out.replace(/\.mp4$/, '') + '.part.mp4';
   const scale = renderScale(job);
-  const post = job.fps !== job.film.fps || scale === 1 && job.W !== job.designW;
+  const post = scale === 1 && (job.W !== job.designW || job.H !== job.designH);
   const raw = post ? part.replace(/\.part\.mp4$/, '.raw.part.mp4') : part;
   try {
     const composition = await compositionOf(shot.id);
@@ -136,15 +135,16 @@ async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, 
       composition, serveUrl, puppeteerInstance, browserExecutable: exe, concurrency, logLevel: 'error',
       codec: 'h264', muted: true, crf: job.proxy ? 23 : 16, pixelFormat: 'yuv420p',
       scale, outputLocation: raw, overwrite: true,
+      ...(job.proxy || job.daily ? { ...(job.proxy ? { x264Preset: 'veryfast' } : {}),
+        ffmpegOverride: ({ args }) => [...args.slice(0, -1), '-threads', '2', args.at(-1)] } : {}),
       onProgress: ({ progress, renderedFrames }) => {
         if (progress < nextLog) return;
         job.log(`  ${shot.id} ${Math.round(progress * 100)}%  (${renderedFrames}/${composition.durationInFrames} 帧, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
         while (nextLog <= progress) nextLog += 0.25;
       },
     });
-    assertVideo(raw, { fps: job.film.fps, frames: shot.nativeFrames });
     if (post) {
-      await run(['-i', raw, '-vf', `fps=${job.fps},tpad=stop_mode=clone:stop_duration=${2 / job.fps},trim=end_frame=${shot.frames},setpts=PTS-STARTPTS,scale=${job.W}:${job.H}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
+      await run(['-i', raw, '-vf', `scale=${job.W}:${job.H}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', job.proxy ? '23' : '16', '-threads', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', part]);
       fs.rmSync(raw, { force: true });
     }
     fs.renameSync(part, out);
@@ -165,7 +165,7 @@ export async function renderStills(job, points, outDir) {
       const file = path.join(outDir, `${shot.id}-${t.toFixed(2)}s.png`);
       try {
         const composition = await compositionOf(shot.id);
-        const frame = Math.min(composition.durationInFrames - 1, Math.round(t * job.film.fps));
+        const frame = Math.min(composition.durationInFrames - 1, Math.round(t * job.fps));
         await r.renderStill({ composition, serveUrl, puppeteerInstance, browserExecutable: exe, logLevel: 'error', frame, output: file, imageFormat: 'png', scale: job.W / job.designW, overwrite: true });
       } catch (e) {
         throw new Error(`${shotLabel(shot)} @${t}s 出错：${e.message}`);

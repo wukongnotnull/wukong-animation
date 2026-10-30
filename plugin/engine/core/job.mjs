@@ -24,7 +24,8 @@ import { prepareWordShots, writeWordReview } from './word-sync.mjs';
 import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFailure, requireTiming, checkOutputTiming, checkAnimaticTiming } from './timing.mjs';
 import { captureFinalGeneration, recordFinalArtifact } from './final-delivery.mjs';
 
-const PROXY_SPEC = { scale: 0.5, fpsDiv: 2 };
+import { outputSize, renderWorkers } from './render-profile.mjs';
+export { outputSize } from './render-profile.mjs';
 
 /**
  * @param {{requireShots?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
@@ -66,26 +67,16 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts, variant };
 }
 
-/** 输出画面的尺寸与帧率：小样为半分辨率、半帧率。 */
-export function outputSize(film, proxy = false) {
-  const [W0, H0] = film.size;
-  const scale = proxy ? PROXY_SPEC.scale : 1;
-  return {
-    W: Math.round((W0 * scale) / 2) * 2,
-    H: Math.round((H0 * scale) / 2) * 2,
-    fps: proxy ? Math.max(1, Math.round(film.fps / PROXY_SPEC.fpsDiv)) : film.fps,
-  };
-}
-
 /** 构建传给管线的任务描述。 */
-function createRenderJob(ctx, { proxy = false, log }) {
+function createRenderJob(ctx, { proxy = false, nativeFps = false, log }) {
   const [W0, H0] = ctx.film.size;
-  const { W, H, fps } = outputSize(ctx.film, proxy);
+  const { W, H } = outputSize(ctx.film, proxy);
+  const fps = nativeFps ? ctx.film.fps : outputSize(ctx.film, proxy).fps;
   const timeline = buildFrameTimeline(ctx.shots, fps);
   const native = buildFrameTimeline(ctx.shots, ctx.film.fps);
   const shots = ctx.shots.map((s, i) => ({ ...s, frames: timeline.shots[i].frames, nativeFrames: native.shots[i].frames, startFrame: timeline.shots[i].startFrame }));
   const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
-  const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.filmScripts]);
+  const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.styleScripts, ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
   return prepareWordShots({
     ...ctx,
@@ -113,7 +104,8 @@ function filesUnder(dir) {
 }
 
 function shotHash(job, shot) {
-  return hashParts([
+  // 公共输入每次任务只读/哈希一次，避免107镜重复读取同一批素材与完整字体。
+  job.sharedHash ??= hashParts([
     ENGINE_VERSION,
     `${job.pipeline.name}@${job.pipeline.version}`,
     job.kits.map((k) => `${k.name}@${k.version}`).join(','),
@@ -124,9 +116,12 @@ function shotHash(job, shot) {
     ...job.kits.map((k) => ({ file: k.entryPath })),
     ...job.styleScripts.map((f) => ({ file: f })),
     ...job.filmScripts.map((f) => ({ file: f })),
+    ...fontCssParts(job.fonts.cacheCss), job.fonts.stacks,
+  ]);
+  return hashParts([
+    job.sharedHash,
     { file: shot.path },
-    { W: job.W, H: job.H, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id, timingVersion: TIMING_VERSION, frames: shot.frames, nativeFrames: shot.nativeFrames, startFrame: shot.startFrame },
-    ...fontCssParts(job.fonts.css),
+    { W: job.W, H: job.H, designW: job.designW, designH: job.designH, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id, timingVersion: TIMING_VERSION, frames: shot.frames, nativeFrames: shot.nativeFrames, startFrame: shot.startFrame },
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
     pickCues(job.wordEvidence, [shot.path, ...job.styleScripts, ...job.filmScripts]),
@@ -171,9 +166,12 @@ async function pipelineModule(job) {
 }
 
 /** 渲染所有（或指定）镜头并拼接成一条无声视频，返回其路径。 */
-export async function render(filmDir, { proxy = false, only = null, force = false, aspect = null, segmentsOnly = false, log = console.log } = {}) {
+export async function render(filmDir, { proxy = false, only = null, selected = null, daily = false, force = false, aspect = null, segmentsOnly = false, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
+  for (const id of selected || only || []) if (!ctx.shots.some(s => s.id === id)) throw new Error(`没有镜头 ${id}`);
+  renderWorkers({ proxy, daily }); // 在准备字体或启动浏览器之前校验并发设置
   const job = createRenderJob(ctx, { proxy, log });
+  job.daily = daily;
   log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · segments] 开始`);
   log(`《${ctx.film.title}》${ctx.variant.isMain ? '' : `${ctx.variant.aspect} 副版 · `}风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
   for (const r of job.fonts.report) log(`  字体 ${r}`);
@@ -182,13 +180,16 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   const keyOf = (s) => (proxy ? `${s.id}-proxy` : s.id);
   const todo = [];
   const segments = [];
-  for (const shot of job.shots) {
+  const hashes = {};
+  const selectedShots = job.shots.filter(s => !selected || selected.includes(s.id));
+  for (const shot of selectedShots) {
     const hash = shotHash(job, shot);
+    hashes[shot.id] = hash;
     // --only 指定的镜头强制重渲；其余镜头一律走缓存（代码变了的镜头哈希会变，自然会重渲）
     const forced = force || (only && only.includes(shot.id));
     const hit = !forced && cache.lookup(keyOf(shot), hash);
     if (hit) {
-      try { assertVideo(hit, { fps: job.fps, frames: shot.frames }); }
+      try { assertVideo(hit, { fps: job.fps, frames: shot.frames }, { cacheDir: ctx.variant.cacheDir, fresh: !daily }); }
       catch (e) {
         cache.invalidate(keyOf(shot));
         timingFailure(ctx, new Error(`${shot.id}：${e.message}；请重渲此镜头`), { proxy, log });
@@ -208,7 +209,7 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
     const t0 = Date.now();
     try {
       await mod.renderShots(job, todo, { onDone: ({ shot, hash, out }) => {
-        assertVideo(out, { fps: job.fps, frames: shot.frames });
+        assertVideo(out, { fps: job.fps, frames: shot.frames }, { cacheDir: ctx.variant.cacheDir, fresh: true });
         cache.store(keyOf(shot), hash, out);
       } });
     } catch (e) {
@@ -220,13 +221,13 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
-  const shotSegments = job.timeline.shots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
-  rememberArtifacts(ctx.filmDir,{stage:'segments',aspect:ctx.variant.aspect,proxy,signature:digest(shotHashes(ctx.filmDir,{aspect})),value:shotSegments,outputs:segments});
+  const shotSegments = selectedShots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
+  rememberArtifacts(ctx.filmDir,{stage:daily?'preview-segments':'segments',aspect:ctx.variant.aspect,proxy,signature:digest(hashes),value:shotSegments,outputs:segments});
   if(segmentsOnly) return {video:null,job,segments:shotSegments};
   try {
-    await runStage(ctx.filmDir,{stage:'concat',aspect:ctx.variant.aspect,proxy,force:force||!!only,signature:digest({fps:job.fps,segments:segments.map(file=>fileDigest(file))}),log,
+    await runStage(ctx.filmDir,{stage:'concat',aspect:ctx.variant.aspect,proxy,force,signature:digest({fps:job.fps,segments:segments.map(file=>fileDigest(file))}),log,
       run:async()=>{await concatVideo(segments,{fps:job.fps,list,out:video});return {value:video,outputs:[video]};},
-      validate:file=>{try{assertVideo(file,{fps:job.fps,frames:job.timeline.totalFrames});return true;}catch{return false;}}});
+      validate:file=>{try{assertVideo(file,{fps:job.fps,frames:job.timeline.totalFrames},{cacheDir:ctx.variant.cacheDir,fresh:true});return true;}catch{return false;}}});
   } catch (e) {
     timingFailure(ctx, e, { proxy, log });
     throw e;
@@ -235,6 +236,40 @@ export async function render(filmDir, { proxy = false, only = null, force = fals
   await writeWordReview(job, { video });
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
   return { video, job, segments: shotSegments };
+}
+
+/** 日常局部审阅：不拼接整片，不生成整片验收证据。 */
+export async function preview(filmDir, { only = null, proxy = true, aspect = null, force = false, log = console.log } = {}) {
+  const { job, segments } = await render(filmDir, { proxy, selected: only, daily: true, segmentsOnly: true, aspect, force, log });
+  const mix = path.join(job.filmDir, '.cache', 'mix.wav');
+  const audio = fs.existsSync(mix) ? fileDigest(mix) : null;
+  if (!audio) log('  ! 没有现成声轨，局部小样为无声；需要声音请先运行 wka soundtrack');
+  const directory = path.join(job.filmDir, 'review', job.variant.review(proxy ? '局部小样' : '局部原画质'));
+  ensureDir(directory);
+  const outputs = [];
+  for (const segment of segments) {
+    const out = path.join(directory, segment.id + '.mp4');
+    const frames = job.shots.find(s => s.id === segment.id).frames;
+    await runStage(job.filmDir, { stage: 'preview:' + segment.id, aspect: job.variant.aspect, proxy, force,
+      signature: digest({ video: fileDigest(segment.file), audio, start: segment.start, duration: segment.duration }), log,
+      run: async () => {
+        const part = out.replace(/\.mp4$/, '.part.mp4');
+        try {
+          await run(audio ? ['-i', segment.file, '-ss', String(segment.start), '-i', mix,
+            '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-af', 'apad', '-t', String(segment.duration), '-threads', '2', part]
+            : ['-i', segment.file, '-c', 'copy', part]);
+          assertVideo(part, { fps: job.fps, frames }, { cacheDir: job.variant.cacheDir, fresh: true });
+          fs.renameSync(part, out);
+        } finally { fs.rmSync(part, { force: true }); }
+        return { value: out, outputs: [out] };
+      },
+      validate: file => { try { assertVideo(file, { fps: job.fps, frames }, { cacheDir: job.variant.cacheDir }); return true; } catch { return false; } },
+    });
+    outputs.push(out);
+    log(`局部预览 ${segment.id}：${out}`);
+  }
+  log('  局部预览完成；整片拼接、字幕和音画检查请在完整预览/验收时运行');
+  return outputs;
 }
 
 /** 审阅副本写进片目录的 review/（不隐藏、体积小，聊天和访达里都能直接播放），返回绝对路径。 */
@@ -251,7 +286,8 @@ export async function writeReview(filmDir, file, args) {
  */
 export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
-  const job = createRenderJob(ctx, { proxy, log });
+  // 静帧只取一张，保留Remotion原生时间定位精度，不必跟随视频小样降帧。
+  const job = createRenderJob(ctx, { proxy, nativeFps: ctx.pipeline.name === 'remotion', log });
   const mod = await pipelineModule(job);
   let points = at;
   if (!points) {
@@ -336,7 +372,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
   else {
     if(!timeline) throw new Error('草稿需要可验证时间线');
     const frames=buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps);
-    for(const s of frames.shots) assertVideo(timeline.shots.find(t=>t.id===s.id)?.file,{fps:frames.fps,frames:s.frames});
+    for(const s of frames.shots) assertVideo(timeline.shots.find(t=>t.id===s.id)?.file,{fps:frames.fps,frames:s.frames},{cacheDir:ctx.variant.cacheDir,fresh:true});
   }
   const base = ctx.variant.exportName;
   const outputs = [];

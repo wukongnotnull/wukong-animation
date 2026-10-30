@@ -11,17 +11,17 @@ export const STATIC_PREFIX = 'wka-static:';
 
 
 /**
- * 打包入口源码：每个镜头一个 Composition（设计尺寸、film.fps），外包 WkaShot 注入字体并等字体就绪。
+ * 打包入口源码：每个镜头一个 Composition（设计尺寸、输出fps），外包 WkaShot 注入字体并等字体就绪。
  * 组件看到的 s.W / s.H 是设计尺寸；小样的缩小由 renderMedia 的 scale 完成。
  * @param {object} job  需要 film.fps / film.cues / designW / designH / seed / shots / styleEntry
  * @param {string} fontCss  已经过 rewriteFontCss 的 @font-face
  */
 export function buildEntry(job, fontCss) {
-  const fps = job.film.fps;
-  const native = buildFrameTimeline(job.shots, fps);
+  const fps = job.fps ?? job.film.fps;
+  const native = job.shots.every(sh => Number.isInteger(sh.frames) && sh.frames > 0) ? null : buildFrameTimeline(job.shots, fps);
   const shots = job.shots.map((sh, i) => ({
     id: sh.id,
-    frames: native.shots[i].frames,
+    frames: sh.frames ?? native.shots[i].frames,
     s: {
       id: sh.id, W: job.designW, H: job.designH, designW: job.designW, designH: job.designH,
       aspect: aspectOf([job.designW, job.designH]), orientation: orientationOf([job.designW, job.designH]),

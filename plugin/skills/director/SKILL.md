@@ -5,7 +5,7 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 
 # wukong-animation · 总导演
 
-> 制作流程版本 **v1.16.0**（修订记录见 `references/CHANGELOG.md`）
+> 制作流程版本 **v1.17.0**（修订记录见 `references/CHANGELOG.md`）
 
 你是导演。用代码逐帧"画"出短片——不调用任何视频生成模型。
 72 种风格各是一个 skill（如 `ink-wash`），它们只负责美术规格与制作技法（"画成什么样、用什么技术画"）；**制作管线只在这里**。
@@ -47,6 +47,8 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]` | 音色试听：同一句（缺省为第一条人声）用几个音色各合成一遍，输出 `review/试听-<n>-<音色>.m4a`（第 6 道） |
 | `wka still <片目录> [--frames N] [--at s02:1.5] [--aspect 9:16]` | 渲染静帧 + 接触表 |
 | `wka animatic <片目录> [--proxy] [--aspect 9:16]` | 动态分镜：每镜代表帧按镜头时长停留、配上声轨，输出 `review/动态分镜.mp4` + `review/接触表.jpg` |
+| `wka preview <片目录> [--only s03] [--native] [--aspect 9:16]` | 日常局部预览，只更新受影响镜头，不拼接整片；`--native` 检查原帧率动作 |
+| `wka clean <片目录> --render-cache [--aspect 9:16]` | 用户需要空间时主动清理可再生渲染缓存，保留声音、成片和签批快照 |
 | `wka render <片目录> [--proxy] [--only s03] [--aspect 9:16]` | 渲染（镜头级缓存）；`--proxy` 另出带声音的小样 `review/小样.mp4` |
 | `wka qc <片目录> [--proxy] [--aspect 9:16]` | 量化技术质检（QC） |
 | `wka subtitles <片目录> [--force] [--preview\|--preflight] [--aspect 9:16]` | 从人声生成字幕 `subtitles.srt`（已存在时只检查不覆盖，`--force` 重新生成）；`--preflight` 预检，还没有小样时只做版式预检（第 10 道）；`--preview` 烧录到小样上审阅（第 11 道） |
@@ -404,6 +406,12 @@ edge-tts 的中文普通话音色：
 - 随机数用 `s.rng` / 带固定种子的 `wk.rng`。
 - 优先调用风格资产库组件（如 `wk.ink.*`）和工具包（`wk.c2d.*`、`wk.gl.*`），不要从零写。
 
+日常修改默认先 `wka still <片> --proxy --at s03:1.2` 看受影响位置；要看运动就用 `wka preview <片> --only s03`，没有指定镜头时 `wka preview <片>` 自动复用未变片段。动作细节用 `--native` 看原尺寸、原帧率局部片段。小样长边最多 960、帧率最多 15，竖版对应换宽高，不放大本来较小的素材；两条管线都直接少生成帧。
+
+平衡优先：日常小样默认 1 个渲染 worker，终稿最多 2 个；`WKA_WORKERS` 显式设置正整数可覆盖，勿为提速盲目加并发。局部预览会配上已有声轨对应区间，但不重新生成声音，也不做整片字幕/拼接验收。用户明确要求整片预览、验收或交付时才运行 `render --proxy`、完整 QC/字幕预览或 `final`，不要每改一镜就出完整横竖双版。
+
+每镜最新的小样与高清缓存默认保留。需要磁盘空间时使用 `wka clean <片> --render-cache`（副版加 `--aspect`）；不要直接删除整个 `.cache`，其中还有声音、恢复记录和定稿快照。
+
 本道没有审片节点，做完直接进第 10 道。
 
 ### 第 10 道 · 字幕制作
@@ -455,10 +463,10 @@ edge-tts 的中文普通话音色：
 
 | 命令 | 做什么 | 有问题看哪里 / 怎么办 |
 |---|---|---|
-| `wka render <片> --proxy` | 渲染小样（半分辨率、半帧率），同时合成带声音的 `review/小样.mp4` | — |
+| `wka render <片> --proxy` | 按明确需求渲染完整小样（长边最多 960、最多 15fps），同时合成带声音的 `review/小样.mp4` | — |
 | `wka qc <片> --proxy` | 检测留白比例、点缀色占比、帧间差异、黑帧 / 空帧、非预期硬切，阈值来自风格规格 `style.json → qc` | 有 ✗ 就打开 `stills/qc/qc-sheet.jpg` 查看超标帧 |
 | `wka still <片> --frames 4 --proxy` | 每镜抽 4 帧 | 对照 STYLE.md 的"交付前质检"清单逐项核对 |
-| `wka render <片> --proxy --only s03` | 只返修问题镜头 | — |
+| `wka preview <片> --only s03` | 日常返修仅出局部小样 | 不代替整片审阅证据；要重新提交审片时再跑完整小样与 QC |
 | `wka subtitles <片> --preview` | 有字幕时：在小样画面上重新预检字幕，再把字幕烧录到小样上，输出 `review/字幕预览.mp4` | 预检有 errors 先改，回到第 10 道改 `subtitles.srt` 或字幕样式 |
 
 画面铺满一张图（截图、照片）的镜头，在 `film.json` 里给它标 `"full_bleed": true`，`wka qc` 就不查这一镜的留白。
@@ -576,7 +584,7 @@ QC 的每条原始告警都有来源绑定的 finding id。按 `review-notes.jso
 | 返修类型 | 触发 | 执行 |
 |---|---|---|
 | 节点内返修 | 任一审片节点未通过 | 留在本工序修改，改完重新提交同一节点 |
-| 画面返修 | ⑨ 小样或 ⑩ 终审提出画面意见（如"第 3 镜的船太大了"） | 回到第 9 道，只改 `shots/s03.js`（或公共脚本）→ 局部重渲（小样阶段 `wka render <片> --proxy --only s03`，终审阶段 `wka final <片> --only s03`）→ `wka qc` → 有字幕的重跑 `wka subtitles <片> --preview` → 重新提交原节点（字幕没动，⑧ 字幕不用重审） |
+| 画面返修 | ⑨ 小样或 ⑩ 终审提出画面意见（如"第 3 镜的船太大了"） | 回到第 9 道，只改 `shots/s03.js`（或公共脚本）→ 局部重渲（先 `wka preview <片> --only s03`，确认局部后按整片审阅需要执行 `wka render <片> --proxy` 或 `wka final <片> --only s03`）→ `wka qc` → 有字幕的重跑 `wka subtitles <片> --preview` → 重新提交原节点（字幕没动，⑧ 字幕不用重审） |
 | 声音返修 | ⑩ 终审（或 ⑧ 字幕、⑨ 小样）提出人声 / 配乐意见，或用户后期补录人声 | 回到第 7 道改人声或 `audio/build.mjs` → `wka soundtrack` 刷新同步点 → 重新提交 ⑥ 声轨审听 → 有字幕的回到第 10 道 `wka subtitles --force`、重新提交 ⑧ 字幕 → 按同步点驱动的画面自动重新对位：小样阶段重出小样并提交 ⑨，终审阶段 `wka final` → 重新提交原节点 |
 | 字幕返修 | ⑨ 小样或 ⑩ 终审提出字幕意见（错字、断句、位置），或已过 ⑧ 的片子要补字幕 | 回到第 10 道改 `subtitles.srt` 或字幕样式（补字幕先在 `film.json` 加 `subtitles` 再 `wka subtitles`）→ `--preflight`（已有小样就在小样画面上预检）→ 重新提交 ⑧ 字幕 → 小样阶段 `wka subtitles --preview` 后重新提交 ⑨ 小样；终审阶段 `wka final`（镜头读缓存，只重新烧录）后重新提交 ⑩ 终审 |
 | 改版返修 | ⑪ 改版审片提出副版意见 | 回到第 14 道只改竖屏分支或覆盖文件 → 重出副版接触表、小样 → 看主版不变报告 → 重新提交 ⑪。意见其实是主版内容的问题：按上面的画面 / 声音 / 字幕返修改完，重新提交 ⑩ 终审，再回到第 14 道（已签批的副版会过期，要重做） |

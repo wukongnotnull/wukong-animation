@@ -67,3 +67,19 @@ export class ShotCache {
     fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
   }
 }
+
+/** 只清当前画幅可重新生成的渲染产物；不递归清空.cache（里面有声音与恢复记录）。 */
+export function cleanRenderCache(dir) {
+  const names = ['segments', 'video-checks', 'manifest.json', 'timing.json', 'timing-proxy.json',
+    'video.mp4', 'video-proxy.mp4', 'video-subtitled.mp4', 'video-subtitled-proxy.mp4'];
+  const removed = [];
+  for (const name of names) {
+    const file = path.join(dir, name);
+    if (fs.existsSync(file)) { fs.rmSync(file, { recursive: true, force: true }); removed.push(file); }
+  }
+  for (const name of ['remotion-proxy', 'remotion-full', 'fonts']) {
+    const file = path.join(dir, 'work', name);
+    if (fs.existsSync(file)) { fs.rmSync(file, { recursive: true, force: true }); removed.push(file); }
+  }
+  return removed;
+}

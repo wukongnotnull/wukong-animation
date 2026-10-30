@@ -56,7 +56,7 @@ for (const pipeline of ['browser','remotion']) test(`${pipeline} 真渲染累计
       const r = cli('render',dir,...(proxy?['--proxy']:[]));
       assert.equal(r.status,0,r.stderr);
       const file = path.join(dir,'.cache',proxy?'video-proxy.mp4':'video.mp4');
-      const fps = proxy?5:10;
+      const fps = 10;
       assert.equal(frames(file), Math.round(1.02*fps));
       checkBoundaries(file,[0.34,0.34,0.34],fps);
       assert.ok(fs.existsSync(path.join(dir,'.cache',proxy?'timing-proxy.json':'timing.json')));

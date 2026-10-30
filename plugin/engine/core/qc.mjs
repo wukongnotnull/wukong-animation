@@ -104,7 +104,7 @@ async function runQcMeasured(filmDir, { proxy = false, fps = 10, aspect = null, 
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   if (!fs.existsSync(video)) throw new Error(`还没有渲染结果：${path.relative(ctx.filmDir, video)}。先运行 wka render${proxy ? ' --proxy' : ''}${ctx.variant.isMain ? '' : ` --aspect ${ctx.variant.aspect}`}`);
 
-  const timing = checkTiming(ctx, { proxy, log });
+  const timing = checkTiming(ctx, { proxy, fresh: true, log });
   if (!timing.ok) {
     const report = '时间轴未通过/未验证，暂停像素镜号归属：' + timing.errors.join('；');
     const issues = timing.errors.map(msg => ({ kind: '时间轴', shot: '未验证', t: null, msg }));

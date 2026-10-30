@@ -1,0 +1,111 @@
+{
+  "sample": {
+    "shots": 6,
+    "seconds": 10.9,
+    "audio": false
+  },
+  "measurements": [
+    {
+      "mode": "old",
+      "stage": "cold",
+      "exit": 0,
+      "wallSeconds": 39.245,
+      "userSeconds": 67.75,
+      "systemSeconds": 7.11,
+      "peakProcessRssBytes": 889700352,
+      "renderedShots": [
+        "6"
+      ]
+    },
+    {
+      "mode": "old",
+      "stage": "unchanged",
+      "exit": 0,
+      "wallSeconds": 8.819,
+      "userSeconds": 8.13,
+      "systemSeconds": 0.58,
+      "peakProcessRssBytes": 219004928,
+      "renderedShots": []
+    },
+    {
+      "mode": "old",
+      "stage": "one-shot-change",
+      "exit": 0,
+      "wallSeconds": 13.77,
+      "userSeconds": 15.22,
+      "systemSeconds": 1.83,
+      "peakProcessRssBytes": 735051776,
+      "renderedShots": [
+        "1"
+      ]
+    },
+    {
+      "mode": "new",
+      "stage": "cold",
+      "exit": 0,
+      "wallSeconds": 28.547,
+      "userSeconds": 37.45,
+      "systemSeconds": 3.76,
+      "peakProcessRssBytes": 1176272896,
+      "renderedShots": [
+        "6"
+      ]
+    },
+    {
+      "mode": "new",
+      "stage": "unchanged",
+      "exit": 0,
+      "wallSeconds": 0.91,
+      "userSeconds": 0.76,
+      "systemSeconds": 0.15,
+      "peakProcessRssBytes": 196132864,
+      "renderedShots": []
+    },
+    {
+      "mode": "new",
+      "stage": "one-shot-change",
+      "exit": 0,
+      "wallSeconds": 5.051,
+      "userSeconds": 5.1,
+      "systemSeconds": 1.06,
+      "peakProcessRssBytes": 827490304,
+      "renderedShots": [
+        "1"
+      ]
+    },
+    {
+      "mode": "full",
+      "stage": "cold",
+      "exit": 0,
+      "wallSeconds": 29.217,
+      "userSeconds": 37.82,
+      "systemSeconds": 3.77,
+      "peakProcessRssBytes": 1091059712,
+      "renderedShots": [
+        "6"
+      ]
+    },
+    {
+      "mode": "full",
+      "stage": "unchanged",
+      "exit": 0,
+      "wallSeconds": 1.674,
+      "userSeconds": 1.46,
+      "systemSeconds": 0.23,
+      "peakProcessRssBytes": 201146368,
+      "renderedShots": []
+    },
+    {
+      "mode": "full",
+      "stage": "one-shot-change",
+      "exit": 0,
+      "wallSeconds": 7.183,
+      "userSeconds": 6.46,
+      "systemSeconds": 1.45,
+      "peakProcessRssBytes": 630980608,
+      "renderedShots": [
+        "1"
+      ]
+    }
+  ]
+}

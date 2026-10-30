@@ -91,14 +91,26 @@ test('同一帧渲染两次逐像素一致', opts, () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('小样为半分辨率、半帧率', opts, () => {
+test('小样不放大小尺寸，低于15fps时保留原帧率', opts, () => {
   const dir = makeFilm({ s01: SHOT('#111111') });
   const r = wka('render', dir, '--proxy');
   assert.equal(r.status, 0, r.stderr);
   const seg = segments(dir).find((f) => f.endsWith('.mp4'));
   const st = probe(path.join(segDir(dir), seg));
-  assert.deepEqual([st.width, st.height, st.r_frame_rate, Number(st.nb_read_frames)], [160, 90, '5/1', 5]);
+  assert.deepEqual([st.width, st.height, st.r_frame_rate, Number(st.nb_read_frames)], [320, 180, '10/1', 10]);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('60fps工程直接只绘制15fps小样，组件看到实际输出帧率', opts, () => {
+  const dir = makeFilm({ s01: SHOT('#111111', "if(s.fps!==15 || dur!==6) throw new Error('多生成了不需要的帧');") });
+  try {
+    const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
+    film.fps=60;film.size=[1920,1080];film.shots[0].duration=0.4;fs.writeFileSync(file,JSON.stringify(film));
+    const r=wka('preview',dir);assert.equal(r.status,0,r.stderr);
+    const seg=segments(dir).find(f=>f.endsWith('.mp4')),st=probe(path.join(segDir(dir),seg));
+    assert.deepEqual([st.width,st.height,st.r_frame_rate,Number(st.nb_read_frames)],[960,540,'15/1',6]);
+    assert.equal(fs.existsSync(path.join(dir,'.cache/video-proxy.mp4')),false);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
 test('镜头组件出错：报错带镜头 id，不留半成品', opts, () => {
@@ -136,6 +148,6 @@ test('小样尺寸与 job 一致：宽高比例不同的取整也不出错', opt
   assert.equal(r.status, 0, r.stderr);
   const seg = segments(dir).find((x) => x.endsWith('.mp4'));
   const st = probe(path.join(segDir(dir), seg));
-  assert.deepEqual([st.width, st.height], [500, 282]);
+  assert.deepEqual([st.width, st.height], [960, 540]);
   fs.rmSync(dir, { recursive: true, force: true });
 });

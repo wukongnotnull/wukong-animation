@@ -48,12 +48,13 @@ test('日常预览只更新选定或变化的镜头，复用原片段，不拼�
     assert.ok(pcm.stdout.length>4000,'局部小样包含对应时段声轨');
     let peak=0;for(let i=0;i<pcm.stdout.length;i+=2) peak=Math.max(peak,Math.abs(pcm.stdout.readInt16LE(i)));
     assert.ok(peak<50,'s02对应静音段，不能错用s01的声音');
-    for(const f of ['.cache/mix.wav','.cache/approved/s01.mp4','.wka/state.json','out.mp4','audio/voice.wav']) {
-      fs.mkdirSync(path.dirname(path.join(dir,f)),{recursive:true});fs.writeFileSync(path.join(dir,f),'keep');
+    const retained={'.cache/mix.wav':'keep','.cache/approved/s01.mp4':'keep','.wka/state.json':JSON.stringify({flow:5,step:13,history:[],approved:{mainId:'keep'}}),'out.mp4':'keep','audio/voice.wav':'keep'};
+    for(const [f,bytes] of Object.entries(retained)) {
+      fs.mkdirSync(path.dirname(path.join(dir,f)),{recursive:true});fs.writeFileSync(path.join(dir,f),bytes);
     }
     run('clean',dir,'--render-cache');
     assert.equal(fs.existsSync(path.join(dir,'.cache/segments')),false);
-    for(const f of ['.cache/mix.wav','.cache/approved/s01.mp4','.wka/state.json','out.mp4','audio/voice.wav']) assert.equal(fs.readFileSync(path.join(dir,f),'utf8'),'keep');
+    for(const [f,bytes] of Object.entries(retained)) assert.equal(fs.readFileSync(path.join(dir,f),'utf8'),bytes);
     assert.notEqual(wka('clean',dir).status,0,'清理必须明确类型');
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

@@ -85,7 +85,8 @@ test('draft CLI keeps long English and punctuation as warnings, measures native 
   const dir = makeFilm(), drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-English-'));
   try {
     const file = path.join(dir, 'film.json'), film = JSON.parse(fs.readFileSync(file));
-    film.size = [180, 320]; film.subtitles = { mode: 'both', bilingual: true, style: { size: .03 } };
+    // 保留竖版和长句拟合断言；宽度留足空间，避免 Linux fallback 在 8px 字号下仍容纳不了整句。
+    film.size = [360, 640]; film.subtitles = { mode: 'both', bilingual: true, style: { size: .03 } };
     fs.writeFileSync(file, JSON.stringify(film));
     fs.writeFileSync(path.join(dir, 'subtitles.srt'), '1\n00:00:00,200 --> 00:00:00,700\n第一句\n\n2\n00:00:01,300 --> 00:00:01,700\n第二句\n');
     const pairs = [{ zh: '第一句', en: 'What you imagine can become what you make.' }, { zh: '第二句', en: 'Ready.' }];

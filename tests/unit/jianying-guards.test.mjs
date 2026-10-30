@@ -33,10 +33,25 @@ test('jianyingRunning follows WKA_JIANYING_PROCESS', () => {
   const old = process.env.WKA_JIANYING_PROCESS;
   try {
     process.env.WKA_JIANYING_PROCESS = path.basename(process.execPath);
-    assert.equal(jianyingRunning(), process.platform === 'darwin');
+    assert.equal(jianyingRunning(), ['darwin', 'linux'].includes(process.platform));
     process.env.WKA_JIANYING_PROCESS = 'wka-no-such-process';
     assert.equal(jianyingRunning(), false);
   } finally {
+    if (old === undefined) delete process.env.WKA_JIANYING_PROCESS;
+    else process.env.WKA_JIANYING_PROCESS = old;
+  }
+});
+
+test('an explicit process override also exercises the real Linux process guard', {skip: !['darwin', 'linux'].includes(process.platform) ? '需要 POSIX pgrep' : false}, () => {
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform'), old = process.env.WKA_JIANYING_PROCESS;
+  try {
+    Object.defineProperty(process, 'platform', { ...platform, value: 'linux' });
+    delete process.env.WKA_JIANYING_PROCESS;
+    assert.equal(jianyingRunning(), false, 'Linux does not assume a default desktop editor');
+    process.env.WKA_JIANYING_PROCESS = path.basename(process.execPath);
+    assert.equal(jianyingRunning(), true, 'explicit name is checked through real pgrep');
+  } finally {
+    Object.defineProperty(process, 'platform', platform);
     if (old === undefined) delete process.env.WKA_JIANYING_PROCESS;
     else process.env.WKA_JIANYING_PROCESS = old;
   }

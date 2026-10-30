@@ -6,7 +6,7 @@ import { atomicJson, readJson, treeEvidence } from './evidence.mjs';
 import { loadFilm } from './job.mjs';
 import { validate } from './validate.mjs';
 import { aspectOf } from './variants.mjs';
-import { readProgress } from './state.mjs';
+import { readProgress, assertCompatibleProgress } from './state.mjs';
 import { parseArgs } from '../bin/args.mjs';
 import { subtitleSettings,subtitleOutputs } from './subtitles.mjs';
 export { finalDeliveryReport, writeFinalDelivery } from './final-delivery.mjs';
@@ -89,6 +89,7 @@ export function deliveryReport(dir,{aspect=null,host='codex',required=[]}={}) {
   return {version:1,ok:!errors.length,aspect:aspect||ctx.variant.aspect,host,items,links:items.filter(i=>i.status==='current').map(i=>i.link).filter(Boolean),errors,decisions,hostValidation:'未实际打开的文件均为 not-tested；存在性不代表宿主播放成功'};
 }
 export function writeDelivery(dir,options={}) {
+  assertCompatibleProgress(dir);
   const report=deliveryReport(dir,options),suffix=options.aspect&&options.aspect!=='all'?'-'+options.aspect.replace(':','x'):'';
   const base=path.join(path.resolve(dir),'review','交付清单'+suffix);
   atomicJson(base+'.json',report);

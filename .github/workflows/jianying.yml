@@ -1,0 +1,57 @@
+name: jianying
+on: [push, pull_request, workflow_dispatch]
+concurrency:
+  group: jianying-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  jianying:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WKA_NO_FONT_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugin/engine/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tests/requirements-jianying.txt
+      - name: 安装视频工具、中文字体和 MediaInfo
+        timeout-minutes: 8
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk libmediainfo0v5
+      - name: 安装固定 Python 依赖
+        run: python3 -m pip install -r tests/requirements-jianying.txt
+      - name: 安装锁定 npm 依赖
+        run: npm run setup
+      - name: 缓存 Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('plugin/engine/package-lock.json') }}
+      - name: 检查并安装 Chromium 及系统依赖
+        timeout-minutes: 8
+        run: node plugin/engine/node_modules/playwright/cli.js install --with-deps chromium
+      - name: 剪映真实导出检查（不允许跳过）
+        shell: bash
+        timeout-minutes: 10
+        env:
+          WUKONG_ANIMATION_HOME: ${{ runner.temp }}/wka-home
+          WKA_JIANYING_DRAFTS: ${{ runner.temp }}/wka-drafts
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          set -o pipefail
+          npm run test:jianying 2>&1 | tee jianying-results.log
+      - name: 保留失败诊断与测试计数
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jianying-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: jianying-results.log
+          if-no-files-found: warn

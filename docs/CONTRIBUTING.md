@@ -6,11 +6,28 @@
 
 | 命令 | 做什么 |
 | --- | --- |
-| `npm run setup` | 安装引擎依赖（`plugin/engine/node_modules`） |
+| `npm run setup` | 按锁文件安装引擎依赖并登记完成凭据（`plugin/engine/node_modules`） |
 | `npm test` | 单元测试 + 集成测试 |
+| `npm run test:jianying` | 剪映必跑集合；依赖缺失、失败、取消、跳过、待办或任一文件零用例都失败 |
 | `npm run smoke` | 冒烟测试；`npm run smoke -- <风格id>` 只跑一个风格，`-- --update` 更新基准图 |
 | `npm run lint` | 结构与清单校验 + 工具包文档是否最新 |
 | `npm run catalog` | 重新生成 `plugin/catalog.json` |
+
+开发依赖统一使用 `npm run setup`；直接执行 npm ci 不会登记安装凭据。用户的 `wka setup` 使用随插件分发的同一清单与锁文件，但安装在用户目录，按锁摘要、平台、架构和 Node 主版本隔离。旧版依赖目录保留，第一次切换到新身份需要 setup；`wka check` 会显示实际来源，不能用父目录或全局同名包补齐缺失依赖。
+
+## 流程版本保护
+
+当前支持 flow 5，缺失 flow 字段按历史 flow 1 迁移；已知 1–4 的迁移规则保持不变。遇到较新版本会报 `WKA_FLOW_TOO_NEW`，非法 flow 或损坏 JSON 会报 `WKA_FLOW_INVALID`，不会写锁、缓存、签批、报告或 Git。`--force` 不绕过此检查；较新工程需升级插件后继续，损坏状态需核实备份，不能靠删掉版本字段恢复。
+
+`wka status` 在混合项目中继续显示兼容影片，逐片报告不兼容影片，并以 1 退出。`wka resume <片目录> --json` 的诊断包含 `code`、`flow`、`supportedFlow`、`stateFile`、`readonly` 和 `instruction`，不为较新工程推断下一工序。
+
+## 剪映必跑检查
+
+普通 `npm test` 保留本机缺少可选依赖时的明确跳过；独立 `jianying` workflow 在每次 push、PR 和手动触发时运行严格入口，不按文件路径过滤。使用 Node 20、Python 3.11、`tests/requirements-jianying.txt` 中固定的 pyJianYingDraft 0.3.1，以及 ffmpeg/ffprobe、中文字体、MediaInfo 和 Chromium。缓存只加速下载，每次仍执行安装与可运行性预检。
+
+本地在隔离 Python 环境安装 `python3 -m pip install -r tests/requirements-jianying.txt`，执行 `npm run setup` 和 `node plugin/engine/node_modules/playwright/cli.js install chromium`，确认系统视频工具和字体齐备后运行 `npm run test:jianying`。本地 Python 支持 3.8 及以上的 3.x；预检会验证实际版本、导入和浏览器启动。测试集合固定为剪映导出、最终交付集成及字体映射三文件，使用结构化逐例结果计数，不能通过改环境变量清空集合。
+
+Linux CI 验证真实草稿结构、媒体与签批绑定，不代表剪映桌面已打开验收；桌面打开、字幕观感仍需单独核实。workflow 必跑与 GitHub 服务端必需检查是两层设置，本次没有修改分支保护。
 
 ## 新增一种风格
 

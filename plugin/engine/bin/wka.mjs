@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // wka —— wukong-animation 引擎命令行。
-//   wka setup                         安装依赖到 ~/.wukong-animation/deps/<版本>/
+//   wka setup                         按锁文件安装依赖到用户目录（按版本和环境隔离）
 //   wka check                         检查环境与所有插槽
 //   wka list [styles|pipelines|kits|exporters]
 //   wka init-project [目录]           git 初始化工程（第 1 道工序）
@@ -27,7 +27,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
-import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
+import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
+import { dependencyInfo } from '../core/deps.mjs';
+import { setupDependencies } from '../core/setup.mjs';
 import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
 import { render, preview, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
 import { cleanRenderCache } from '../core/cache.mjs';
@@ -37,7 +39,7 @@ import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg, generatedMixPadding } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
+import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, flowDiagnostic, assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
@@ -80,6 +82,10 @@ async function cmdCheck() {
   log(`  用户目录 ${HOME}`);
   const reg = getRegistry();
   let bad = 0;
+  try {
+    const deps = dependencyInfo();
+    log(`  依赖目录 ${deps.root}（${deps.source} · ${deps.identity.slice(0, 12)}）`);
+  } catch (e) { log(`  ✗ 依赖未就绪：${e.message}`); bad++; }
   log('\n基础工具');
   const tools = [
     ['ffmpeg', hasFfmpeg(), '必需：编码与混音'],
@@ -120,18 +126,7 @@ async function cmdCheck() {
 }
 
 function cmdSetup() {
-  ensureDir(DEPS_DIR);
-  const pkg = JSON.parse(fs.readFileSync(path.join(ENGINE_ROOT, 'package.json'), 'utf8'));
-  fs.writeFileSync(
-    path.join(DEPS_DIR, 'package.json'),
-    JSON.stringify({ name: 'wukong-animation-deps', private: true, dependencies: pkg.dependencies }, null, 2)
-  );
-  log(`安装 npm 依赖到 ${DEPS_DIR} …`);
-  const npm = spawnSync('npm', ['install', '--no-audit', '--no-fund'], { cwd: DEPS_DIR, stdio: 'inherit' });
-  if (npm.status !== 0) fail('npm install 失败，请检查网络后重试');
-  log('安装 Chromium …');
-  const pw = spawnSync('npx', ['playwright', 'install', 'chromium'], { cwd: DEPS_DIR, stdio: 'inherit' });
-  if (pw.status !== 0) fail('Chromium 安装失败');
+  setupDependencies({ log });
   if (!hasFfmpeg()) log('! 还缺 ffmpeg：macOS 用 brew install ffmpeg，Ubuntu 用 sudo apt install ffmpeg');
   if (!hasGit()) log('! 推荐安装 git，用于为每个审片节点做定版存档');
   if (spawnSync('python3', ['-c', 'import fontTools'], { stdio: 'ignore' }).status !== 0) {
@@ -442,6 +437,8 @@ async function main() {
     }
     case 'resume': {
       if(!pos[0]) throw new Error('用法：wka resume <片目录> [--json]');
+      const diagnostic=flowDiagnostic(pos[0]);
+      if(diagnostic){log(opt('json')?JSON.stringify(diagnostic,null,2):diagnostic.error);process.exitCode=1;return;}
       const status=recoveryStatus(path.resolve(pos[0]));
       log(opt('json')?JSON.stringify(status,null,2):[...status.stages.map(s=>`[${s.aspect} ${s.proxy?'小样':'高清'} · ${s.stage}] ${s.status}${s.error?'：'+s.error:''}`),status.next].join('\n'));return;
     }
@@ -523,6 +520,7 @@ async function main() {
       if (!list.length) return log('还没有片子。用 wka init <片名> --style <id> 开始。');
       for (const f of list) {
         log(`${f.name}  《${f.title}》 ${f.style}`);
+        if(f.compatible===false){log(`  ${f.error}`);process.exitCode=1;continue;}
         if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
@@ -652,8 +650,14 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
 }
 async function execute(){
   const writes=['signoff','qc','still','animatic','render','preview','clean','soundtrack','subtitles','final'];
+  // 先预检真正写入的片目录，再取锁/写 active-command；--force 不跳过版本保护。
+  if(cmd==='init-project')assertProjectCompatible(pos[0]||'.');
+  else if(['brief','init'].includes(cmd)&&pos[0])assertCompatibleProgress(path.resolve(opt('dir','.'),'films',pos[0]));
+  else if(pos[0]&&(writes.includes(cmd)||['delivery','audition'].includes(cmd)||(cmd==='sfx'&&!opt('list'))))assertCompatibleProgress(pos[0]);
   const unlock=(writes.includes(cmd)||(cmd==='delivery'&&opt('final')&&opt('record')))&&pos[0]?lockProduction(pos[0]):()=>{};
-  if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
-  try{await main();}finally{unlock();}
+  try{
+    if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
+    await main();
+  }finally{unlock();}
 }
 execute().catch((e) => fail(e.message));

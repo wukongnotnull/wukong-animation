@@ -19,7 +19,6 @@ export const ENGINE_VERSION = JSON.parse(
 /** 用户数据根目录，可用环境变量 WUKONG_ANIMATION_HOME 覆盖（测试、CI 用）。 */
 export const HOME = process.env.WUKONG_ANIMATION_HOME || path.join(os.homedir(), '.wukong-animation');
 
-export const DEPS_DIR = path.join(HOME, 'deps', ENGINE_VERSION);
 export const CACHE_DIR = path.join(HOME, 'cache');
 export const FONT_CACHE_DIR = path.join(CACHE_DIR, 'fonts');
 export const SFX_CACHE_DIR = path.join(CACHE_DIR, 'sfx');

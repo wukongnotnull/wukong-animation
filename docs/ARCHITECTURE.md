@@ -31,14 +31,14 @@ wukong-animation/                          # GitHub 仓库
 ├── tests/smoke/                   # 冒烟测试 + 基准图（按平台分目录）
 ├── tests/unit/ tests/integration/ # node --test：cue 解析、AI 配音缓存、渲染失败清理
 ├── docs/                          # 画廊、本文件、贡献指南
-└── .github/workflows/             # lint · smoke
+└── .github/workflows/             # lint · smoke · agent-installation · jianying（真实导出必跑）
 ```
 
 用户机器上：
 
 ```
 ~/.wukong-animation/
-├── deps/<引擎版本>/    # npm 依赖与 Chromium（插件升级不受影响）
+├── deps/<引擎版本>/<环境与锁身份>/  # npm 锁定依赖；安装完成后才发布
 ├── cache/fonts/        # 按需下载的字体
 └── styles/<id>/        # 用户自定义风格
 

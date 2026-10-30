@@ -7,6 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 
 test('小样限制为长边960/15fps，保持画幅、不放大，终稿原规格', () => {
   for (const [size, fps, expected] of [
@@ -63,4 +65,34 @@ test('局部Remotion入口沿用整片分配的帧，不重新舍入短镜头', 
   const job={film:{fps:30},fps:15,designW:320,designH:180,shots:[{id:'s02',path:'/s02.tsx',duration:0.02,start:0.3,frames:1}]};
   const shots=JSON.parse(buildEntry(job,'').match(/const SHOTS = (.*);\n/)[1]);
   assert.equal(shots[0].frames,1);
+});
+
+test('checkedVideo hashes the actual media twice using bounded reads around a fresh full inspection',async t=>{
+  const {checkedVideo}=await import('../../plugin/engine/core/timing.mjs');
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-video-hash-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const file=path.join(dir,'blue.mp4');
+  const made=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=blue:s=32x18:r=15','-frames:v','9',file]);assert.equal(made.status,0,String(made.stderr));
+  const read=fs.readFileSync,open=fs.openSync,chunk=fs.readSync,close=fs.closeSync,fds=new Set();let wholeReads=0,bytes=0;
+  t.mock.method(fs,'readFileSync',function(name,...args){if(name===file)wholeReads++;return read.call(this,name,...args);});
+  t.mock.method(fs,'openSync',function(name,...args){const fd=open.call(this,name,...args);if(name===file)fds.add(fd);return fd;});
+  t.mock.method(fs,'readSync',function(fd,buffer,offset,length,position){if(fds.has(fd))assert.ok(buffer.length<=1024*1024&&length<=1024*1024);const n=chunk.call(this,fd,buffer,offset,length,position);if(fds.has(fd))bytes+=n;return n;});
+  t.mock.method(fs,'closeSync',function(fd){fds.delete(fd);return close.call(this,fd);});
+  const result=checkedVideo(file,{fps:15,frames:9},{cacheDir:dir,fresh:true});
+  assert.equal(result.ok,true,result.errors.join(';'));assert.equal(result.reused,false);
+  assert.equal(wholeReads,0);assert.equal(bytes,fs.statSync(file).size*2,'pre-inspection and post-inspection content reads must remain independent');assert.equal(fds.size,0);
+});
+
+test('changing media after inspection cannot persist a successful proof',async t=>{
+  const {checkedVideo}=await import('../../plugin/engine/core/timing.mjs');
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-video-mutation-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const file=path.join(dir,'green.mp4');
+  const made=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=green:s=32x18:r=15','-frames:v','7',file]);assert.equal(made.status,0,String(made.stderr));
+  const spawn=cp.spawnSync;let inspected=false;
+  t.mock.method(cp,'spawnSync',function(command,args,...rest){const result=spawn.call(this,command,args,...rest);if(command==='ffprobe'&&args.includes('-show_frames')){inspected=true;fs.appendFileSync(file,'changed after inspection');}return result;});
+  syncBuiltinESMExports();
+  try {
+    const result=checkedVideo(file,{fps:15,frames:7},{cacheDir:dir,fresh:true});
+    assert.equal(inspected,true);assert.equal(result.ok,false);assert.match(result.errors.join(';'),/检查期间文件发生变化/);
+    assert.equal(fs.existsSync(path.join(dir,'video-checks')),false);
+  } finally {t.mock.restoreAll();syncBuiltinESMExports();}
 });

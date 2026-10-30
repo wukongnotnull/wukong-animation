@@ -2,9 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { hashFile } from './file-hash.mjs';
 
 export const digest = value => crypto.createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');
-export const fileDigest = file => digest(fs.readFileSync(file));
+export const fileDigest = file => hashFile(file);
 export function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file,'utf8')); } catch { return fallback; }
 }

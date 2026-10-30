@@ -43,14 +43,58 @@ const FLOW4_SWAP = { 10: 11, 11: 10 };
 
 const fileOf = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'state.json');
 
+function flowError(code, flow, stateFile = null) {
+  const instruction = code === 'WKA_FLOW_TOO_NEW'
+    ? '请升级到支持此流程的插件，再继续制作。'
+    : '请核实进度文件并从可靠备份恢复；不会自动修复或覆盖。';
+  return Object.assign(new Error(`${code}：工程流程 ${JSON.stringify(flow)}，当前支持 ${FLOW}${stateFile ? `；${stateFile}` : ''}。${instruction}`),
+    { code, flow, supportedFlow: FLOW, stateFile, readonly: true, instruction });
+}
+
+function assertFlow(st, stateFile = null) {
+  if (!st || typeof st !== 'object' || Array.isArray(st)) throw flowError('WKA_FLOW_INVALID', null, stateFile);
+  const flow = Object.hasOwn(st, 'flow') ? st.flow : 1;
+  if (!Number.isSafeInteger(flow) || flow < 1) throw flowError('WKA_FLOW_INVALID', flow, stateFile);
+  if (flow > FLOW) throw flowError('WKA_FLOW_TOO_NEW', flow, stateFile);
+  return flow;
+}
+
+/** 无副作用预检：缺文件是新片，缺 flow 是历史 1；其他读取失败不会当作新片。 */
+export function assertCompatibleProgress(filmDir) {
+  const file = fileOf(filmDir);
+  let raw;
+  try { raw = fs.readFileSync(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; }
+  let st;
+  try { st = JSON.parse(raw); } catch { throw flowError('WKA_FLOW_INVALID', null, file); }
+  assertFlow(st, file);
+  return st;
+}
+
+/** 只将版本错误转成诊断；权限等 I/O 故障仍向上传递。 */
+export function flowDiagnostic(filmDir) {
+  try { assertCompatibleProgress(filmDir); return null; } catch (e) {
+    if (!['WKA_FLOW_TOO_NEW', 'WKA_FLOW_INVALID'].includes(e.code)) throw e;
+    return { compatible: false, code: e.code, flow: e.flow, supportedFlow: e.supportedFlow,
+      stateFile: e.stateFile, readonly: true, error: e.message, instruction: e.instruction };
+  }
+}
+
+export function assertProjectCompatible(projectDir) {
+  const films = path.resolve(projectDir, 'films');
+  if (!fs.existsSync(films)) return;
+  for (const entry of fs.readdirSync(films, { withFileTypes: true })) {
+    if (entry.isDirectory()) assertCompatibleProgress(path.join(films, entry.name));
+  }
+}
+
 /**
  * 把旧流程的工序编号、节点标签换成新的。纯函数，不改入参。
  * @returns {{state: object, migrated: boolean}}
  */
 export function migrateProgress(st) {
+  const flow = assertFlow(st);
   if (st.flow === FLOW) return { state: st, migrated: false };
   // 按 flow 逐段平移编号：flow 1 → 2 第 11 道起 +1；flow 2 → 3 只换节点标签；flow 3 → 4 第 14 道起 +1；flow 4 → 5 第 10、11 道互换
-  const flow = st.flow || 1;
   const shift = (step) => {
     const s2 = flow < 2 && step >= FLOW1_SHIFT_FROM ? step + 1 : step;
     return flow < 4 && s2 >= FLOW3_SHIFT_FROM ? s2 + 1 : s2;
@@ -67,6 +111,7 @@ export function migrateProgress(st) {
 }
 
 function writeState(filmDir, st) {
+  assertCompatibleProgress(filmDir);
   const f = fileOf(filmDir);
   fs.mkdirSync(path.dirname(f), { recursive: true });
   atomicJson(f,st);
@@ -74,9 +119,9 @@ function writeState(filmDir, st) {
 
 /** 读进度；旧流程的进度会换算成新编号并写回，导演直接读文件时看到的也是新编号。 */
 function loadProgress(filmDir) {
-  const f = fileOf(filmDir);
-  if (!fs.existsSync(f)) return { state: { flow: FLOW, step: 0, history: [] }, migrated: false };
-  const r = migrateProgress(JSON.parse(fs.readFileSync(f, 'utf8')));
+  const st = assertCompatibleProgress(filmDir);
+  if (st === null) return { state: { flow: FLOW, step: 0, history: [] }, migrated: false };
+  const r = migrateProgress(st);
   if (r.migrated) writeState(filmDir, r.state);
   return r;
 }
@@ -145,6 +190,8 @@ export function listProductions(projectDir = '.') {
     .filter((d) => d.isDirectory() && ['film.json', 'brief.md'].some((f) => fs.existsSync(path.join(films, d.name, f))))
     .map((d) => {
       const dir = path.join(films, d.name);
+      const diagnostic = flowDiagnostic(dir);
+      if (diagnostic) return { name: d.name, dir, title: d.name, style: '未读取', ...diagnostic };
       const filmFile = path.join(dir, 'film.json');
       const film = fs.existsSync(filmFile) ? JSON.parse(fs.readFileSync(filmFile, 'utf8')) : { title: d.name, style: '未定' };
       const { state: st, migrated } = loadProgress(dir);

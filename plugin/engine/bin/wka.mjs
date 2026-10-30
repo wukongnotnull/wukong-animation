@@ -39,7 +39,7 @@ import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg, generatedMixPadding } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
+import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, flowDiagnostic } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
@@ -437,6 +437,8 @@ async function main() {
     }
     case 'resume': {
       if(!pos[0]) throw new Error('用法：wka resume <片目录> [--json]');
+      const diagnostic=flowDiagnostic(pos[0]);
+      if(diagnostic){log(opt('json')?JSON.stringify(diagnostic,null,2):diagnostic.error);process.exitCode=1;return;}
       const status=recoveryStatus(path.resolve(pos[0]));
       log(opt('json')?JSON.stringify(status,null,2):[...status.stages.map(s=>`[${s.aspect} ${s.proxy?'小样':'高清'} · ${s.stage}] ${s.status}${s.error?'：'+s.error:''}`),status.next].join('\n'));return;
     }
@@ -518,6 +520,7 @@ async function main() {
       if (!list.length) return log('还没有片子。用 wka init <片名> --style <id> 开始。');
       for (const f of list) {
         log(`${f.name}  《${f.title}》 ${f.style}`);
+        if(f.compatible===false){log(`  ${f.error}`);process.exitCode=1;continue;}
         if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);

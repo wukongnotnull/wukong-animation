@@ -233,3 +233,56 @@ test('a flow 4 film stopped at the proxy goes back to the subtitles step', () =>
   assert.equal(state.history[0].gate, '⑨小样');
   assert.equal(migrateProgress({ flow: 4, step: 13, history: [] }).state.step, 13);
 });
+
+test('future flows are never reinterpreted or written, including approval retries', t => {
+  const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
+  for (const flow of [6, 99]) {
+    const st = { flow, step: 60, history: [{ step: 60, label: 'future', approvalId: 'same' }], approved: { mainId: 'keep' }, extra: ['keep'] };
+    const before = JSON.stringify(st, null, 3); fs.writeFileSync(stateFile(film), before);
+    for (const run of [() => migrateProgress(st), () => readProgress(film), () => recordProgress(film, { step: 1 }),
+      () => stateApi.recordApproval(film, { main: {} }), () => stateApi.commitSignoff(film, { id: 'same', step: 1 })]) {
+      assert.throws(run, { code: 'WKA_FLOW_TOO_NEW', flow, supportedFlow: 5 });
+      assert.equal(JSON.stringify(st, null, 3), before);
+      assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
+    }
+  }
+});
+
+test('explicit invalid flows and corrupt states fail; only absent state/flow is historical', t => {
+  const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  assert.deepEqual(readProgress(film), { flow: 5, step: 0, history: [] });
+  assert.equal(fs.existsSync(stateFile(film)), false);
+  fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
+  for (const flow of [null, 0, -1, '5', '6', 1.5, true, [], {}]) {
+    const raw = JSON.stringify({ flow, history: [] }); fs.writeFileSync(stateFile(film), raw);
+    assert.throws(() => readProgress(film), { code: 'WKA_FLOW_INVALID', stateFile: stateFile(film) });
+    assert.equal(fs.readFileSync(stateFile(film), 'utf8'), raw);
+  }
+  for (const raw of ['{broken', 'null', '[]', '42']) {
+    fs.writeFileSync(stateFile(film), raw);
+    assert.throws(() => readProgress(film), { code: 'WKA_FLOW_INVALID' });
+    assert.equal(fs.readFileSync(stateFile(film), 'utf8'), raw);
+  }
+  fs.rmSync(stateFile(film)); fs.mkdirSync(stateFile(film));
+  assert.throws(() => readProgress(film), { code: 'EISDIR' });
+});
+
+test('compatibility inspection is read only for legacy state and mixed lists isolate future films', t => {
+  const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  writeFlow1(film, 12, OLD_HISTORY);
+  const before = fs.readFileSync(stateFile(film), 'utf8');
+  assert.equal(typeof stateApi.assertCompatibleProgress, 'function');
+  stateApi.assertCompatibleProgress(film);
+  assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
+  const future = path.join(dir, 'films', 'future'); fs.mkdirSync(path.join(future, '.wka'), { recursive: true });
+  fs.writeFileSync(path.join(future, 'brief.md'), 'future brief');
+  const raw = '{ "flow": 6, "history": [{"step": 60}] }'; fs.writeFileSync(stateFile(future), raw);
+  const list = listProductions(dir), incompatible = list.find(f => f.name === 'future');
+  assert.equal(list.find(f => f.name === '寒江').next, 14);
+  assert.equal(incompatible.compatible, false);
+  assert.equal(incompatible.code, 'WKA_FLOW_TOO_NEW');
+  assert.equal(incompatible.readonly, true);
+  for (const key of ['next', 'nextLabel', 'step', 'last', 'staleVariants']) assert.equal(key in incompatible, false);
+  assert.equal(fs.readFileSync(stateFile(future), 'utf8'), raw);
+});

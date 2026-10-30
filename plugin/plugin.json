@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "wukong-animation",
-  "version": "0.19.2",
+  "version": "0.19.3",
   "description": "代码七十二变：动画风格库与本地制作流程，用代码逐帧渲染短片，不用视频生成模型。",
   "author": { "name": "悟空非空也" },
   "homepage": "https://github.com/wukongnotnull/wukong-animation",

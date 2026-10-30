@@ -9,12 +9,32 @@ const EN_SUBTITLE_TRACK = '英文字幕';
 /** 字幕行高（字号的倍数），与烧录层一致 */
 const LINE_HEIGHT = 1.3;
 
-// 以下两个换算在剪映 11.6 里对着烧录字幕校过：字号 5.2 ≈ 画高 5%；描边 40 ≈ 字号 12% 的烧录描边
-const SIZE_PER_HEIGHT = 5.2 / 0.05;
+// 剪映11.6/pyJianYingDraft0.3.1 原生探针：字号按画宽换算。
+// 1920宽每单位约11.3778px，1080宽约6.4px；横/竖/方形及两档字号证据见交付修复报告。
+const NATIVE_SIZE_WIDTH = 168.75;
 const BORDER_PER_STROKE = 40 / 0.12;
 
 const us = (sec) => Math.round(sec * US);
 const linearVolume = (db = 0) => (db ? 10 ** (db / 20) : 1);
+
+/** 输入已由渲染器量化到帧；共享帧切点只转换一次，不独立舍入镜长。 */
+function videoSegments(timeline) {
+  const { fps } = timeline;
+  if (!Number.isInteger(fps) || fps < 1 || fps > 120) throw new Error('草稿时间轴帧率无效');
+  let endFrame = 0;
+  const video = timeline.shots.map(s => {
+    const start = Math.round(s.start * fps), frames = Math.round(s.duration * fps);
+    if (!Number.isFinite(s.start) || !Number.isFinite(s.duration) || frames <= 0 || start !== endFrame ||
+        Math.abs(s.start * fps - start) > 1e-6 || Math.abs(s.duration * fps - frames) > 1e-6) {
+      throw new Error(`草稿时间轴镜头 ${s.id}：重叠、缺口、逆序或无效帧区间`);
+    }
+    endFrame = start + frames;
+    const startUs = us(start / fps), endUs = us(endFrame / fps);
+    return { name: s.id, file: s.file, start: startUs, duration: endUs - startUs };
+  });
+  if (!Number.isFinite(timeline.duration) || Math.abs(timeline.duration * fps - endFrame) > 1e-6) throw new Error('草稿时间轴终点与全片时长不一致');
+  return video;
+}
 
 /** 同名轨道在剪映里会冲突：第二个起加序号。 */
 function uniqueName(name, taken) {
@@ -75,7 +95,7 @@ function audioTracks(tracks, duration) {
  */
 function subtitleTracks(voices, srt, base = SUBTITLE_TRACK) {
   const subs = srt
-    ? srt.map((s) => ({ text: s.text, start: us(s.start), duration: us(s.end - s.start), estimated: false }))
+    ? srt.map((s) => ({ text: s.text, start: us(s.start), duration: us(s.end - s.start), estimated: false, ...(s.draftStyle ? {style:s.draftStyle} : {}) }))
     : voices.map((v) => ({ text: v.text, start: us(v.at), duration: us(v.duration), estimated: !!v.estimated }));
   return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(base, i), segments }));
 }
@@ -103,26 +123,30 @@ function parseColor(css) {
  * 字幕样式（subtitle-layer.mjs subtitleStyle() 补齐缺省值后的 style.json subtitles 块）→ 剪映文字参数。
  * size、bottom 是画高的比例；transformY 是字幕中心的纵向位移，单位半个画高，向下为负。
  */
-function jianyingSubtitleStyle(s, { font = s?.font, lift = 0 } = {}) {
+function jianyingSubtitleStyle(s, { font = s?.font, lift = 0, canvas = [1920,1080], measurement, lang = 'zh' } = {}) {
   if (!s) return null;
   const stroke = parseColor(s.stroke.color);
+  const [W,H] = canvas;
+  const rect = measurement?.rects.find(r=>r.lang===lang);
+  const px = measurement ? measurement[lang] : Math.round(s.size * H);
   return {
     // 对照表里没有或值为 null：不设字体，用剪映默认字体
     font: JIANYING_FONTS[font.family] || null,
-    size: round(s.size * SIZE_PER_HEIGHT, 2),
+    size: round(px * NATIVE_SIZE_WIDTH / W),
     ...parseColor(s.color),
     border: { ...stroke, width: round(Math.min(100, s.stroke.width * BORDER_PER_STROKE), 2) },
     // lift：往上挪几行（双语时中文在英文上面一行）
-    transformY: round(-(1 - s.bottom - s.size / 2 - 0.5) * 2 + lift * s.size * LINE_HEIGHT * 2),
+    transformY: rect ? round(1 - 2 * (rect.y + rect.h / 2) / H) : round(-(1 - s.bottom - s.size / 2 - 0.5) * 2 + lift * s.size * LINE_HEIGHT * 2),
+    ...(rect ? {transformX:round(2 * (rect.x + rect.w / 2) / W - 1)} : {}),
   };
 }
 
 /** 双语：中文轨上移一行，另起「英文字幕」轨在原来的位置；每条轨带自己的样式。单语时原样返回。 */
-function bilingualTracks(tracks, srt, style) {
+function bilingualTracks(tracks, srt, style, canvas) {
   if (!srt?.some((s) => s.en)) return tracks;
-  const en = subtitleTracks([], srt.map((s) => ({ ...s, text: s.en || '' })), EN_SUBTITLE_TRACK);
-  const zhStyle = jianyingSubtitleStyle(style, { lift: 1 });
-  const enStyle = jianyingSubtitleStyle(style, { font: style?.font_en || style?.font });
+  const en = subtitleTracks([], srt.map((s) => ({ ...s, text: s.en || '', draftStyle:s.draftEnglishStyle })), EN_SUBTITLE_TRACK);
+  const zhStyle = jianyingSubtitleStyle(style, { lift: 1, canvas });
+  const enStyle = jianyingSubtitleStyle(style, { font: style?.font_en || style?.font, canvas });
   return [...tracks.map((t) => ({ ...t, style: zhStyle })), ...en.map((t) => ({ ...t, style: enStyle }))];
 }
 
@@ -132,14 +156,25 @@ function bilingualTracks(tracks, srt, style) {
  */
 export function buildDraftPlan(timeline) {
   const [width, height] = timeline.size;
+  let subs = timeline.subtitles;
+  if (timeline.subtitleMeasurements !== undefined) {
+    const ms = timeline.subtitleMeasurements;
+    if (!subs || !timeline.subtitleStyle || ms.length !== subs.length) throw new Error('草稿字幕测量条数与当前字幕不一致');
+    subs = subs.map((s,i)=>{
+      const m = ms[i], langs = s.en ? ['zh','en'] : ['zh'];
+      if (!m || m.index !== s.index || !m.loaded || langs.some(lang=>!Number.isFinite(m[lang]) || m[lang]<=0 || !m.rects?.some(r=>r.lang===lang && [r.x,r.y,r.w,r.h].every(Number.isFinite) && r.w>0 && r.h>0))) throw new Error(`第 ${s.index} 条草稿字幕测量缺失或无效`);
+      return {...s,draftStyle:jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size,measurement:m}),
+        ...(s.en?{draftEnglishStyle:jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size,measurement:m,lang:'en',font:timeline.subtitleStyle.font_en || timeline.subtitleStyle.font})}:{})};
+    });
+  }
   return {
     name: timeline.title,
     width,
     height,
     fps: timeline.fps,
-    video: timeline.shots.map((s) => ({ name: s.id, file: s.file, start: us(s.start), duration: us(s.duration) })),
+    video: videoSegments(timeline),
     audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
-    subtitleTracks: bilingualTracks(subtitleTracks(timeline.voices || [], timeline.subtitles), timeline.subtitles, timeline.subtitleStyle),
-    subtitleStyle: jianyingSubtitleStyle(timeline.subtitleStyle),
+    subtitleTracks: bilingualTracks(subtitleTracks(timeline.voices || [], subs), subs, timeline.subtitleStyle, timeline.size),
+    subtitleStyle: jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size}),
   };
 }

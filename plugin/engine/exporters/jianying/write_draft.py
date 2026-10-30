@@ -41,7 +41,7 @@ def text_options(style: dict | None) -> dict:
     border = style["border"]
     options = {
         "style": TextStyle(size=style["size"], color=tuple(style["color"]), alpha=style["alpha"]),
-        "clip_settings": ClipSettings(transform_y=style["transformY"]),
+        "clip_settings": ClipSettings(transform_x=style.get("transformX", 0), transform_y=style["transformY"]),
     }
     if border["width"] > 0 and border["alpha"] > 0:
         options["border"] = TextBorder(color=tuple(border["color"]), alpha=border["alpha"], width=border["width"])
@@ -58,8 +58,11 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
     script.append_track(TrackSpec(TrackType.video))
     for v in plan["video"]:
         material = draft.VideoMaterial(unique_copy(v["file"], mdir, f"{v['name']}.mp4", taken))
-        duration = min(v["duration"], material.duration)
-        add(script, draft.VideoSegment(material, Timerange(v["start"], duration)), None, f"镜头 {v['name']} ")
+        if material.duration + 1 < v["duration"]:
+            raise ValueError(f"镜头 {v['name']} 素材时长不足：{material.duration}us，期望 {v['duration']}us")
+        # 素材容器与共享切点的微秒取整最多相差1us；保持目标区间，不能静默裁短时间轴。
+        source = Timerange(0, min(v["duration"], material.duration))
+        add(script, draft.VideoSegment(material, Timerange(v["start"], v["duration"]), source_timerange=source), None, f"镜头 {v['name']} ")
 
     materials = {}  # 同一文件切成多段时只复制、登记一次素材
     for t in plan["audioTracks"]:
@@ -76,9 +79,9 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
 
     for t in plan["subtitleTracks"]:
         # 双语时每条字幕轨带自己的样式（中文上移一行、英文用英文字体）
-        options = text_options(t.get("style") or plan.get("subtitleStyle"))
         script.append_track(TrackSpec(TrackType.text, t["name"]))
         for s in t["segments"]:
+            options = text_options(s.get("style") or t.get("style") or plan.get("subtitleStyle"))
             add(script, draft.TextSegment(s["text"], Timerange(s["start"], s["duration"]), **options), t["name"], f"字幕「{s['text']}」")
 
 

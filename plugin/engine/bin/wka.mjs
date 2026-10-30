@@ -39,7 +39,7 @@ import { runQc } from '../core/qc.mjs';
 import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
-import { buildSubtitles, formatSrt, parseSrt, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
+import { buildSubtitles, formatSrt, parseSrt, attachEnglish, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { parseArgs } from './args.mjs';
 import { runStage, lockProduction, recoveryStatus,rememberArtifacts,implementationState } from '../core/operations.mjs';
@@ -371,13 +371,14 @@ async function cmdFinal(filmDir, o) {
   if(draftOnly&&subs) {
     subs=readSubtitles(ctx,settings,{missing:`还没有 ${settings.file}，请先制作字幕`});
     if(settings.bilingual){
-      const pairs=readEnglish(ctx,settings),errors=checkEnglish(pairs||[],{maxChars:settings.maxCharsEn});
-      if(!pairs||pairs.length!==subs.length||pairs.some((p,i)=>!p.en?.trim()||p.zh!==subs[i].text)||errors.length) throw new Error('草稿双语字幕缺失或与中文字幕不一致');
-      subs=subs.map((s,i)=>({...s,en:pairs[i].en}));
+      const pairs=readEnglish(ctx,settings);
+      if(!pairs) throw new Error(`草稿双语字幕缺失：${settings.enFile}`);
+      subs=attachEnglish(subs,pairs);
+      for(const warning of checkEnglish(pairs,{maxChars:settings.maxCharsEn})) log('  ! '+warning);
     }
   }
-  const checked = subs&&!draftOnly ? await preflightSubtitles(ctx,{proxy:!!o.proxy,video,subs,log}) : null;
-  if(checked)registerSubtitleEvidence(ctx,checked,!!o.proxy);
+  const checked = subs ? await preflightSubtitles(ctx,{proxy:!!o.proxy,video,subs,layout:draftOnly,log}) : null;
+  if(checked)registerSubtitleEvidence(ctx,checked,!!o.proxy,draftOnly);
   if(checked) subs=checked.subs;
   // 画面类成片按字幕方式出烧录版 / 无字幕版，文件名标明有没有字幕；剪映草稿只导一份
   const visual = formats.filter((f) => f !== 'jianying');
@@ -401,7 +402,7 @@ async function cmdFinal(filmDir, o) {
     registerReview(filmDir,'draft-audio-difference',difference.files,o.aspect);
     log(`[${ctx.variant.aspect} 高清 · draft-export] 写入前说明：${difference.report.note}\n${difference.files[0]}`);
     // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
-    const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs } : {}) };
+    const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices, subtitleStyle: subtitleStyle(ctx.style), ...(subs ? { subtitles: subs, subtitleMeasurements: checked.report.measurements } : {}) };
     outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force, log })));
   }
   if (names.srt !== null && !o.proxy && !draftOnly) {

@@ -14,7 +14,7 @@ test('missingJianyingFonts reports families with no entry; null entries count as
 
 test('the draft plan uses the map for subtitle fonts', () => {
   const style = { font: { family: 'Zhi Mang Xing' }, size: 0.05, color: '#2B2B2B', stroke: { color: '#F2EDE3', width: 0.12 }, bottom: 0.1 };
-  const plan = buildDraftPlan({ title: 't', size: [1920, 1080], fps: 30, duration: 1, shots: [], tracks: [], voices: [], subtitleStyle: style });
+  const plan = buildDraftPlan({ title: 't', size: [1920, 1080], fps: 30, duration: 1, shots: [{id:'s01',file:'s01.mp4',start:0,duration:1}], tracks: [], voices: [], subtitleStyle: style });
   assert.equal(plan.subtitleStyle.font, '毛笔行楷');
 });
 

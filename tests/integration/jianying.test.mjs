@@ -67,6 +67,66 @@ const wkaWith = (env, drafts, ...args) =>
 
 const byType = (draft, type) => draft.tracks.filter((t) => t.type === type);
 
+test('writer rejects a genuinely short video instead of silently leaving a timeline gap', opts, () => {
+  const dir = makeFilm(), drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-short-'));
+  try {
+    const media = path.join(dir, 'short.mp4');
+    const made = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=s=320x180:r=30', '-t', '1', media]);
+    assert.equal(made.status, 0, String(made.stderr));
+    const plan = { name: 'short', width: 320, height: 180, fps: 30, video: [{ name: 's01', file: media, start: 0, duration: 2e6 }], audioTracks: [], subtitleTracks: [] };
+    const file = path.join(dir, 'plan.json'); fs.writeFileSync(file, JSON.stringify(plan));
+    const r = spawnSync('python3', [path.join(ROOT, 'plugin/engine/exporters/jianying/write_draft.py'), file, drafts], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0); assert.match(r.stderr, /s01.*素材.*不足/);
+    assert.deepEqual(fs.readdirSync(drafts), []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(drafts, { recursive: true, force: true }); }
+});
+
+test('draft CLI keeps long English and punctuation as warnings, measures native layout and rejects mismatched text', opts, () => {
+  const dir = makeFilm(), drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-English-'));
+  try {
+    const file = path.join(dir, 'film.json'), film = JSON.parse(fs.readFileSync(file));
+    film.size = [180, 320]; film.subtitles = { mode: 'both', bilingual: true, style: { size: .03 } };
+    fs.writeFileSync(file, JSON.stringify(film));
+    fs.writeFileSync(path.join(dir, 'subtitles.srt'), '1\n00:00:00,200 --> 00:00:00,700\n第一句\n\n2\n00:00:01,300 --> 00:00:01,700\n第二句\n');
+    const pairs = [{ zh: '第一句', en: 'What you imagine can become what you make.' }, { zh: '第二句', en: 'Ready.' }];
+    const en = path.join(dir, 'subtitles.en.json'); fs.writeFileSync(en, JSON.stringify(pairs));
+    const r = wka(drafts, 'final', dir, '--formats', 'jianying');
+    assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /超过 28/); assert.match(r.stdout, /句号/);
+    const draft = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it/draft_info.json')));
+    assert.ok(draft.materials.texts.some(t => JSON.parse(t.content).text === pairs[0].en));
+    const texts = draft.materials.texts.map(t=>JSON.parse(t.content));
+    const sizes = pairs.map(p=>texts.find(t=>t.text===p.en).styles[0].size);
+    assert.ok(sizes[0] < sizes[1], 'long English uses its fitted per-segment size in Python output');
+    assert.equal(fs.existsSync(path.join(dir, '.cache/video.mp4')), false);
+    const report = JSON.parse(fs.readFileSync(path.join(dir, 'review/字幕预检-版式.json')));
+    assert.deepEqual([report.W, report.H], film.size); assert.equal(report.measurements.length, 2);
+    pairs[0].zh = '错配'; fs.writeFileSync(en, JSON.stringify(pairs));
+    const bad = wka(drafts, 'final', dir, '--formats', 'jianying'); assert.notEqual(bad.status, 0); assert.match(bad.stderr, /第 1 条.*中文/);
+    pairs[0].zh = '第一句'; pairs[0].en = ''; fs.writeFileSync(en, JSON.stringify(pairs));
+    const blank = wka(drafts, 'final', dir, '--formats', 'jianying'); assert.notEqual(blank.status, 0); assert.match(blank.stderr, /英文没填/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(drafts, { recursive: true, force: true }); }
+});
+
+test('107-shot 30fps main and portrait exports have contiguous actual draft cuts', opts, () => {
+  const dir=makeFilm(),drafts=fs.mkdtempSync(path.join(os.tmpdir(),'wka-107-drafts-'));
+  try {
+    const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
+    film.fps=30; film.audio={}; film.shots=Array.from({length:107},(_,i)=>({id:`s${String(i+1).padStart(2,'0')}`,file:'shots/s01.js',duration:(3+i%5)/30}));
+    for(const size of [[160,90],[90,160]]) {
+      film.size=size;film.title=`cuts-${size.join('x')}`;fs.writeFileSync(file,JSON.stringify(film));
+      const r=wka(drafts,'final',dir,'--formats','jianying');assert.equal(r.status,0,r.stderr);
+      const draft=JSON.parse(fs.readFileSync(path.join(drafts,film.title,'draft_info.json')));
+      const cuts=byType(draft,'video')[0].segments.map(s=>s.target_timerange);assert.equal(cuts.length,107);
+      let frames=0;
+      for(let i=0;i<cuts.length;i++){
+        assert.equal(cuts[i].start,Math.round(frames/30*1e6));frames+=3+i%5;
+        assert.equal(cuts[i].start+cuts[i].duration,Math.round(frames/30*1e6));
+      }
+      assert.equal(fs.existsSync(path.join(dir,'.cache/video.mp4')),false);
+    }
+  } finally {fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(drafts,{recursive:true,force:true});}
+});
+
 test('纯草稿不拼全片，重复/CLI登记前中断不重导，用户编辑后不覆盖',opts,()=>{
   const dir=makeFilm(),drafts=fs.mkdtempSync(path.join(os.tmpdir(),'wka-receipts-'));
   try{

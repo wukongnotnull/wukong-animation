@@ -1,0 +1,236 @@
+{
+  "host": "Jianying 11.6.0 macOS",
+  "library": "pyJianYingDraft 0.3.1",
+  "date": "2026-10-30 Asia/Shanghai",
+  "formula": "nativeSize = requestedPx * 168.75 / canvasWidth",
+  "nativeProbes": [
+    {
+      "canvas": [
+        1920,
+        1080
+      ],
+      "sizes": [
+        8,
+        16
+      ],
+      "screenInkHeights": [
+        63,
+        126
+      ],
+      "screenCanvasHeight": 833
+    },
+    {
+      "canvas": [
+        1080,
+        1920
+      ],
+      "sizes": [
+        8,
+        16
+      ],
+      "screenInkHeights": [
+        24,
+        48
+      ],
+      "screenCanvasHeight": 1001
+    },
+    {
+      "canvas": [
+        1920,
+        1920
+      ],
+      "sizes": [
+        8,
+        16
+      ],
+      "screenInkHeights": [
+        42,
+        85
+      ],
+      "screenCanvasHeight": 1001
+    }
+  ],
+  "measurement": "white glyph pixels RGB > 200; reference alpha > 200; normalize screenshot height by visible canvas height; excludes stroke",
+  "fonts": [
+    "Source Han Sans CN Medium",
+    "Metropolis Medium"
+  ],
+  "samples": [
+    {
+      "canvas": [
+        1920,
+        1080
+      ],
+      "requestedPx": 32,
+      "sourceInk": [
+        {
+          "x": 898,
+          "y": 838,
+          "w": 125,
+          "h": 29
+        },
+        {
+          "x": 843,
+          "y": 880,
+          "w": 236,
+          "h": 23
+        }
+      ],
+      "nativeScreenInk": [
+        {
+          "x": 695,
+          "y": 647,
+          "w": 92,
+          "h": 21
+        },
+        {
+          "x": 656,
+          "y": 680,
+          "w": 171,
+          "h": 19
+        }
+      ],
+      "scale": 0.7712962962962963,
+      "heightErrorPercent": [
+        6.11,
+        7.1
+      ],
+      "reopenedIdentical": true,
+      "beforeSha256": "e9cb044ca63d822861ccf37cab4488ae6b8cda59e7248227b19acc8e235cbbf6",
+      "reopenPixelEquality": true,
+      "sample": "crop-landscape-32.png"
+    },
+    {
+      "canvas": [
+        1920,
+        1080
+      ],
+      "requestedPx": 64,
+      "sourceInk": [
+        {
+          "x": 836,
+          "y": 758,
+          "w": 249,
+          "h": 60
+        },
+        {
+          "x": 725,
+          "y": 844,
+          "w": 474,
+          "h": 48
+        }
+      ],
+      "nativeScreenInk": [
+        {
+          "x": 648,
+          "y": 586,
+          "w": 187,
+          "h": 44
+        },
+        {
+          "x": 571,
+          "y": 652,
+          "w": 344,
+          "h": 39
+        }
+      ],
+      "scale": 0.7712962962962963,
+      "heightErrorPercent": [
+        4.92,
+        5.34
+      ],
+      "reopenedIdentical": true,
+      "beforeSha256": "7b78d5a547a04e4e33aab40982c25df389083e99a0059bbe1864afeb8652305f",
+      "reopenPixelEquality": true,
+      "sample": "crop-landscape-64.png"
+    },
+    {
+      "canvas": [
+        1080,
+        1920
+      ],
+      "requestedPx": 32,
+      "sourceInk": [
+        {
+          "x": 478,
+          "y": 1552,
+          "w": 125,
+          "h": 29
+        },
+        {
+          "x": 423,
+          "y": 1594,
+          "w": 236,
+          "h": 23
+        }
+      ],
+      "nativeScreenInk": [
+        {
+          "x": 251,
+          "y": 809,
+          "w": 62,
+          "h": 15
+        },
+        {
+          "x": 225,
+          "y": 832,
+          "w": 115,
+          "h": 12
+        }
+      ],
+      "scale": 0.5213541666666667,
+      "heightErrorPercent": [
+        0.79,
+        0.07
+      ],
+      "reopenedIdentical": true,
+      "beforeSha256": "977a9703cbf0f195a5883b40233e687b6814363795b055d17cf85044d70351c6",
+      "reopenPixelEquality": true,
+      "sample": "crop-portrait-32.png"
+    },
+    {
+      "canvas": [
+        1080,
+        1920
+      ],
+      "requestedPx": 64,
+      "sourceInk": [
+        {
+          "x": 416,
+          "y": 1472,
+          "w": 249,
+          "h": 60
+        },
+        {
+          "x": 305,
+          "y": 1558,
+          "w": 474,
+          "h": 48
+        }
+      ],
+      "nativeScreenInk": [
+        {
+          "x": 219,
+          "y": 768,
+          "w": 126,
+          "h": 30
+        },
+        {
+          "x": 167,
+          "y": 813,
+          "w": 232,
+          "h": 26
+        }
+      ],
+      "scale": 0.5213541666666667,
+      "heightErrorPercent": [
+        4.1,
+        3.9
+      ],
+      "reopenedIdentical": true,
+      "beforeSha256": "eb36c0384a94ada318c9a0a3d674557f1cdca1e34fe23cc0f619acdf3c17f022",
+      "reopenPixelEquality": true,
+      "sample": "crop-portrait-64.png"
+    }
+  ]
+}

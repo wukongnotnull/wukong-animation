@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDraftPlan } from '../../plugin/engine/exporters/jianying/plan.mjs';
+import { subtitleStyle } from '../../plugin/engine/core/subtitle-layer.mjs';
 
 const timeline = (over = {}) => ({
   title: '测试片',
@@ -26,6 +27,53 @@ test('lays shots end to end in microseconds, named by shot id', () => {
     { name: 's01', file: '/c/s01.mp4', start: 0, duration: 2_000_000 },
     { name: 's02', file: '/c/s02.mp4', start: 2_000_000, duration: 3_000_000 },
   ]);
+});
+
+test('shared frame boundaries stay contiguous after microsecond quantization, including 107 shots', () => {
+  for (const count of [3, 107]) {
+    let frame = 0;
+    const shots = Array.from({ length: count }, (_, i) => {
+      const frames = count === 3 ? 2 : 2 + i % 5;
+      const shot = { id: `s${i}`, file: `/c/s${i}.mp4`, start: frame / 30, duration: frames / 30 };
+      frame += frames;
+      return shot;
+    });
+    const p = buildDraftPlan(timeline({ shots, duration: frame / 30 }));
+    for (let i = 1; i < count; i++) assert.equal(p.video[i - 1].start + p.video[i - 1].duration, p.video[i].start, `cut ${i}`);
+    assert.equal(p.video.at(-1).start + p.video.at(-1).duration, Math.round(frame / 30 * 1e6));
+  }
+});
+
+test('rejects genuine overlaps, gaps, zero length, off-frame timing and wrong final duration', () => {
+  for (const patch of [{ start: 1.9 }, { start: 2.1 }, { duration: 0 }, { duration: 2.99 }]) {
+    const t = timeline(); t.shots[1] = { ...t.shots[1], ...patch };
+    assert.throws(() => buildDraftPlan(t), /s02/);
+  }
+  assert.throws(() => buildDraftPlan(timeline({ duration: 6 })), /时间轴|终点/);
+});
+
+test('calibrated canvas mapping preserves each measured Chinese/English size and centre', () => {
+  for (const [size, expected] of [[[1920,1080], [5.625,2.8125]], [[1080,1920], [10,5]], [[1920,1920], [5.625,2.8125]]]) {
+    const [W,H] = size;
+    const p = buildDraftPlan(timeline({size, subtitleStyle:subtitleStyle(),
+      subtitles:[{index:1,text:'字号校准',en:'Long English',start:0,end:1}],
+      subtitleMeasurements:[{index:1,loaded:true,zh:64,en:32,rects:[
+        {lang:'zh',x:W/2-128,y:H*.7-32,w:256,h:64},
+        {lang:'en',x:W/2-160,y:H*.8-16,w:320,h:32},
+      ]}],
+    }));
+    const [zh,en] = p.subtitleTracks.map(t=>t.segments[0].style);
+    assert.deepEqual([zh?.size,en?.size], expected);
+    assert.deepEqual([zh.transformY,en.transformY], [-.4,-.6]);
+    assert.deepEqual([zh.transformX,en.transformX],[0,0]);
+  }
+});
+
+test('missing or invalid per-line measurement cannot silently use an unrelated layout', () => {
+  const t=timeline({subtitleStyle:subtitleStyle(),subtitles:[{index:1,text:'测量',en:'Test',start:0,end:1}],subtitleMeasurements:[]});
+  assert.throws(()=>buildDraftPlan(t),/测量/);
+  t.subtitleMeasurements=[{index:2,loaded:true,zh:32,en:32,rects:[]}];
+  assert.throws(()=>buildDraftPlan(t),/测量/);
 });
 
 test('puts non-overlapping voices on a single 人声 track, each as long as its audio', () => {
@@ -184,7 +232,7 @@ test('has no subtitle style when the timeline carries none', () => {
 test('converts the style subtitle block into 剪映 size, colours, stroke and position', () => {
   const s = buildDraftPlan(timeline({ subtitleStyle: inkSubs })).subtitleStyle;
   assert.equal(s.font, '古风小楷');
-  assert.equal(s.size, 5.2);
+  assert.equal(s.size, 4.7461);
   assert.deepEqual(s.color.map((c) => Math.round(c * 255)), [0x2b, 0x2b, 0x2b]);
   assert.equal(s.alpha, 1);
   assert.deepEqual(s.border.color.map((c) => Math.round(c * 255)), [242, 237, 227]);

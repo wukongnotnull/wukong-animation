@@ -5,6 +5,12 @@ import { digest, atomicJson, treeEvidence } from './evidence.mjs';
 import { loadFilm } from './job.mjs';
 import { fileLink, readDecisions, decisionConflicts } from './delivery.mjs';
 import { subtitleSettings, subtitleOutputs } from './subtitles.mjs';
+import { validate } from './validate.mjs';
+import { ENGINE_ROOT } from './paths.mjs';
+import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
+import { migrateProgress } from './state.mjs';
+import { jianyingRunning } from '../exporters/jianying/guards.mjs';
 
 const ledgerPath=dir=>path.join(path.resolve(dir),'.wka/final-delivery.json');
 function json(file,fallback) {
@@ -13,7 +19,8 @@ function json(file,fallback) {
 }
 function ledger(dir) {
   const value=json(ledgerPath(dir),{version:1,contracts:[],artifacts:[],approvals:[]});
-  if(value?.version!==1||!['contracts','artifacts','approvals'].every(k=>Array.isArray(value[k])))throw new Error(`${ledgerPath(dir)}：交付账本结构损坏`);
+  const errors=validate('final-delivery',value);
+  if(errors.length)throw new Error(`${ledgerPath(dir)}：交付账本结构损坏：${errors.join('；')}`);
   return value;
 }
 
@@ -74,27 +81,227 @@ function observed(file) {
   catch(e){return {availability:e.code==='ENOENT'?'missing':'unreadable',snapshot:null,reasons:[e.message]};}
 }
 
+const sourceFile=file=>{
+  try{return {path:path.resolve(file),snapshot:deliverySnapshot(file)};}
+  catch(e){return {path:path.resolve(file),snapshot:null,error:e.code==='ENOENT'?'missing':e.message};}
+};
+const engineFiles=names=>names.map(name=>sourceFile(path.join(ENGINE_ROOT,name)));
+const fontPaths=css=>[...String(css||'').matchAll(/url\(['"]?(file:[^)'"\s]+)['"]?\)/g)].map(m=>fileURLToPath(m[1]));
+export const finalFontFiles=(...styles)=>[...new Set(styles.flatMap(s=>fontPaths(s?.css||s?.fontCss)))];
+
+// 分组投影独立于全局 operations 签名；只观察声明输入，未知外部执行明确阻塞。
+function dependencies(dir,slot,fontFiles=[]) {
+  const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),settings=subtitleSettings(ctx.film,ctx.variant),groups={},unknown=[];
+  const sub=slot.kind==='subtitle',visual=!sub,caption=slot.kind==='draft'||slot.flavor==='burned';
+  const files=names=>names.map(f=>sourceFile(path.resolve(dir,f)));
+  if(visual) {
+    const scripts=[...ctx.shots.map(s=>s.path),...ctx.styleScripts,...ctx.filmScripts];
+    groups.picture={files:files(scripts),assets:[sourceFile(path.join(ctx.style.dir,'assets'))].filter(x=>x.snapshot),config:{size:ctx.film.size,fps:ctx.film.fps,seed:ctx.film.seed,shots:ctx.shots.map(({id,duration})=>({id,duration})),cues:ctx.film.cues||null,style:ctx.film.style,wordSync:ctx.film.word_sync||null}};
+    // 任意外部 I/O、动态模块及环境无法从声明文件证明，不能凭阶段成功消除缺口。
+    for(const file of scripts)if(fs.existsSync(file)&&/\b(?:fetch|XMLHttpRequest|require|import|process|readFile|Deno|Bun)\b/.test(fs.readFileSync(file,'utf8')))unknown.push(`动态/外部来源覆盖不足：${file}`);
+    const audio=ctx.film.audio||{};
+    const refs=[...(audio.tracks||[]),...(audio.voices||[])].map(t=>t.file).filter(Boolean);
+    groups.audio={config:audio,files:files(refs)};
+    if(audio.build)unknown.push('audio.build 动态来源覆盖不足（旧阶段 signature 为 null）');
+    groups.renderer={pipeline:sourceFile(ctx.pipeline.dir),kits:ctx.kits.map(k=>sourceFile(k.dir)),runtime:sourceFile(path.join(ENGINE_ROOT,'runtime')),core:engineFiles(['core/cache.mjs','core/word-sync.mjs','core/timing.mjs'])};
+    groups.fonts={declared:ctx.style.fonts||[],files:files(fontFiles)};
+    if(ctx.style.fonts?.length&&!fontFiles.length)unknown.push('实际画面字体来源缺失');
+    groups.encoding={files:engineFiles([`exporters/${slot.format}`,'core/ffmpeg.mjs','core/job.mjs']),settings:ctx.film.export?.[slot.format]||null};
+    if(slot.kind==='draft')groups.rawTracks={files:files(refs)};
+  }
+  if(sub||caption) {
+    const zh=path.join(dir,settings.file),en=path.join(dir,settings.enFile);
+    if(caption||slot.format==='zh'||slot.format==='en')groups.zh={source:sourceFile(zh)};
+    if((caption&&settings.bilingual)||slot.format==='en')groups.en={source:sourceFile(en)};
+    groups.subtitleImplementation={files:engineFiles(['core/subtitles.mjs'])};
+  }
+  if(caption) {
+    const layout=json(path.join(dir,'subtitle-layout.json'),null);
+    groups.layout={style:ctx.style.subtitles,regions:layout?.aspects?.[slot.aspect]||null,files:engineFiles(['core/subtitle-layer.mjs','core/subtitle-layer.html','core/subtitle-preflight.mjs'])};
+    if(!fontFiles.length)unknown.push('实际字幕字体来源缺失');
+  }
+  for(const [name,value] of Object.entries(groups)) {
+    const walk=v=>{if(!v||typeof v!=='object')return;if(v.error)unknown.push(`${name} 来源无法读取：${v.path}（${v.error}）`);for(const child of Object.values(v))if(typeof child==='object')walk(child);};walk(value);
+  }
+  return {groups,unknown:[...new Set(unknown)],boundary:'declared-inputs',fontFiles};
+}
+
+export function captureFinalGeneration(dir,{slot,fontFiles=[]}={}) {
+  const contract=finalContract(dir),target=contract.slots.find(s=>s.slot===slot);
+  if(!target)throw new Error(`不是当前交付槽位：${slot}`);
+  return {id:crypto.randomUUID(),slot,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:dependencies(dir,target,fontFiles),tool:{node:process.version,platform:process.platform,arch:process.arch}};
+}
+
+function sourceStatus(dir,slot,artifact) {
+  if(!artifact)return {freshness:'unknown',reasons:['证据未存档，待核实']};
+  if(artifact.contractDigest!==slot.contractDigest)return {freshness:'changed',reasons:['相关交付要求已变']};
+  if(artifact.provenance==='external-edit')return {freshness:'current',reasons:['外部修改并验收；不声称与引擎源工程逐项一致']};
+  if(!artifact.dependencies)return {freshness:'unknown',reasons:['生成时逐项来源证据缺失']};
+  const now=dependencies(dir,slot,artifact.dependencies.fontFiles),changed=[];
+  for(const [name,old] of Object.entries(artifact.dependencies.groups))if(digest(old)!==digest(now.groups[name]))changed.push(name);
+  if(artifact.contractDigest!==slot.contractDigest)changed.push('相关交付要求');
+  if(changed.length)return {freshness:'changed',reasons:changed.map(n=>`相关输入已变：${n}`)};
+  const unknown=[...artifact.dependencies.unknown,...now.unknown];
+  return unknown.length?{freshness:'unknown',reasons:[...new Set(unknown)]}:{freshness:'current',reasons:[]};
+}
+
+function appendArtifact(dir,data,artifact) {
+  const old=data.artifacts.find(a=>a.id===artifact.id);
+  if(old&&digest(old)!==digest(artifact))throw new Error('相同产物身份不能覆盖不同证据');
+  if(!old)data.artifacts.push(artifact);
+  const contract=finalContract(dir);
+  if(!data.contracts.some(c=>c.id===contract.id))data.contracts.push(contract);
+  atomicJson(ledgerPath(dir),data);return artifact;
+}
+
+// 仅由成功导出/字幕写入边界调用。回执先存，账本写入失败仍可 --record 安全重试。
+export function recordFinalArtifact(dir,{generation,path:file,stage,technical={status:'unknown',checks:[],errors:[]}}) {
+  const contract=finalContract(dir),slot=contract.slots.find(s=>s.slot===generation.slot);
+  if(!slot)throw new Error('生成后交付要求已取消，保留产物，待核实');
+  const artifact={id:generation.id,slot:generation.slot,path:path.resolve(file),aspect:slot.aspect,format:slot.format,flavor:slot.flavor,generatedAt:new Date().toISOString(),snapshot:deliverySnapshot(file),contractDigest:generation.contractDigest,dependencies:generation.dependencies,tool:generation.tool,stage,provenance:'generated',technical,openStatus:'not-tested'};
+  atomicJson(path.join(path.resolve(dir),'.wka/final-delivery-receipts',artifact.id+'.json'),artifact);
+  return appendArtifact(dir,ledger(dir),artifact);
+}
+
+export function recordFinalEvidence(dir) {
+  const root=path.join(path.resolve(dir),'.wka/final-delivery-receipts'),data=ledger(dir),recorded=[];
+  if(fs.existsSync(root))for(const name of fs.readdirSync(root).sort()) {
+    if(!name.endsWith('.json'))continue;
+    const artifact=json(path.join(root,name));
+    if(data.artifacts.some(a=>a.id===artifact.id))continue;
+    if(!artifact.snapshot||digest(deliverySnapshot(artifact.path))!==digest(artifact.snapshot))throw new Error(`待登记产物已变化：${artifact.path}`);
+    appendArtifact(dir,data,artifact);recorded.push(artifact.id);
+  }
+  return recorded;
+}
+
+const progress=dir=>migrateProgress(json(path.join(path.resolve(dir),'.wka/state.json'),{flow:5,history:[]})).state;
+const changedEntries=(before,after)=>[...new Set([...(before?.entries||[]),...(after?.entries||[])].map(e=>e.path))].filter(p=>digest(before?.entries?.find(e=>e.path===p)||null)!==digest(after?.entries?.find(e=>e.path===p)||null));
+
+function nativeCheck(file) {
+  const errors=[];
+  try {
+    const draft=json(path.join(file,'draft_content.json'));
+    if(!draft||!draft.materials||!Array.isArray(draft.tracks))throw new Error('native 材料/轨道结构无法核实');
+    for(const group of ['videos','audios'])for(const material of draft.materials[group]||[]) {
+      if(!material.path){errors.push(`native ${group} 素材路径缺失`);continue;}
+      const ref=path.isAbsolute(material.path)?material.path:path.resolve(file,material.path);
+      const result=observed(ref);if(result.availability!=='present')errors.push(`native 素材不可读：${ref}`);
+    }
+  } catch(e){errors.push(`native 草稿无法核实：${e.message}`);}
+  return {status:errors.length?'hard-error':'passed',checks:['完整磁盘快照','native JSON 可读','素材存在性'],errors,scope:'磁盘及素材；显示/编辑语义需真实打开依据'};
+}
+
+function reviewSets(dir,contract,items,data) {
+  const result={};
+  for(const step of [13,15]) {
+    const chosen=items.filter(i=>step===13?i.aspect===contract.mainAspect&&i.kind!=='draft':i.kind==='draft');
+    const bindings=chosen.map(i=>({slot:i.slot,path:i.path,artifactId:i.artifactId,snapshot:i.snapshot,contractDigest:i.contractDigest,source:sourceStatus(dir,i,data.artifacts.find(a=>a.id===i.artifactId)),dependencies:dependencies(dir,i,data.artifacts.find(a=>a.id===i.artifactId)?.dependencies?.fontFiles||[])}));
+    result[step]={step,bindings,deliveryRevision:digest({step,bindings})};
+  }
+  // 14 仍先审小样。来源和实际小样字节一并绑定，高清生成后才可继承。
+  const operations=json(path.join(dir,'.cache/operations.json'),{stages:{}}),bindings=[];
+  for(const aspect of [...new Set(contract.slots.map(s=>s.aspect))].filter(a=>a!==contract.mainAspect)) {
+    const ctx=loadFilm(dir,{requireShots:false,aspect}),stage=Object.values(operations.stages||{}).find(s=>s.aspect===aspect&&s.proxy&&s.stage==='review:proxy'&&s.status==='completed');
+    const file=stage?.outputs?.[0]?.file||path.join(dir,'review',ctx.variant.review('小样.mp4'));
+    const obs=observed(file),target=contract.slots.find(s=>s.aspect===aspect&&s.kind==='video');
+    const preflight=json(path.join(dir,'review',ctx.variant.review('字幕预检-proxy.json')),null);
+    bindings.push({slot:`${aspect}/source/proxy`,aspect,path:file,snapshot:obs.snapshot,stageId:stage?.id||null,contract:contract.slots.filter(s=>s.aspect===aspect&&s.kind!=='draft').map(s=>s.projection),dependencies:target?dependencies(dir,target,finalFontFiles(preflight)):null});
+  }
+  result[14]={step:14,bindings,deliveryRevision:digest({step:14,bindings})};
+  return result;
+}
+
+export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvidence=null}={}) {
+  dir=path.resolve(dir);const report=finalDeliveryReport(dir),set=report.reviewSets[step],data=ledger(dir);
+  const old=data.approvals.find(a=>a.id===id);
+  if(old){if(old.revision!==revision||old.step!==step)throw new Error('同一 approval-id 不能绑定不同交付版本');return {existing:old};}
+  if(!set||set.deliveryRevision!==revision)throw new Error('交付审阅版本已变化，请重新提交当前版本');
+  if(!source?.trim()||!note?.trim()||!id)throw new Error('交付批准需要实际用户来源、结论及 approval-id');
+  if(report.errors.length)throw new Error(`交付决定待核实：${report.errors.join('；')}`);
+  if(!set.bindings.length)throw new Error('本节点没有实际产物，沿用既有无产物签批，不制造逐文件验收');
+  if(step===15&&jianyingRunning())throw new Error('剪映仍在运行，请保存并完全退出后再绑定当前草稿');
+  const artifacts=[],bindings=[];
+  for(const binding of set.bindings) {
+    if(!binding.snapshot||!binding.path)throw new Error(`审阅产物缺失或不可读：${binding.slot}`);
+    if(step===14){if(!binding.stageId)throw new Error('副版小样缺少成功生成依据');bindings.push(binding);continue;}
+    const artifact=data.artifacts.find(a=>a.id===binding.artifactId);
+    if(!artifact)throw new Error(`产物缺少生成来源：${binding.slot}`);
+    const changed=digest(artifact.snapshot)!==digest(binding.snapshot);
+    let current=artifact;
+    if(changed&&step!==15)throw new Error(`产物在生成后变化，须重新核实：${binding.path}`);
+    if(changed) {
+      if(!['opened','playback-confirmed'].includes(openEvidence?.status)||!openEvidence.source?.trim())throw new Error('手改草稿需要实际打开/播放检查的明确来源');
+      const technical=nativeCheck(binding.path);
+      if(technical.errors.length)throw new Error(technical.errors.join('；'));
+      current={...artifact,id:digest({slot:binding.slot,snapshot:binding.snapshot,approval:id}),snapshot:binding.snapshot,provenance:'external-edit',observedAt:new Date().toISOString(),technical,originalArtifactId:artifact.id,contractDigest:binding.contractDigest};
+      artifacts.push(current);
+    }
+    if(current.technical.status==='hard-error')throw new Error(`确定技术错误不能由验收绕过：${binding.slot}`);
+    bindings.push({slot:binding.slot,artifactId:current.id,path:binding.path,snapshot:binding.snapshot,contractDigest:binding.contractDigest});
+  }
+  if(openEvidence&&!['opened','playback-confirmed'].includes(openEvidence.status))throw new Error('打开依据仅支持 opened / playback-confirmed');
+  return {artifacts,approval:{id,step,revision,bindings,source,note,openEvidence,at:new Date().toISOString(),type:step===14?'source':'direct'},review:set};
+}
+
+export function commitFinalApproval(dir,prepared) {
+  const data=ledger(dir),approval=prepared.existing||prepared.approval,old=data.approvals.find(a=>a.id===approval.id);
+  if(old){if(digest(old)!==digest(approval))throw new Error('批准记录冲突，未覆盖原记录');return old;}
+  if(!progress(dir).history?.some(h=>h.approvalId===approval.id&&h.step===approval.step))throw new Error('既有流程批准尚未成功存档，不能追加交付验收');
+  const current=finalDeliveryReport(dir).reviewSets[approval.step];
+  if(current.deliveryRevision!==approval.revision)throw new Error('批准存档期间交付版本变化，未绑定旧审阅');
+  for(const a of prepared.artifacts||[])if(!data.artifacts.some(old=>old.id===a.id))data.artifacts.push(a);
+  data.approvals.push(approval);atomicJson(ledgerPath(dir),data);return approval;
+}
+
+function acceptance(dir,item,artifact,data,history) {
+  const old=data.approvals.filter(a=>a.bindings.some(b=>b.slot===item.slot)).at(-1);
+  if(old) {
+    const binding=old.bindings.find(b=>b.slot===item.slot);
+    const hasState=history.some(h=>h.approvalId===old.id&&h.step===old.step);
+    if(hasState&&item.freshness!=='changed'&&binding.artifactId===artifact?.id&&binding.contractDigest===item.contractDigest&&digest(binding.snapshot)===digest(item.snapshot))return {acceptance:'accepted',approval:{id:old.id,type:old.type,source:old.source,at:old.at},openStatus:old.openEvidence?.status||'not-tested'};
+    if(binding.snapshot&&digest(binding.snapshot)!==digest(item.snapshot))return {acceptance:'changed-after-acceptance',changedFiles:changedEntries(binding.snapshot,item.snapshot),reason:'验收后磁盘文件变化，待复核'};
+    return {acceptance:'historical-only',reason:'历史已验收，当前相关版本或要求待核实'};
+  }
+  // 高清只继承实际批准的小样来源；生成证据与相关契约必须逐组匹配。
+  if(artifact?.provenance==='generated'&&item.aspect!==finalContract(dir).mainAspect&&item.kind!=='draft'&&item.freshness==='current'&&artifact.technical.status==='passed') {
+    for(const approval of [...data.approvals].reverse().filter(a=>a.step===14)) {
+      const binding=approval.bindings.find(b=>b.aspect===item.aspect);
+      if(!binding||!history.some(h=>h.approvalId===approval.id&&h.step===14)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
+      const groups=item.kind==='subtitle'?['zh',...(item.format==='en'?['en']:[])]:['picture','audio',...(item.flavor==='burned'?['zh','en','layout']:[])];
+      if(groups.every(g=>digest(binding.dependencies?.groups[g]||null)===digest(artifact.dependencies?.groups[g]||null)))return {acceptance:'accepted',approval:{id:approval.id,type:'inherited',source:approval.source,at:approval.at},openStatus:'not-tested',reason:'来源已批准，高清生成核验通过'};
+    }
+  }
+  const step=item.kind==='draft'?15:item.aspect===finalContract(dir).mainAspect?13:14;
+  return history.some(h=>h.step===step)?{acceptance:'historical-only',reason:'历史已验收，当前版本待核实：缺少确切产物绑定链'}:{acceptance:'pending'};
+}
+
 export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
   if(!['codex','claude','generic'].includes(host))throw new Error('host 应为 codex、claude 或 generic');
-  dir=path.resolve(dir);const contract=finalContract(dir,{aspect}),data=ledger(dir);
+  dir=path.resolve(dir);const contract=finalContract(dir,{aspect}),data=ledger(dir),history=progress(dir).history||[];
   const items=contract.slots.map(s=>{
     const artifact=data.artifacts.filter(a=>a.slot===s.slot).at(-1),file=artifact?.path||s.path,obs=observed(file);
-    const item={...s,path:file,artifactId:artifact?.id||null,...obs,freshness:'unknown',technical:'unknown',acceptance:'pending',openStatus:'not-tested'};
-    item.reasons.push(artifact?'来源证据待核实':'证据未存档，待核实');
+    const source=sourceStatus(dir,s,artifact);
+    const item={...s,path:file,artifactId:artifact?.id||null,...obs,...source,reasons:[...obs.reasons,...source.reasons],technical:artifact?.technical?.status||'unknown',acceptance:'pending',openStatus:'not-tested'};
+    if(artifact&&obs.snapshot&&digest(obs.snapshot)!==digest(artifact.snapshot)) {
+      item.freshness='unknown';item.technical='unknown';item.reasons.push('生成后磁盘文件变化，待核实');
+    }
+    const approval=acceptance(dir,item,artifact,data,history);Object.assign(item,approval);if(approval.reason)item.reasons.push(approval.reason);
     if(item.availability==='present') {
-      item.section='历史/待核实版本';
+      item.section=item.freshness==='current'?'待审文件':'历史/待核实版本';
+      if(item.acceptance==='accepted'&&item.freshness==='current')item.section='当前已验收';
       if(host==='generic')item.previewStatus='unverified';else item.link=fileLink(file,{host});
     }
     return item;
   });
   const ready=items.filter(i=>i.availability==='present'&&i.freshness==='current'&&['passed','accepted-with-warnings'].includes(i.technical));
   const accepted=ready.filter(i=>i.acceptance==='accepted');
-  const blocks=items.filter(i=>!accepted.includes(i)).map(i=>({slot:i.slot,reasons:i.reasons,actor:i.availability!=='present'?'agent':'reviewer',next:i.availability!=='present'?'补齐或核验该产物':'核对当前版本及其证据'}));
+  const blocks=items.filter(i=>!accepted.includes(i)).map(i=>({slot:i.slot,reasons:i.reasons,actor:i.availability!=='present'||i.freshness!=='current'||i.technical==='hard-error'||i.technical==='unknown'?'agent':'reviewer',next:i.availability!=='present'?'补齐或核验该产物':i.freshness!=='current'?'核对来源/文件变化及证据；保留现有文件':'审阅并签批当前版本'}));
   let status=ready.length===items.length&&items.length?'awaiting-acceptance':ready.length?'partial':items.some(i=>i.availability!=='present')?'incomplete':'needs-verification';
   if(accepted.length===items.length&&items.length&&!contract.errors.length)status='accepted';
   if(contract.errors.length)status='needs-verification';
   const files=['review','stills'].flatMap(root=>treeEvidence(path.join(dir,root)).filter(e=>!/^最终交付(?:清单|审计)/.test(path.basename(e.path))).map(e=>({...e,path:path.join(dir,root,e.path)})));
-  return {version:2,ok:status==='accepted',scope:contract.scope,status,summary:{ready:ready.length,accepted:accepted.length,total:items.length},host,contract,items,history:data.artifacts.filter(a=>!items.some(i=>i.artifactId===a.id)),blocks,errors:contract.errors,links:items.map(i=>i.link).filter(Boolean),audit:{files,ledger:data},hostValidation:'未实际打开的文件均为 not-tested；文件指纹不证明播放成功'};
+  return {version:2,ok:status==='accepted',scope:contract.scope,status,summary:{ready:ready.length,accepted:accepted.length,total:items.length},host,contract,items,reviewSets:reviewSets(dir,contract,items,data),history:data.artifacts.filter(a=>!items.some(i=>i.artifactId===a.id)),blocks,errors:contract.errors,links:items.map(i=>i.link).filter(Boolean),audit:{files,ledger:data},hostValidation:'未实际打开的文件均为 not-tested；文件指纹不证明播放成功'};
 }
 
 export function writeFinalDelivery(dir,options={}) {

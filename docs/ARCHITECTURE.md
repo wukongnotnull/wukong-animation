@@ -113,6 +113,6 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 
 - 2D 画布走 CPU 光栅（`--disable-accelerated-2d-canvas`），无 GPU 时比 SwiftShader 快 5–10 倍；WebGL 仍用 SwiftShader。
 - 页面只用一个 WebGL 上下文，按需调整尺寸。
-- 默认 2 个页面并行渲染不同镜头（`WKA_WORKERS` 可调）。
+- 日常预览与小样默认 1 个 worker，终稿默认最多 2 个（且不超过 CPU 数；`WKA_WORKERS` 可调）。Remotion 逐镜渲染，worker 数控制镜内并发。
 - 1080p 30fps、15 秒、5 镜的水墨短片：约 80 秒（2 核云主机）。
 - remotion：打包一次约 1–5 秒，1080p 约 20–25 帧/秒；《七十二变》14 秒 4 镜约 27 秒（M 系列 Mac）。

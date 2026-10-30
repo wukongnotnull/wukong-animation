@@ -1,0 +1,4387 @@
+{
+  "status": "in-progress",
+  "hash": {
+    "complete": true,
+    "environment": {
+      "started": "2026-10-30T15:40:53.860Z",
+      "options": {
+        "rounds": 5,
+        "suite": "hash",
+        "timeout": 1200000,
+        "engine": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+        "out": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2"
+      },
+      "scenarios": [
+        "fileDigest-8MiB",
+        "sourceState-8MiB",
+        "deliverySnapshot-8MiB",
+        "fileDigest-64MiB",
+        "sourceState-64MiB",
+        "deliverySnapshot-64MiB",
+        "fileDigest-256MiB",
+        "sourceState-256MiB",
+        "deliverySnapshot-256MiB"
+      ],
+      "node": "v25.8.1",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpus": 10,
+      "cpu": "Apple M1 Pro",
+      "memory": 17179869184,
+      "engines": [
+        {
+          "label": "baseline",
+          "engine": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "commit": "5957b73e90f014011fb27d3e015d4987c39db6ba",
+          "package": "26be6aac3cefa487b1ad82b3f1d7facf315d6b78235f184ecb0bca65bb46bca5",
+          "lock": "c9f6d42d99b46616e9cdab1afed510c5a393630819c50e0bf9dfa992fd5c3ac7"
+        }
+      ],
+      "tool": {
+        "file": "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+        "sha256": "28725012e49304b0c6e8d262cd793fd76b9f84d4e543d47515cf3301547c8af7",
+        "metrics": "7ef2023e2d497f55bc04c21ba54076d2db0edff2d3f16b4ca56a5eedebbaf9e7",
+        "fixtures": "07a5c1555cd0b464e3a3f1c3f897ccf2b74d70a32133e91869b46476c4b812c4"
+      },
+      "ffmpeg": {
+        "code": 0,
+        "version": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers"
+      },
+      "ffprobe": {
+        "code": 0,
+        "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+      },
+      "osFileCache": "uncontrolled; never purged",
+      "memoryScope": "main Node lifetime maximum RSS KiB, excludes descendants",
+      "timing": "uninstrumented samples; one separate attribution probe after timed rounds; setup/restore/output validation excluded; hash operation time additionally excludes module imports",
+      "audioInterval": "track start 0; mixed to film duration; alternating one-second tone/silence",
+      "workers": "engine defaults",
+      "fontDownload": false
+    },
+    "rows": [
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 5.125500000000002,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 27631,
+            "system": 7012
+          },
+          "maxRSSKiB": 64816,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 5.125500000000002,
+          "cpu": {
+            "user": 5600,
+            "system": 1566
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 117.66512500000002
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 8.031374999999997,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 25469,
+            "system": 5968
+          },
+          "maxRSSKiB": 64736,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 8.031374999999997,
+          "cpu": {
+            "user": 5880,
+            "system": 2249
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 107.55587500000001
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 5.470542000000009,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 25564,
+            "system": 5440
+          },
+          "maxRSSKiB": 64752,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 5.470542000000009,
+          "cpu": {
+            "user": 5964,
+            "system": 1772
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 103.585084
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 6.929375000000007,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 25621,
+            "system": 5950
+          },
+          "maxRSSKiB": 64704,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 6.929375000000007,
+          "cpu": {
+            "user": 6212,
+            "system": 2499
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 105.79145800000003
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 5.173000000000002,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 25754,
+            "system": 5484
+          },
+          "maxRSSKiB": 64912,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 5.173000000000002,
+          "cpu": {
+            "user": 5576,
+            "system": 1631
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 106.56908299999998
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-8MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 5.1308329999999955,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-8MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 26437,
+            "system": 5303
+          },
+          "maxRSSKiB": 64848,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/audio/track.wav": {
+              "bytes": 8388608,
+              "maxReadRequest": 8388608,
+              "completeReads": 1
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 5.1308329999999955,
+          "cpu": {
+            "user": 5902,
+            "system": 1687
+          },
+          "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+        },
+        "commandWallMs": 106.59516699999995
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 30.136583,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 41253,
+            "system": 13362
+          },
+          "maxRSSKiB": 75936,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 30.136583,
+          "cpu": {
+            "user": 23081,
+            "system": 10389
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 130.19266700000003
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 30.09183300000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 41706,
+            "system": 13283
+          },
+          "maxRSSKiB": 75840,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 30.09183300000001,
+          "cpu": {
+            "user": 22420,
+            "system": 9833
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 133.34079199999985
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 37.652417,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 45685,
+            "system": 18763
+          },
+          "maxRSSKiB": 75824,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 37.652417,
+          "cpu": {
+            "user": 25435,
+            "system": 14456
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 148.44237500000008
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 26.933209000000005,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 41989,
+            "system": 11918
+          },
+          "maxRSSKiB": 75904,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 26.933209000000005,
+          "cpu": {
+            "user": 22443,
+            "system": 8560
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 126.23041699999999
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 27.550292000000013,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 42150,
+            "system": 12252
+          },
+          "maxRSSKiB": 76048,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 27.550292000000013,
+          "cpu": {
+            "user": 22391,
+            "system": 8878
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 125.6752919999999
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-8MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 28.854667000000006,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-8MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 44163,
+            "system": 12540
+          },
+          "maxRSSKiB": 76240,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/film.json": {
+              "bytes": 25060,
+              "maxReadRequest": 12530,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s001.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s002.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s003.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s004.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s005.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s006.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s007.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s008.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s009.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s010.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s011.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s012.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s013.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s014.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s015.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s016.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s017.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s018.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s019.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s020.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s021.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s022.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s023.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s024.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s025.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s026.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s027.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s028.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s029.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s030.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s031.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s032.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s033.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s034.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s035.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s036.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s037.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s038.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s039.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s040.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s041.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s042.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s043.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s044.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s045.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s046.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s047.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s048.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s049.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s050.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s051.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s052.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s053.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s054.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s055.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s056.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s057.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s058.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s059.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s060.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s061.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s062.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s063.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s064.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s065.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s066.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s067.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s068.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s069.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s070.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s071.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s072.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s073.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s074.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s075.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s076.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s077.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s078.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s079.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s080.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s081.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s082.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s083.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s084.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s085.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s086.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s087.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s088.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s089.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s090.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s091.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s092.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s093.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s094.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s095.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s096.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s097.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s098.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s099.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s100.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s101.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s102.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s103.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s104.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s105.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s106.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/shots/s107.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/audio/track.wav": {
+              "bytes": 16777216,
+              "maxReadRequest": 8388608,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 28.854667000000006,
+          "cpu": {
+            "user": 23172,
+            "system": 9164
+          },
+          "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+        },
+        "commandWallMs": 126.31429200000002
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 10.847458000000003,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 28805,
+            "system": 6649
+          },
+          "maxRSSKiB": 73088,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 10.847458000000003,
+          "cpu": {
+            "user": 9859,
+            "system": 3326
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 109.10012499999993
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 10.677000000000007,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 28671,
+            "system": 6390
+          },
+          "maxRSSKiB": 73072,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 10.677000000000007,
+          "cpu": {
+            "user": 9930,
+            "system": 3096
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 109.01979099999994
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 11.332583,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 29520,
+            "system": 6875
+          },
+          "maxRSSKiB": 72928,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 11.332583,
+          "cpu": {
+            "user": 10070,
+            "system": 3471
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 113.27616699999999
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 10.728791000000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 29609,
+            "system": 6808
+          },
+          "maxRSSKiB": 72976,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 10.728791000000001,
+          "cpu": {
+            "user": 9989,
+            "system": 3159
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 111.45308299999988
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 11.758207999999996,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 29196,
+            "system": 6886
+          },
+          "maxRSSKiB": 73184,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 11.758207999999996,
+          "cpu": {
+            "user": 10061,
+            "system": 3617
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 118.67666700000018
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-8MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 10.852542,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-8MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 30796,
+            "system": 7211
+          },
+          "maxRSSKiB": 72992,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-8/audio/track.wav": {
+              "bytes": 16777216,
+              "maxReadRequest": 8388608,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 10.852542,
+          "cpu": {
+            "user": 9758,
+            "system": 3096
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 8388608,
+                "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+              }
+            ],
+            "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+          }
+        },
+        "commandWallMs": 112.29941700000018
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 49.431959000000006,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 57204,
+            "system": 21557
+          },
+          "maxRSSKiB": 122528,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 49.431959000000006,
+          "cpu": {
+            "user": 37190,
+            "system": 17636
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 151.24416699999983
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 43.197874999999996,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 58653,
+            "system": 17678
+          },
+          "maxRSSKiB": 122320,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 43.197874999999996,
+          "cpu": {
+            "user": 37288,
+            "system": 13629
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 147.84508300000016
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 46.877167,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 58239,
+            "system": 20010
+          },
+          "maxRSSKiB": 122416,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 46.877167,
+          "cpu": {
+            "user": 38310,
+            "system": 16261
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 150.47749999999996
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 49.663708,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 58535,
+            "system": 21725
+          },
+          "maxRSSKiB": 122592,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 49.663708,
+          "cpu": {
+            "user": 37888,
+            "system": 17981
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 153.604292
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 40.86449999999999,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 58321,
+            "system": 16397
+          },
+          "maxRSSKiB": 122400,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 40.86449999999999,
+          "cpu": {
+            "user": 36693,
+            "system": 12073
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 150.230458
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-64MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 41.252292,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-64MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 57295,
+            "system": 15868
+          },
+          "maxRSSKiB": 122800,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/audio/track.wav": {
+              "bytes": 67108864,
+              "maxReadRequest": 67108864,
+              "completeReads": 1
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 41.252292,
+          "cpu": {
+            "user": 37001,
+            "system": 12303
+          },
+          "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+        },
+        "commandWallMs": 145.6643750000003
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 120.23237499999999,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 106917,
+            "system": 44514
+          },
+          "maxRSSKiB": 190720,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 120.23237499999999,
+          "cpu": {
+            "user": 86133,
+            "system": 40720
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 225.95004100000006
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 100.986542,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 103782,
+            "system": 34675
+          },
+          "maxRSSKiB": 190544,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 100.986542,
+          "cpu": {
+            "user": 82391,
+            "system": 31109
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 204.45350000000008
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 107.93483299999998,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 104285,
+            "system": 38675
+          },
+          "maxRSSKiB": 190720,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 107.93483299999998,
+          "cpu": {
+            "user": 83152,
+            "system": 34779
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 216.91054099999974
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 98.73608399999999,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 103432,
+            "system": 33031
+          },
+          "maxRSSKiB": 190912,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 98.73608399999999,
+          "cpu": {
+            "user": 83891,
+            "system": 29571
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 200.9853750000002
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 98.68054199999999,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 101840,
+            "system": 33059
+          },
+          "maxRSSKiB": 190848,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 98.68054199999999,
+          "cpu": {
+            "user": 82546,
+            "system": 29856
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 200.27137499999935
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-64MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 103.3085,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-64MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 104702,
+            "system": 35998
+          },
+          "maxRSSKiB": 190864,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/film.json": {
+              "bytes": 25060,
+              "maxReadRequest": 12530,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s001.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s002.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s003.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s004.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s005.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s006.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s007.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s008.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s009.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s010.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s011.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s012.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s013.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s014.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s015.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s016.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s017.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s018.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s019.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s020.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s021.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s022.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s023.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s024.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s025.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s026.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s027.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s028.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s029.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s030.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s031.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s032.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s033.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s034.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s035.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s036.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s037.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s038.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s039.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s040.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s041.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s042.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s043.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s044.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s045.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s046.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s047.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s048.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s049.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s050.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s051.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s052.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s053.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s054.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s055.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s056.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s057.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s058.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s059.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s060.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s061.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s062.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s063.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s064.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s065.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s066.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s067.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s068.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s069.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s070.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s071.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s072.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s073.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s074.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s075.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s076.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s077.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s078.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s079.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s080.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s081.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s082.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s083.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s084.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s085.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s086.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s087.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s088.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s089.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s090.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s091.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s092.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s093.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s094.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s095.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s096.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s097.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s098.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s099.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s100.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s101.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s102.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s103.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s104.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s105.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s106.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/shots/s107.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/audio/track.wav": {
+              "bytes": 134217728,
+              "maxReadRequest": 67108864,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 103.3085,
+          "cpu": {
+            "user": 83041,
+            "system": 32197
+          },
+          "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+        },
+        "commandWallMs": 207.333208
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 81.24745800000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 86176,
+            "system": 27938
+          },
+          "maxRSSKiB": 187936,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 81.24745800000001,
+          "cpu": {
+            "user": 65903,
+            "system": 23694
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 184.86491699999988
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 81.127375,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 84975,
+            "system": 27908
+          },
+          "maxRSSKiB": 188160,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 81.127375,
+          "cpu": {
+            "user": 63575,
+            "system": 24070
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 180.79041599999982
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 88.26483300000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 86757,
+            "system": 32119
+          },
+          "maxRSSKiB": 188048,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 88.26483300000001,
+          "cpu": {
+            "user": 65168,
+            "system": 28025
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 193.25083300000006
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 80.68370800000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 84667,
+            "system": 27470
+          },
+          "maxRSSKiB": 188064,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 80.68370800000001,
+          "cpu": {
+            "user": 62710,
+            "system": 23583
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 182.21912500000053
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 80.749791,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 85212,
+            "system": 27458
+          },
+          "maxRSSKiB": 188256,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 80.749791,
+          "cpu": {
+            "user": 63390,
+            "system": 23618
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 183.73883399999977
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-64MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 83.58654100000001,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-64MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 85415,
+            "system": 29230
+          },
+          "maxRSSKiB": 188384,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-64/audio/track.wav": {
+              "bytes": 134217728,
+              "maxReadRequest": 67108864,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 83.58654100000001,
+          "cpu": {
+            "user": 63685,
+            "system": 25355
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 67108864,
+                "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+              }
+            ],
+            "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+          }
+        },
+        "commandWallMs": 185.8412499999995
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 230.619959,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 143395,
+            "system": 81356
+          },
+          "maxRSSKiB": 319056,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 230.619959,
+          "cpu": {
+            "user": 123156,
+            "system": 77515
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 345.60091699999975
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 194.972583,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 142213,
+            "system": 67429
+          },
+          "maxRSSKiB": 319104,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 194.972583,
+          "cpu": {
+            "user": 123915,
+            "system": 64112
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 302.1102919999994
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 181.617417,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 144707,
+            "system": 63412
+          },
+          "maxRSSKiB": 319200,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 181.617417,
+          "cpu": {
+            "user": 124942,
+            "system": 59830
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 292.0228339999994
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 189.78758399999998,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 143241,
+            "system": 62473
+          },
+          "maxRSSKiB": 318944,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 189.78758399999998,
+          "cpu": {
+            "user": 122536,
+            "system": 58704
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 299.1017499999998
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 160.622875,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 139504,
+            "system": 50803
+          },
+          "maxRSSKiB": 319008,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 160.622875,
+          "cpu": {
+            "user": 119732,
+            "system": 47400
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 262.0458749999998
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "fileDigest",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-fileDigest-256MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 181.8605,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "fileDigest-256MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 144171,
+            "system": 64734
+          },
+          "maxRSSKiB": 319344,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/audio/track.wav": {
+              "bytes": 268435456,
+              "maxReadRequest": 268435456,
+              "completeReads": 1
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 181.8605,
+          "cpu": {
+            "user": 122252,
+            "system": 60880
+          },
+          "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+        },
+        "commandWallMs": 287.74295900000016
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 438.683708,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 279301,
+            "system": 154425
+          },
+          "maxRSSKiB": 583712,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 438.683708,
+          "cpu": {
+            "user": 256860,
+            "system": 149209
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 558.0990000000011
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 375.32075,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 276477,
+            "system": 123332
+          },
+          "maxRSSKiB": 583824,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 375.32075,
+          "cpu": {
+            "user": 256464,
+            "system": 120094
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 486.2072499999995
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 363.854834,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 276141,
+            "system": 121069
+          },
+          "maxRSSKiB": 583824,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 363.854834,
+          "cpu": {
+            "user": 256693,
+            "system": 117384
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 477.30662499999926
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 365.214834,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 278088,
+            "system": 122851
+          },
+          "maxRSSKiB": 583600,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 365.214834,
+          "cpu": {
+            "user": 255528,
+            "system": 118613
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 485.04804200000035
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 355.615834,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 274848,
+            "system": 115044
+          },
+          "maxRSSKiB": 583792,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 355.615834,
+          "cpu": {
+            "user": 253076,
+            "system": 111204
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 469.0147500000003
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "sourceState",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-sourceState-256MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 367.50208399999997,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "sourceState-256MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 279645,
+            "system": 116476
+          },
+          "maxRSSKiB": 584144,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/film.json": {
+              "bytes": 25060,
+              "maxReadRequest": 12530,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s001.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s002.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s003.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s004.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s005.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s006.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s007.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s008.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s009.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s010.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s011.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s012.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s013.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s014.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s015.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s016.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s017.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s018.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s019.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s020.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s021.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s022.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s023.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s024.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s025.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s026.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s027.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s028.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s029.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s030.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s031.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s032.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s033.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s034.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s035.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s036.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s037.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s038.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s039.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s040.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s041.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s042.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s043.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s044.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s045.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s046.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s047.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s048.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s049.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s050.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s051.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s052.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s053.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s054.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s055.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s056.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s057.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s058.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s059.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s060.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s061.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s062.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s063.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s064.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s065.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s066.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s067.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s068.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s069.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s070.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s071.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s072.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s073.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s074.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s075.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s076.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s077.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s078.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s079.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s080.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s081.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s082.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s083.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s084.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s085.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s086.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s087.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s088.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s089.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s090.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s091.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s092.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s093.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s094.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s095.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s096.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s097.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s098.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s099.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s100.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s101.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s102.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s103.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s104.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s105.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s106.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/shots/s107.js": {
+              "bytes": 268,
+              "maxReadRequest": 134,
+              "completeReads": 2
+            },
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/audio/track.wav": {
+              "bytes": 536870912,
+              "maxReadRequest": 268435456,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 367.50208399999997,
+          "cpu": {
+            "user": 258433,
+            "system": 112720
+          },
+          "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+        },
+        "commandWallMs": 480.3134590000009
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-1.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-1.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 343.47004200000003,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 1,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 260903,
+            "system": 112957
+          },
+          "maxRSSKiB": 581488,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 343.47004200000003,
+          "cpu": {
+            "user": 239640,
+            "system": 108603
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 456.7886670000007
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-2.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-2.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 434.18158399999993,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 2,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 271672,
+            "system": 162343
+          },
+          "maxRSSKiB": 581120,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 434.18158399999993,
+          "cpu": {
+            "user": 242769,
+            "system": 156208
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 652.8697080000002
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-3.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-3.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 327.018917,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 3,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 260897,
+            "system": 100193
+          },
+          "maxRSSKiB": 581344,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 327.018917,
+          "cpu": {
+            "user": 239040,
+            "system": 96175
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 447.94425000000047
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-4.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-4.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 318.024792,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 4,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 259898,
+            "system": 92722
+          },
+          "maxRSSKiB": 581424,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 318.024792,
+          "cpu": {
+            "user": 238496,
+            "system": 89169
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 431.77079200000117
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-5.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-5.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 331.656959,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 5,
+        "instrumented": false,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 260750,
+            "system": 101939
+          },
+          "maxRSSKiB": 581168,
+          "instrumented": false,
+          "files": {},
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 331.656959,
+          "cpu": {
+            "user": 240550,
+            "system": 98711
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 434.23754199999894
+      },
+      {
+        "command": "/opt/homebrew/Cellar/node/25.8.1_1/bin/node",
+        "args": [
+          "--import",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-metrics.mjs",
+          "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+          "--hash-worker",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "deliverySnapshot",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256",
+          "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-6.operation.json"
+        ],
+        "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline-deliverySnapshot-256MiB-probe.log",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "error": null,
+        "wallMs": 341.63,
+        "ok": true,
+        "engineLabel": "baseline",
+        "scenario": "deliverySnapshot-256MiB",
+        "round": 6,
+        "instrumented": true,
+        "metrics": {
+          "scope": "main Node process only; maxRSS lifetime KiB; excludes browser/ffmpeg children",
+          "cpu": {
+            "user": 264333,
+            "system": 104864
+          },
+          "maxRSSKiB": 581584,
+          "instrumented": true,
+          "files": {
+            "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/hash-baseline-v2/baseline/hash-256/audio/track.wav": {
+              "bytes": 536870912,
+              "maxReadRequest": 268435456,
+              "completeReads": 2
+            }
+          },
+          "processes": []
+        },
+        "validation": {
+          "operationMs": 341.63,
+          "cpu": {
+            "user": 241489,
+            "system": 100823
+          },
+          "result": {
+            "kind": "file",
+            "entries": [
+              {
+                "path": "track.wav",
+                "size": 268435456,
+                "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+              }
+            ],
+            "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+          }
+        },
+        "commandWallMs": 452.5248329999995
+      }
+    ],
+    "summaries": {
+      "baseline/fileDigest-8MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 5.470542000000009,
+        "minMs": 5.125500000000002,
+        "maxMs": 8.031374999999997
+      },
+      "baseline/sourceState-8MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 30.09183300000001,
+        "minMs": 26.933209000000005,
+        "maxMs": 37.652417
+      },
+      "baseline/deliverySnapshot-8MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 10.847458000000003,
+        "minMs": 10.677000000000007,
+        "maxMs": 11.758207999999996
+      },
+      "baseline/fileDigest-64MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 46.877167,
+        "minMs": 40.86449999999999,
+        "maxMs": 49.663708
+      },
+      "baseline/sourceState-64MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 100.986542,
+        "minMs": 98.68054199999999,
+        "maxMs": 120.23237499999999
+      },
+      "baseline/deliverySnapshot-64MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 81.127375,
+        "minMs": 80.68370800000001,
+        "maxMs": 88.26483300000001
+      },
+      "baseline/fileDigest-256MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 189.78758399999998,
+        "minMs": 160.622875,
+        "maxMs": 230.619959
+      },
+      "baseline/sourceState-256MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 365.214834,
+        "minMs": 355.615834,
+        "maxMs": 438.683708
+      },
+      "baseline/deliverySnapshot-256MiB": {
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 331.656959,
+        "minMs": 318.024792,
+        "maxMs": 434.18158399999993
+      }
+    }
+  },
+  "workflow": null
+}

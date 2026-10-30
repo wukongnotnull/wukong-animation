@@ -1,10 +1,10 @@
 # 第三批性能优化：测量基线、有界哈希与状态扫描去重
 
-Status: Draft — pending user review
+Status: Approved — implementation in progress
 Date: 2026-10-30 (Asia/Shanghai)
-Spec approval: Pending
+Spec approval: Approved by user on 2026-10-30
 
-基线：`5957b73e90f014011fb27d3e015d4987c39db6ba` / 插件 v0.19.3。跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。用户本轮要求“继续第三批性能优化，先整理规格与实施计划”，因此同时提供规格和计划草案；尚未批准实现，不修改制作代码或发布版本。
+基线：`5957b73e90f014011fb27d3e015d4987c39db6ba` / 插件 v0.19.3。跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。用户先要求整理规格与计划，随后明确回复“审阅并批准第三批规格与实施计划，从基准工具和真实场景测量开始实施”。已复核两份文件一致，按该授权开始实施 P1/P2/P3；合并、发布和安装升级仍不在本轮范围。
 
 沿用已确认的可靠性优先、小步改进和第三批先测量再优化的顺序。已有 v0.19.0 低负载预览不重做，v0.19.2 / v0.19.3 的失败恢复、依赖锁定和流程保护必须保持。
 
@@ -36,7 +36,7 @@ Spec approval: Pending
 
 ### 3.1 P1：先建立可复跑基准
 
-拟新增开发命令 `node tools/bench-performance.mjs --engine <engine目录> --suite <hash|workflow> --rounds 5 --out <新输出目录>`。这是批准后实现的接口，目前尚不存在。
+拟新增开发命令 `node tools/bench-performance.mjs --engine <engine目录> --suite <hash|workflow> --rounds 5 --out <新输出目录>`。这是已批准、待实现的开发接口。
 
 - engine 必须含可验证的清单与锁，比较双方使用同一 Node、锁定依赖、Chromium、ffmpeg/ffprobe 和字体；记录解析后的依赖身份、工具版本、平台、架构、CPU、内存及 worker 配置。
 - 从明确 Git 提交的干净副本执行基线和候选，运行时/测量工具摘要均入报告。两边独立缓存、临时 HOME 和临时剪映目录，素材字节与工作量一致；不使用客户工程或现有签批目录。
@@ -78,9 +78,9 @@ Spec approval: Pending
 
 ### 3.4 收益与放行标准
 
-硬性结构指标：大文件哈希最大读取缓冲区不超过 1 MiB；在固定 107 镜/单音轨夹具中，单次 sourceState 每个被重复引用的文件只做一次内容哈希，音轨逻辑读取从 2N 降为 N；交付双遍扫描仍为 2N。这些指标是拟议验收条件，不是当前实现结果。
+硬性结构指标：大文件哈希最大读取缓冲区不超过 1 MiB；在固定 107 镜/单音轨夹具中，单次 sourceState 每个被重复引用的文件只做一次内容哈希，音轨逻辑读取从 2N 降为 N；交付双遍扫描仍为 2N。这些指标是已批准的验收条件，不是当前实现结果。
 
-墙钟收益须由配对基准报告，不承诺倍数。任一有效场景候选中位数相对基线增加超过 `max(100ms, 基线的10%)` 时暂停放行，检查环境和归因并按相同方法复测；仍有回退则缩小/回退该项改动，不放宽阈值掩盖。这个容差是本草案提出的验收选择，待用户随规格批准。
+墙钟收益须由配对基准报告，不承诺倍数。任一有效场景候选中位数相对基线增加超过 `max(100ms, 基线的10%)` 时暂停放行，检查环境和归因并按相同方法复测；仍有回退则缩小/回退该项改动，不放宽阈值掩盖。用户已随本规格批准此回退容差；它不是承诺的提速百分比。
 
 若时间差落在波动范围内，但有界内存和读取量确已改善，可如实以该收益交付，不能称为端到端显著提速。每项报告收益、增加的 stat/系统调用代价及未验证场景。
 
@@ -91,7 +91,7 @@ Spec approval: Pending
 - 本批不新增全局或磁盘摘要缓存，不用 mtime/size 代替跨调用的内容核对，不跨 await/写入复用观察。
 - 不新增渲染管线，不增加并发，不默认使用硬件编码，不升级依赖，不整体异步化，不做无证据的大规模重构。
 - 所有测试和基准使用可确认归属的临时副本；不修改客户作品、已安装插件缓存或真实剪映草稿，不清理系统缓存与旧依赖。
-- 本轮只提交规格、计划与诊断证据；实现须另获规格批准，合并/发布/安装升级不在本轮范围。
+- 本轮实施已批准的 P1/P2/P3，合并/发布/安装升级不在本轮范围。
 
 ## 5. 错误处理与运维
 
@@ -124,4 +124,4 @@ Spec approval: Pending
 
 仓库依据：`core/evidence.mjs`、`core/operations.mjs`、`core/cache.mjs`、`core/timing.mjs`、`core/final-delivery.mjs` 及既有 [v0.19.0 性能报告](../reports/2026-10-30-render-performance.md)。Node 20 支持显式缓冲区读取与多次 hash.update，接口依据为 [fs.readSync](https://nodejs.org/docs/latest-v20.x/api/fs.html#fsreadsyncfd-buffer-offset-length-position) 和 [hash.update](https://nodejs.org/docs/latest-v20.x/api/crypto.html#hashupdatedata-inputencoding)。采用同步有界读取是本规格的设计选择，不把它描述为官方推荐的整个制作架构。
 
-请重点审阅：先测基线再改的顺序、仅 sourceState 内去重的范围、保留交付双遍和完整解码的代价，以及性能回退容差。实施任务见[计划草案](../plans/2026-10-30-2310-performance-phase-three.md)。
+审阅已确认：先测基线再改的顺序、仅 sourceState 内去重的范围、保留交付双遍和完整解码的代价，以及性能回退容差。实施任务见[实施计划](../plans/2026-10-30-2310-performance-phase-three.md)。

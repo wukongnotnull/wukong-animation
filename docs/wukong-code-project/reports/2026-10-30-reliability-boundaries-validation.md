@@ -48,3 +48,11 @@ R3 最初另有一项测试准备失败：临时仓库中的文件同时存在�
 三项本地实现与上述验收已完成。未推送、开 PR、运行远端 CI、合并或发布；已安装插件未更新。仅使用隔离测试工程和仓库示范片，没有写入客户作品或外部客户草稿。
 
 本机完整通过不代替远端 CI；没有新增 Windows/Linux 实机结论。Issue 保持开放供 PR 与合并跟踪；仓库未指定 Project，不创建无关看板。推荐下一步提交 PR 并运行 CI，再按结果审阅合并。
+
+## PR 阶段补查
+
+用户随后授权提交 PR、运行 CI、审阅并合并。已创建 [PR #114](https://github.com/wukongnotnull/wukong-animation/pull/114)，以下补充此前本地交付阶段的记录。
+
+初始 head `ba44ba1` 的 push CI 在既有 Remotion 错误清理测试中失败：测试组件令 `f >= 5` 都抛错，却断言错误必须为 `boom at 5`；并行渲染实际先返回 `boom at 6`。该轮 423 通过、1 失败、15 项可选依赖跳过；三项新修复用例通过。证据：[失败任务](https://github.com/wukongnotnull/wukong-animation/actions/runs/41050690220/job/124045688527)。
+
+只将测试故障注入收紧到 `f === 5`，保留 `boom at 5`、镜头 ID、失败退出与无半成品的原断言，不改生产渲染逻辑，不放宽验收门槛。修正后 `node --test tests/integration/remotion.test.mjs`：7 通过、0 失败、0 跳过，约 72.5 秒。原 head 的另一组 PR CI 同时为 424 通过、0 失败、15 项可选依赖跳过，9 张视觉样张全零差异，进一步确认错误返回先后存在竞争。修正提交的最终 CI 结果在 PR 审阅记录中登记。

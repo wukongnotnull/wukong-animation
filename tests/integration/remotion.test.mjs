@@ -114,7 +114,8 @@ test('60fps工程直接只绘制15fps小样，组件看到实际输出帧率', o
 });
 
 test('镜头组件出错：报错带镜头 id，不留半成品', opts, () => {
-  const dir = makeFilm({ s01: SHOT('#111111'), s02: SHOT('#111111', "if (f >= 5) throw new Error('boom at ' + f);") });
+  // 帧并行时多个失败帧的返回顺序不确定；只在指定帧注入故障。
+  const dir = makeFilm({ s01: SHOT('#111111'), s02: SHOT('#111111', "if (f === 5) throw new Error('boom at ' + f);") });
   const r = wka('render', dir);
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /s02/);

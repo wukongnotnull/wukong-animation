@@ -3,9 +3,9 @@
 Status: Confirmed
 Date: 2026-10-30（Asia/Shanghai）
 Source: grilling
-Spec approval: Pending user review
+Spec approval: Approved by user, 2026-10-30
 
-`Confirmed` 指用户已确认本轮完整需求共识；本技术文件尚待单独审阅批准，不能据此开始实现。基线：`main 4489cdd`、插件v0.17.1。关联：[体验优化 #93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[既有PRD](../prd.md) FR-6/FR-7、[第二次实拍复盘](../reports/2026-10-30-production-delivery-review.md)。本设计细化最终交付，不扩大其他制作环节。
+用户已明确批准本技术文件。基线：`main 4489cdd`、插件v0.17.1。关联：[体验优化 #93](https://github.com/wukongnotnull/wukong-animation/issues/93)、[既有PRD](../prd.md) FR-6/FR-7、[第二次实拍复盘](../reports/2026-10-30-production-delivery-review.md)。本设计细化最终交付，不扩大其他制作环节。
 
 ## 1. 问题与目标
 

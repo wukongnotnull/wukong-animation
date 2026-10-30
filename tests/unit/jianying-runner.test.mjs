@@ -27,6 +27,7 @@ const cases = {
   empty: '',
   emptySuite: "import {describe} from 'node:test'; describe('empty suite',()=>{});",
   importFailure: "throw Error('broken import');",
+  earlyExit: 'process.exit(7);',
   missing: null,
 };
 for (const [kind, source] of Object.entries(cases)) test(`required runner rejects ${kind} unless real tests pass`, t => {

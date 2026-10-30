@@ -31,6 +31,9 @@ test('resume gives structured read-only flow diagnostics, never a rerun instruct
   assert.equal(status.code, 'WKA_FLOW_TOO_NEW'); assert.equal(status.flow, 6);
   assert.equal(status.supportedFlow, 5); assert.equal(status.stateFile, f.file); assert.equal(status.readonly, true);
   assert.match(status.instruction, /升级/); assert.equal('next' in status, false); assert.equal('stages' in status, false);
+  const plain = f.run(['resume', f.dir]);
+  assert.equal(plain.status, 1); assert.match(plain.stdout, /WKA_FLOW_TOO_NEW.*升级/);
+  assert.doesNotMatch(plain.stdout, /按原命令重跑|补做/);
   assert.equal(fs.readFileSync(f.file, 'utf8'), f.raw);
 });
 
@@ -45,6 +48,11 @@ for (const withArtifacts of [false, true]) test(`every production command reject
   const f = fixture(t);
   if (withArtifacts) for (const rel of ['.cache/operations.json', '.cache/active-command.json', 'review/notes.md', '.wka/pending-approval.json']) {
     const file = path.join(f.dir, rel); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, 'sentinel');
+  }
+  if (withArtifacts) {
+    fs.mkdirSync(path.join(f.dir, 'shots'));
+    fs.writeFileSync(path.join(f.dir, 'shots/s01.js'), 'wk.shot({render(){}});');
+    fs.writeFileSync(path.join(f.dir, 'film.json'), JSON.stringify({ title: 'future', style: 'ink-wash', size: [160, 90], fps: 10, seed: 1, shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }] }));
   }
   fs.mkdirSync(path.join(f.root, 'external-drafts')); fs.writeFileSync(path.join(f.root, 'external-drafts/user.json'), 'user draft');
   // Any rendering, encoding, Git, or download subprocess is an immediate failure with a visible marker.

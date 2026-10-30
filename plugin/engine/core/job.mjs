@@ -38,6 +38,11 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   const { film: rawFilm, renamed: legacyFields } = migrateFilm(JSON.parse(fs.readFileSync(file, 'utf8')));
   const errs = validate('film', rawFilm, 'film.json');
   if (errs.length) throw new Error('film.json 校验失败:\n  ' + errs.join('\n  '));
+  const ids = new Set();
+  for (const shot of rawFilm.shots) {
+    if (ids.has(shot.id)) throw new Error(`film.json 镜头编号重复：${shot.id}；请修改编号后重试`);
+    ids.add(shot.id);
+  }
 
   const registry = getRegistry();
   const { styles } = getStyles();

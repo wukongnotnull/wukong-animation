@@ -31,7 +31,7 @@ wukong-animation/                          # GitHub 仓库
 ├── tests/smoke/                   # 冒烟测试 + 基准图（按平台分目录）
 ├── tests/unit/ tests/integration/ # node --test：cue 解析、AI 配音缓存、渲染失败清理
 ├── docs/                          # 画廊、本文件、贡献指南
-└── .github/workflows/             # lint · smoke
+└── .github/workflows/             # lint · smoke · agent-installation · jianying（真实导出必跑）
 ```
 
 用户机器上：

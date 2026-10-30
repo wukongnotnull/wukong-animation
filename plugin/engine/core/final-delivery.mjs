@@ -399,6 +399,19 @@ function acceptance(dir,item,artifact,data,history) {
   return history.some(h=>h.step===step)?{acceptance:'historical-only',reason:'历史已验收，当前版本待核实：缺少确切产物绑定链'}:{acceptance:'pending'};
 }
 
+function evidencedCandidates(dir,data,items,host) {
+  const stages=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{});
+  const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft|subtitle)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
+  for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^(encode:|review:sidecar-)/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':s.stage.startsWith('encode:')?'video':'subtitle'});
+  const seen=new Set(items.map(i=>i.path)),result=[];
+  for(const item of known) {
+    if(seen.has(item.path))continue;seen.add(item.path);
+    const obs=observed(item.path);if(obs.availability!=='present')continue;
+    result.push({...item,...obs,section:'历史/待核实版本',freshness:'unknown',openStatus:'not-tested',...(host==='generic'?{previewStatus:'unverified'}:{link:fileLink(item.path,{host})})});
+  }
+  return result;
+}
+
 export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
   if(!['codex','claude','generic'].includes(host))throw new Error('host 应为 codex、claude 或 generic');
   dir=path.resolve(dir);const contract=finalContract(dir,{aspect}),data=ledger(dir),history=progress(dir).history||[];
@@ -424,13 +437,16 @@ export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
     const edited=i.kind==='draft'&&i.availability==='present'&&i.acceptance==='changed-after-acceptance';
     return {slot:i.slot,reasons:i.reasons,actor:edited?'reviewer':i.availability!=='present'||i.freshness!=='current'||i.technical==='hard-error'||i.technical==='unknown'?'agent':'reviewer',next:edited?'保存退出剪映并复核当前版本；代理检查素材后重新绑定':i.availability!=='present'?'补齐或核验该产物':i.technical==='hard-error'?'修复该产物的确定技术错误，再提交核验':i.freshness!=='current'?'核对来源/文件变化及证据；保留现有文件':i.technical==='unknown'?'核对输出技术门槛及绑定的检查报告':'审阅并签批当前版本'};
   });
+  blocks.push(...contract.errors.map(error=>({slot:null,label:'交付要求',reasons:[error],actor:error.startsWith('缺少明确制作决定')?'reviewer':'agent',next:error.startsWith('缺少明确制作决定')?'补齐尚未明确的交付选择':'依据已有明确来源核对决定与配置差异'})));
   const incomplete=items.some(i=>i.availability!=='present'||i.freshness==='changed'||i.technical==='hard-error');
   let status=ready.length===items.length&&items.length?'awaiting-acceptance':ready.length?'partial':incomplete?'incomplete':'needs-verification';
   if(accepted.length===items.length&&items.length&&!contract.errors.length)status='accepted';
   if(contract.errors.length)status='needs-verification';
   const files=[],auditDiagnostics=[];
   for(const root of ['review','stills'])try{files.push(...treeEvidence(path.join(dir,root)).filter(e=>!/^最终交付(?:清单|审计)/.test(path.basename(e.path))).map(e=>({...e,path:path.join(dir,root,e.path)})));}catch(e){auditDiagnostics.push(`${root} 附录无法完整读取：${e.message}`);}
-  return {version:2,ok:status==='accepted',scope:contract.scope,status,summary:{ready:ready.length,accepted:accepted.length,total:items.length},host,contract,items,reviewSets:reviewSets(dir,contract,items,data),history:data.artifacts.filter(a=>!items.some(i=>i.artifactId===a.id)),blocks,errors:contract.errors,links:items.map(i=>i.link).filter(Boolean),audit:{files,ledger:data,diagnostics:auditDiagnostics},hostValidation:'未实际打开的文件均为 not-tested；文件指纹不证明播放成功'};
+  const candidates=contract.errors.length?evidencedCandidates(dir,data,items,host):[];
+  const references=['.wka/state.json','.cache/operations.json','.wka/decisions.json'].filter(rel=>fs.existsSync(path.join(dir,rel))).map(rel=>sourceFile(path.join(dir,rel)));
+  return {version:2,ok:status==='accepted',scope:contract.scope,status,summary:{ready:ready.length,accepted:accepted.length,total:items.length},host,contract,items,candidates,reviewSets:reviewSets(dir,contract,items,data),history:data.artifacts.filter(a=>!items.some(i=>i.artifactId===a.id)),blocks,errors:contract.errors,links:[...items,...candidates].map(i=>i.link).filter(Boolean),audit:{files,ledger:data,references,diagnostics:auditDiagnostics},hostValidation:'未实际打开的文件均为 not-tested；文件指纹不证明播放成功'};
 }
 
 function atomicText(file,text) {
@@ -450,7 +466,8 @@ export function formatFinalDelivery(report) {
     }
     lines.push('');
   }
-  lines.push(...report.blocks.map(b=>{const i=report.items.find(i=>i.slot===b.slot);return `- ${i.aspect} ${name(i)}：${b.actor==='agent'?'代理':'用户'} — ${b.next}`;}),...report.errors.map(e=>'- '+e),'');
+  if(report.candidates?.length)lines.push('## 已有成果（交付要求待核实）','',...report.candidates.map(i=>`- ${i.aspect} ${i.kind==='draft'?'草稿':i.kind==='video'?'视频':'字幕'} · ${i.section}：${i.link||i.path}`),'');
+  lines.push(...report.blocks.map(b=>{const i=report.items.find(i=>i.slot===b.slot);return `- ${i?i.aspect+' '+name(i):b.label}：${b.actor==='agent'?'代理':'用户'} — ${b.next}`;}),...report.errors.map(e=>'- '+e),'');
   if(report.appendix)lines.push('技术材料与完整历史：'+(fileLink(report.appendix.markdown,{host:report.host})||report.appendix.markdown),'');
   lines.push(report.hostValidation,'');return lines.join('\n');
 }

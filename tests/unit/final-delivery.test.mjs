@@ -249,3 +249,10 @@ test('A10 macOS cannot treat a failed process probe as an exited editor',t=>{
     assert.throws(()=>final.prepareFinalApproval(dir,{id:'unknown-process',step:15,revision,source:'用户',note:'通过'}),/无法核实剪映进程/);
   }finally{process.env.PATH=previous;}
 });
+
+test('A1 conflicting aspect decisions retain evidenced files without making them required/current',t=>{
+  const dir=fixture(t),draft=draftArtifact(dir),file=path.join(dir,'.wka/decisions.json'),decisions=JSON.parse(fs.readFileSync(file));
+  decisions.aspects.value=['1:1'];fs.writeFileSync(file,JSON.stringify(decisions));
+  const report=final.finalDeliveryReport(dir);assert.equal(report.status,'needs-verification');assert.equal(report.ok,false);
+  assert.ok(report.candidates?.some(i=>i.path===draft&&i.link&&i.section==='历史/待核实版本'));
+});

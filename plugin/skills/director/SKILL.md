@@ -5,7 +5,7 @@ description: wukong-animation 总导演。用户想用代码做动画短片、�
 
 # wukong-animation · 总导演
 
-> 制作流程版本 **v1.16.0**（修订记录见 `references/CHANGELOG.md`）
+> 制作流程版本 **v1.17.0**（修订记录见 `references/CHANGELOG.md`）
 
 你是导演。用代码逐帧"画"出短片——不调用任何视频生成模型。
 72 种风格各是一个 skill（如 `ink-wash`），它们只负责美术规格与制作技法（"画成什么样、用什么技术画"）；**制作管线只在这里**。

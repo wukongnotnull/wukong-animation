@@ -1,6 +1,6 @@
 # 第二批可靠性优化：依赖锁定、流程版本保护、剪映 CI 必跑
 
-Status: Approved — implementation in progress
+Status: Implemented and verified — PR #116 pending merge
 Date: 2026-10-30 (Asia/Shanghai)
 Spec approval: Approved by user on 2026-10-30
 
@@ -137,7 +137,7 @@ R5 已做隔离复现：临时 `.wka/state.json` 的 `flow: 6` 经 `readProgress
 
 实现时先运行定向失败回归，确认失败源自上述边界，再最小实现。模块测试使用故障注入与临时目录，至少一次真实 npm ci 和真实剪映导出作为集成证据，不能以源码字符串包含某个命令替代行为验证。
 
-完成后运行定向矩阵、npm test、npm run test:jianying、npm run smoke、npm run lint、npm run build:portable、git diff --check；本地与远端结果分别记录，视觉基准不更新。没有执行的检查明确标注。当前仅完成源码核对、R5 隔离复现和 17 项既有 state 基线测试，未声称本批已修复。
+完成后运行定向矩阵、npm test、npm run test:jianying、npm run smoke、npm run lint、npm run build:portable、git diff --check；本地与远端结果分别记录，视觉基准不更新。没有执行的检查明确标注。初稿阶段仅完成源码核对、R5 隔离复现和 17 项既有 state 基线测试；批准后的实现、失败到通过记录及最终 484 项本地回归见[验收报告](../reports/2026-10-30-reliability-phase-two-validation.md)。
 
 ## 7. 设计取舍与审阅重点
 

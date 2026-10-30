@@ -8,9 +8,9 @@ import { spawnSync } from 'node:child_process';
 const MAC_PROCESS = 'VideoFusion-macOS';
 const MAX_VERSION = 99;
 
-/** 剪映是否正在运行。只在 macOS 上检查；进程名可用 WKA_JIANYING_PROCESS 覆盖。 */
+/** macOS 检查默认剪映；已有进程名覆盖也可在 Linux 用真实 pgrep 验证，Linux 不猜默认桌面进程。 */
 export function jianyingRunning() {
-  if (process.platform !== 'darwin') return false;
+  if (process.platform !== 'darwin' && !(process.platform === 'linux' && process.env.WKA_JIANYING_PROCESS)) return false;
   const name = process.env.WKA_JIANYING_PROCESS || MAC_PROCESS;
   return spawnSync('pgrep', ['-x', name], { stdio: 'ignore' }).status === 0;
 }

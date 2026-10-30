@@ -35,6 +35,7 @@ Baseline: `5957b73e90f014011fb27d3e015d4987c39db6ba` / v0.19.3
 | 新建 `tests/unit/file-hash.test.mjs`、`tests/unit/source-state.test.mjs` | 有界读取、短读/错误、指纹兼容、观察生命周期及读取量断言 |
 | 修改 `tests/unit/shot-hash.test.mjs`、`render-performance.test.mjs`、`final-delivery.test.mjs`、`operations.test.mjs` | 原语接入与业务保护回归；保留所有既有断言 |
 | 按实际缺口补充 `tests/integration/render-performance.test.mjs`、`recovery-delivery.test.mjs` | 无改/单改的重渲工作量、恢复、签批和输出保护 |
+| 修改 `.github/workflows/agent-installation.yml` | 现有 Node 20 三平台任务追加 file-hash/source-state 纯文件 I/O 单测，不改变剪映必跑任务或分支保护 |
 | 后续报告、`docs/CONTRIBUTING.md`、`docs/ARCHITECTURE.md` | 基准操作说明、结果和限制；校准文档中仍写“默认两个页面”的旧表述，说明现有日常 1 / 终稿最多 2 的规则，不改变默认值 |
 
 ## 任务 0：批准与冻结范围
@@ -115,7 +116,7 @@ npm run build:portable
 git diff --check
 ```
 
-4. 长片矩阵需实际覆盖 browser/Remotion、横/竖、高清/小样的 107 镜帧数与切点；它是正确性压力验证，不能用低分辨率测试的速度代替制作基准。依赖缺失时先修复验证环境，不把跳过计为通过。
+4. 长片矩阵需实际覆盖 browser/Remotion、横/竖、高清/小样的 107 镜帧数与切点；它是正确性压力验证，不能用低分辨率测试的速度代替制作基准。依赖缺失时先修复验证环境，不把跳过计为通过。现有三平台 CI 追加 `node --test tests/unit/file-hash.test.mjs tests/unit/source-state.test.mjs`，验证新文件 I/O 行为；它们不得依赖 ffmpeg/浏览器，仍不把此项称为 Windows 渲染验收。
 5. 对照 A1–A12 写最终报告：场景/输入、源码和工具版本、样本数、失败数、耗时/CPU/内存口径、读取量、重渲/解码/编码工作量、证据边界。
 6. 文档与实现一致后提交；按后续授权提交 PR，并核对当前提交的 lint/smoke/严格 jianying/三平台安装 CI。合并与发布另按后续用户授权执行。
 

@@ -90,7 +90,7 @@ codex plugin add wukong-animation@wukong-animation
 
 ### 其他 Agent 工具
 
-Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.19.0 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.0) 里的 `wukong-animation-agent-skills-v0.19.0.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.19.1 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.1) 里的 `wukong-animation-agent-skills-v0.19.1.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
 
 ## 拍你的第一支片
 
@@ -108,7 +108,7 @@ Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完�
 
 | 节点 | 你会看到什么 | 你要做什么 |
 |---|---|---|
-| ① 制作简报 | Claude 先一轮轮问清片子拿去做什么、讲什么、多长、什么画幅，再整理成一份简报 | 看要求写得对不对 |
+| ① 制作简报 | AI 用提问卡片一次只问一个问题，回答后再问下一题，确认用途、内容和规格后整理成简报 | 逐题回答，再看简报要求写得对不对 |
 | ② 美术定调 | 几套画风方案 | 选一套 |
 | ③ 剧本 | 故事脚本 | 看内容对不对味 |
 | ④ 分镜 | 每个镜头拍什么、多长 | 看节奏和镜头安排 |

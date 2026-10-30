@@ -207,9 +207,9 @@ test('a variant signed off before the main version changed is stale: final refus
 test('wka final --aspect names the variant output with its suffix; --aspect all makes every version', opts, () => {
   const dir = makeFilm();
   ok(wka('final', dir, '--aspect', '9:16', '--proxy'));
-  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [90, 160]);
+  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [180, 320]);
   assert.ok(!fs.existsSync(path.join(dir, 'it-proxy.mp4')));
   ok(wka('final', dir, '--aspect', 'all', '--proxy'));
-  assert.deepEqual(videoSize(path.join(dir, 'it-proxy.mp4')), [160, 90]);
-  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [90, 160]);
+  assert.deepEqual(videoSize(path.join(dir, 'it-proxy.mp4')), [320, 180]);
+  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [180, 320]);
 });

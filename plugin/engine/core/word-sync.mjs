@@ -114,7 +114,7 @@ export function prepareWordShots(job) {
     const keys=Object.keys(resolved.cues).filter(key=>!used || used.has(key));
     const wordFrames={}, points=[];
     for(const key of keys) {
-      const loc=wordFrame({in:resolved.cues[key][0]},shot,{fps:job.fps,nativeFps:job.film.fps,remotion:job.pipeline.name==='remotion'});
+      const loc=wordFrame({in:resolved.cues[key][0]},shot,{fps:job.fps});
       wordFrames[key]=loc.frame;
       points.push({key,...resolved.evidence[key],...loc,range:resolved.cues[key],shot:shot.id});
     }

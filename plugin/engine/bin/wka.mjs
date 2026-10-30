@@ -15,6 +15,8 @@
 //   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy] [--aspect 9:16]   静帧 + 接触表
 //   wka animatic <片目录> [--proxy] [--aspect 9:16]   动态分镜：代表帧按镜头时长排成粗片并配上声轨
 //   wka render <片目录> [--proxy] [--only s01,s03] [--force] [--aspect 9:16]   渲染（--proxy 为小样；--aspect 出副版）
+//   wka preview <片目录> [--only s01,s03] [--native] [--force] [--aspect 9:16]   日常局部小样（--native 原画质与原帧率）
+//   wka clean <片目录> --render-cache [--aspect 9:16]   主动清理当前画幅的可再生渲染缓存
 //   wka soundtrack <片目录>           声轨制作：配乐 + 人声，写入声音同步点（不要求镜头文件已写好）
 //   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理
 //   wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]   音色试听：同一句用几个音色各合成一遍
@@ -27,7 +29,8 @@ import { spawnSync } from 'node:child_process';
 import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
 import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, DEPS_DIR, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
 import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
-import { render, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
+import { render, preview, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
+import { cleanRenderCache } from '../core/cache.mjs';
 import { snapshotMain, checkMainUnchanged } from '../core/approval.mjs';
 import { listAspects } from '../core/variants.mjs';
 import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
@@ -480,13 +483,17 @@ async function main() {
       const deliveryProof=deliveryApproval?{deliveryApproval:deliveryApproval.existing&&pending?.deliveryApproval?.review?pending.deliveryApproval:deliveryApproval}:{};
       atomicJson(pendingFile,{id,step,note,signature,status:'prepared',...deliveryProof});
       if (step === FINAL_REVIEW_STEP) {
-        const ctx=loadFilm(pos[0]);requireTiming(ctx,{log});await requireSubtitlePreflight(ctx,{proxy:false});
+        const ctx=loadFilm(pos[0]);requireTiming(ctx,{fresh:true,log});await requireSubtitlePreflight(ctx,{proxy:false});
       }
       if (step === SUBTITLES_STEP) {
         const ctx=loadFilm(pos[0]);
         try { await requireSubtitlePreflight(ctx,{proxy:true}); } catch { await requireSubtitlePreflight(ctx,{proxy:true,layout:true}); }
       }
-      if (step === PROXY_STEP) await requireSubtitlePreflight(loadFilm(pos[0]),{proxy:true});
+      if (step === PROXY_STEP) {
+        const ctx=loadFilm(pos[0]);
+        requireTiming(ctx,{proxy:true,fresh:true,log});
+        await requireSubtitlePreflight(ctx,{proxy:true});
+      }
       if (step === VARIANT_STEP) {
         const { film } = loadFilm(pos[0]);
         for (const aspect of Object.keys(film.variants || {})) {
@@ -494,7 +501,7 @@ async function main() {
           const checked = await checkMainUnchanged(pos[0], { aspect, log });
           if (checked && !checked.ok) fail('主版不变检查未通过，不能签批副版；先完成主版复核');
           const proxy = fs.existsSync(path.join(ctx.variant.cacheDir, 'timing-proxy.json'));
-          requireTiming(ctx, { proxy, log });
+          requireTiming(ctx, { proxy, fresh: true, log });
           await requireSubtitlePreflight(ctx,{proxy});
         }
       }
@@ -549,6 +556,17 @@ async function main() {
       registerReview(pos[0],'animatic',[r.file,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       log(`动态分镜：${r.file}`);
+      return;
+    }
+    case 'preview': {
+      if (!pos[0]) fail('用法：wka preview <片目录> [--only s01,s03] [--native]');
+      return preview(pos[0], { only: opt('only') ? String(opt('only')).split(',') : null, proxy: !opt('native'), aspect: aspectOpt(), force: !!opt('force'), log });
+    }
+    case 'clean': {
+      if (!pos[0] || !opt('render-cache')) fail('用法：wka clean <片目录> --render-cache [--aspect 9:16]');
+      const ctx = loadFilm(pos[0], { requireShots: false, aspect: aspectOpt() });
+      const removed = cleanRenderCache(ctx.variant.cacheDir);
+      log(`已清理 ${removed.length} 项可再生渲染缓存；声音、素材、审阅文件、成片和签批快照保留`);
       return;
     }
     case 'render': {
@@ -633,7 +651,7 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
   registerReview(ctx.filmDir,'subtitle-preflight',outputs,ctx.variant.aspect,proxy);
 }
 async function execute(){
-  const writes=['signoff','qc','still','animatic','render','soundtrack','subtitles','final'];
+  const writes=['signoff','qc','still','animatic','render','preview','clean','soundtrack','subtitles','final'];
   const unlock=(writes.includes(cmd)||(cmd==='delivery'&&opt('final')&&opt('record')))&&pos[0]?lockProduction(pos[0]):()=>{};
   if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
   try{await main();}finally{unlock();}

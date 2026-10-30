@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { outputFps } from './render-profile.mjs';
 export const TIMING_VERSION = 1;
 
 export function buildFrameTimeline(shots, fps) {
@@ -53,15 +54,63 @@ export function inspectVideo(file, { fps, frames }) {
   return result;
 }
 
-export function assertVideo(file, expected) {
-  const result = inspectVideo(file, expected);
+export function assertVideo(file, expected, options) {
+  const result = options ? checkedVideo(file, expected, options) : inspectVideo(file, expected);
   if (!result.ok) throw new Error(`时间轴检查失败 ${path.basename(file)}：${result.errors.join('；')}`);
   return result;
 }
 
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const fileSha = (file) => sha(fs.readFileSync(file));
-const fpsOf = (ctx, proxy) => proxy ? Math.max(1, Math.round(ctx.film.fps / 2)) : ctx.film.fps;
+const sessionChecks = new Map();
+const probeVersions = new Map();
+const checker = fileSha(new URL(import.meta.url));
+
+/** 内容及检查条件一致才能复用。fresh跳过磁盘证据，同次调用已完整测过的不重复解码。 */
+export function checkedVideo(file, expected, { cacheDir, fresh = false } = {}) {
+  if (!cacheDir) return inspectVideo(file, expected);
+  let content, version;
+  try {
+    content = fileSha(file);
+    const envPath = process.env.PATH || '';
+    if (!probeVersions.has(envPath)) {
+      const p = spawnSync('ffprobe', ['-version'], { encoding: 'utf8' });
+      if (p.status !== 0) return inspectVideo(file, expected);
+      probeVersions.set(envPath, p.stdout);
+    }
+    version = probeVersions.get(envPath);
+  } catch { return inspectVideo(file, expected); }
+  const key = sha(JSON.stringify({ content, expected, checker, version }));
+  const proof = path.join(cacheDir, 'video-checks', sha(path.resolve(file)) + '.json');
+  const valid = saved => saved?.key === key && saved.result?.ok === true &&
+    saved.result.frames === expected.frames && saved.result.fps === expected.fps &&
+    Array.isArray(saved.result.errors) && !saved.result.errors.length && saved.result.measuredAt;
+  const measured = sessionChecks.get(key);
+  if (valid(measured)) {
+    // .part成功改名或相同视频复制为审阅文件后，下一次调用也能直接复用。
+    if (measured.result.file !== file) atomicJson(proof, { key, result: { ...measured.result, file } });
+    return { ...measured.result, file, reused: 'session' };
+  }
+  if (!fresh) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(proof, 'utf8'));
+      if (valid(saved)) return { ...saved.result, file, reused: 'disk' };
+    } catch { /* 没有可用证据则重新检查 */ }
+  }
+  const result = { ...inspectVideo(file, expected), measuredAt: new Date().toISOString(), reused: false };
+  if (result.ok && fileSha(file) !== content) {
+    result.ok = false;
+    result.errors.push('检查期间文件发生变化，请重试');
+  }
+  if (result.ok) {
+    const saved = { key, result };
+    sessionChecks.set(key, saved);
+    atomicJson(proof, saved);
+  } else fs.rmSync(proof, { force: true });
+  return result;
+}
+
+const fpsOf = (ctx, proxy) => outputFps(ctx.film, proxy);
 const manifestFile = (ctx, proxy) => path.join(ctx.variant.cacheDir, proxy ? 'timing-proxy.json' : 'timing.json');
 const signature = (ctx, timeline, proxy) => sha(JSON.stringify({ version: TIMING_VERSION, fps: timeline.fps, aspect: ctx.variant.aspect, proxy, shots: ctx.film.shots.map(s => [s.id, s.duration]) }));
 const reportBase = (ctx, proxy, purpose = '') => `时间轴检查${purpose ? '-' + purpose : ''}${ctx.variant.suffix ? '-' + ctx.variant.suffix : ''}${proxy ? '-proxy' : ''}`;
@@ -96,18 +145,19 @@ export function timingFailure(ctx, error, { proxy = false, log = () => {} } = {}
 }
 
 /** 每段实测后累加，正负偏差互相抵消也不能绕过检查。 */
-function measure(ctx, timeline, segments, video) {
+function measure(ctx, timeline, segments, video, fresh) {
+  const options = { cacheDir: ctx.variant.cacheDir, fresh };
   const errors = [];
   let actual = 0;
   const shots = timeline.shots.map((s, i) => {
-    const result = inspectVideo(segments[i], { fps: timeline.fps, frames: s.frames });
+    const result = checkedVideo(segments[i], { fps: timeline.fps, frames: s.frames }, options);
     const row = { ...s, file: segments[i], actualStartFrame: actual, actualEndFrame: actual + (result.frames || 0) };
     actual = row.actualEndFrame;
     errors.push(...result.errors.map(e => `${s.id}：${e}`));
     if (actual !== s.endFrame) errors.push(`${s.id} 切点实测 ${actual} 帧，期望 ${s.endFrame} 帧`);
     return row;
   });
-  const result = inspectVideo(video, { fps: timeline.fps, frames: timeline.totalFrames });
+  const result = checkedVideo(video, { fps: timeline.fps, frames: timeline.totalFrames }, options);
   errors.push(...result.errors.map(e => `拼接视频：${e}`));
   return { ...timeline, aspect: ctx.variant.aspect, shots, video: result, errors, outputs: [] };
 }
@@ -115,7 +165,7 @@ function measure(ctx, timeline, segments, video) {
 /** 只有媒体验证成功才建立来源记录。 */
 export function recordTiming(ctx, video, segments, { proxy = false, log = () => {} } = {}) {
   const timeline = buildFrameTimeline(ctx.shots, fpsOf(ctx, proxy));
-  const report = measure(ctx, timeline, segments, video);
+  const report = measure(ctx, timeline, segments, video, true);
   report.purpose = proxy ? '小样' : '高清';
   report.signature = signature(ctx, timeline, proxy);
   if (!report.errors.length) {
@@ -128,8 +178,8 @@ export function recordTiming(ctx, video, segments, { proxy = false, log = () => 
   return report;
 }
 
-/** QC/预览入口：来源签名匹配之后仍重新探测，绝不把旧报告当通过证据。 */
-export function checkTiming(ctx, { proxy = false, log = () => {} } = {}) {
+/** 完整验收fresh时重新探测；日常入口复用内容匹配的成功证据，不信任旧报告本身。 */
+export function checkTiming(ctx, { proxy = false, fresh = false, log = () => {} } = {}) {
   let report = { fps: fpsOf(ctx, proxy), totalFrames: null, shots: [], aspect: ctx.variant.aspect, purpose: proxy ? '小样' : '高清', errors: [], outputs: [] };
   try {
     const timeline = buildFrameTimeline(ctx.shots, report.fps);
@@ -149,7 +199,7 @@ export function checkTiming(ctx, { proxy = false, log = () => {} } = {}) {
     if (fileSha(video) !== m.video.sha256) throw new Error('拼接视频已变化，需重新渲染/拼接');
     const previous = path.join(ctx.filmDir, 'review', reportBase(ctx, proxy) + '.json');
     const old = fs.existsSync(previous) ? JSON.parse(fs.readFileSync(previous, 'utf8')) : null;
-    report = { ...measure(ctx, timeline, segments, video), purpose: report.purpose, signature: sig, outputs: old?.signature === sig ? (old.outputs || []).map(o => inspectVideo(o.file, { fps: timeline.fps, frames: timeline.totalFrames })) : [] };
+    report = { ...measure(ctx, timeline, segments, video, fresh), purpose: report.purpose, signature: sig, outputs: old?.signature === sig ? (old.outputs || []).map(o => checkedVideo(o.file, { fps: timeline.fps, frames: timeline.totalFrames }, { cacheDir: ctx.variant.cacheDir, fresh })) : [] };
   } catch (e) { report.errors.push(e.message); }
   report.errors.push(...report.outputs.filter(o => !o.ok).flatMap(o => o.errors.map(e => `输出 ${o.file}：${e}`)));
   return writeReport(ctx, report, { proxy, log });
@@ -163,7 +213,7 @@ export function requireTiming(ctx, options) {
 
 export function checkOutputTiming(ctx, file, { proxy = false, log = () => {} } = {}) {
   const report = requireTiming(ctx, { proxy });
-  const result = inspectVideo(file, { fps: report.fps, frames: report.totalFrames });
+  const result = checkedVideo(file, { fps: report.fps, frames: report.totalFrames }, { cacheDir: ctx.variant.cacheDir, fresh: true });
   report.outputs = [...report.outputs.filter(o => o.file !== file), result];
   report.errors.push(...result.errors.map(e => `输出 ${file}：${e}；请检查声轨是否过短`));
   writeReport(ctx, report, { proxy, log });

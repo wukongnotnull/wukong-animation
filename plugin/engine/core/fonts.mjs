@@ -7,6 +7,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { FONT_CACHE_DIR, ensureDir } from './paths.mjs';
+import { digest, fileDigest, readJson, atomicJson } from './evidence.mjs';
 
 /** google/fonts 仓库的镜像根地址；后面接 KNOWN_FONTS 里的相对路径。 */
 const SOURCES = ['https://github.com/google/fonts/raw/main/', 'https://cdn.jsdelivr.net/gh/google/fonts@main/'];
@@ -106,13 +107,23 @@ export function subsetChars(text) {
 /** 用 fonttools 截取用到的字；没有 fonttools 时返回原文件。 */
 export function subsetFont(src, text, outDir) {
   const out = path.join(ensureDir(outDir), path.basename(src, '.ttf') + '-subset.ttf');
-  const chars = subsetChars(text);
+  const chars = [...subsetChars(text)].sort().join('');
+  const signature = digest({ source: fileDigest(src), chars, options: '--no-hinting', version: 1 });
+  const evidence = readJson(out + '.json');
+  if (evidence?.signature === signature && fs.existsSync(out) && evidence.output === fileDigest(out)) return out;
+  const part = out + '.part';
   const r = spawnSync(
     'python3',
-    ['-m', 'fontTools.subset', src, `--text=${chars}`, `--output-file=${out}`, '--no-hinting'],
+    ['-m', 'fontTools.subset', src, `--text=${chars}`, `--output-file=${part}`, '--no-hinting'],
     { stdio: 'ignore' }
   );
-  return r.status === 0 && fs.existsSync(out) ? out : src;
+  if (r.status === 0 && fs.existsSync(part)) {
+    fs.renameSync(part, out);
+    atomicJson(out + '.json', { signature, output: fileDigest(out) });
+    return out;
+  }
+  fs.rmSync(part, { force: true });
+  return src;
 }
 
 /**
@@ -123,6 +134,7 @@ export function subsetFont(src, text, outDir) {
  */
 export function prepareFonts(fonts = [], { text = '', workDir, log = () => {} } = {}) {
   let css = '';
+  let cacheCss = '';
   const stacks = {};
   const report = [];
   for (const f of fonts) {
@@ -131,6 +143,7 @@ export function prepareFonts(fonts = [], { text = '', workDir, log = () => {} } 
     if (file) {
       const used = text ? subsetFont(file, text, path.join(workDir, 'fonts')) : file;
       css += `@font-face{font-family:'${f.family}';src:url('${pathToFileURL(used).href.replace(/'/g,'%27')}');font-display:block;}\n`;
+      cacheCss += `@font-face{font-family:'${f.family}';src:url('${pathToFileURL(file).href.replace(/'/g,'%27')}');font-display:block;}\n`;
       stacks[f.family] = [`'${f.family}'`, ...fallbacks, 'serif'].join(',');
       report.push(`${f.family}: ${used === file ? '完整字体' : '已子集化'}`);
     } else {
@@ -138,7 +151,7 @@ export function prepareFonts(fonts = [], { text = '', workDir, log = () => {} } 
       report.push(`${f.family}: 不可用，退回 ${f.fallback?.[0] ?? 'serif'}`);
     }
   }
-  return { css, stacks, report };
+  return { css, cacheCss, stacks, report };
 }
 
 /** 从镜头源码里收集非 ASCII 字符，作为子集化的字表。 */

@@ -30,6 +30,7 @@ test('A1/A2 final contract ignores last command and review clutter; query is rea
   assert.equal(report.version,2);assert.equal(report.ok,false);
   assert.deepEqual(report.items.map(i=>i.slot),['16:9/video/mp4/clean','16:9/draft/jianying']);
   assert.equal(report.audit.files.length,2044);
+  assert.doesNotMatch(final.formatFinalDelivery(report),/16:9\/video\/mp4/,'用户清单用产物名称，不展示内部槽位键');
   assert.deepEqual(fs.readdirSync(dir,{recursive:true}),before);
   assert.equal(fs.existsSync(path.join(dir,'.wka/final-delivery.json')),false);
 });
@@ -197,12 +198,13 @@ test('A11 font URLs preserve parentheses in actual work directory',()=>{
 
 test('A5 known current QC hard errors cannot be bypassed by a final approval note',t=>{
   const dir=fixture(t),file=path.join(dir,'影片.mp4');fs.mkdirSync(path.join(dir,'.cache'));fs.mkdirSync(path.join(dir,'review'));
+  const decisionFile=path.join(dir,'.wka/decisions.json'),decisions=JSON.parse(fs.readFileSync(decisionFile));decisions.delivery.value='video';fs.writeFileSync(decisionFile,JSON.stringify(decisions));
   const video=path.join(dir,'.cache/video.mp4');fs.writeFileSync(video,'video');fs.writeFileSync(file,'video');
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'shots/s01.js')]}),path:file,stage:'encode:mp4',technical:{status:'passed'}});
   const qc=path.join(dir,'review/QC报告.json');fs.writeFileSync(qc,JSON.stringify({issues:[{kind:'空帧',shot:'s01',t:0.5,msg:'no content'}]}));
   const source=digest({video:fileDigest(video),timing:null,algorithm:fileDigest(path.resolve('plugin/engine/core/qc.mjs'))});
   rememberArtifacts(dir,{stage:'review:qc',aspect:'16:9',signature:source,outputs:[qc],value:qc});
-  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');
+  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');assert.equal(report.status,'incomplete');
   assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:13,revision:report.reviewSets[13].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);
 });
 
@@ -237,4 +239,13 @@ test('A8 legacy external draft stays visible and a new explicit review can adopt
   const prepared=final.prepareFinalApproval(dir,{id:'new-real-review',step:15,revision:report.reviewSets[15].deliveryRevision,source:'用户本次明确复核',note:'已保存退出，已打开检查当前历史草稿',openEvidence:{status:'opened',source:'用户实际打开反馈'}});
   fs.writeFileSync(state,JSON.stringify({flow:5,history:[{step:15,approvalId:'old',note:'草稿通过'},{step:15,approvalId:'new-real-review'}]}));final.commitFinalApproval(dir,prepared);
   report=final.finalDeliveryReport(dir);item=report.items.find(i=>i.kind==='draft');assert.equal(item.acceptance,'accepted');assert.equal(item.freshness,'current');
+});
+
+test('A10 macOS cannot treat a failed process probe as an exited editor',t=>{
+  if(process.platform!=='darwin')return;
+  const dir=fixture(t);draftArtifact(dir);const previous=process.env.PATH;
+  try {
+    process.env.PATH='/wka-nonexistent-path';const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
+    assert.throws(()=>final.prepareFinalApproval(dir,{id:'unknown-process',step:15,revision,source:'用户',note:'通过'}),/无法核实剪映进程/);
+  }finally{process.env.PATH=previous;}
 });

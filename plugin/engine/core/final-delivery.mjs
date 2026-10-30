@@ -10,7 +10,6 @@ import { ENGINE_ROOT } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { migrateProgress } from './state.mjs';
-import { jianyingRunning } from '../exporters/jianying/guards.mjs';
 import { outputsMatch } from './operations.mjs';
 import { qcReview, readReviewNotes, isSoftFinding } from './review-evidence.mjs';
 import { qcConfig } from './qc.mjs';
@@ -277,6 +276,12 @@ function nativeCheck(file) {
   } catch(e){errors.push(`native 草稿无法核实：${e.message}`);}
   return {status:errors.length?'hard-error':'passed',checks:['完整磁盘快照','native JSON 可读','素材存在性'],errors,scope:'磁盘及素材；显示/编辑语义需真实打开依据'};
 }
+function requireEditorClosed() {
+  if(process.platform!=='darwin')return;
+  const result=spawnSync('pgrep',['-x',process.env.WKA_JIANYING_PROCESS||'VideoFusion-macOS'],{stdio:'ignore'});
+  if(result.status===0)throw new Error('剪映仍在运行，请保存并完全退出后再绑定当前草稿');
+  if(result.status!==1)throw new Error('无法核实剪映进程状态，请恢复进程检查后重试；未绑定成功验收');
+}
 
 function technicalStatus(dir,slot,artifact) {
   const base=artifact?.technical||{status:'unknown',checks:[],errors:[]};
@@ -329,7 +334,7 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
   if(!source?.trim()||!note?.trim()||!id)throw new Error('交付批准需要实际用户来源、结论及 approval-id');
   if(report.errors.length)throw new Error(`交付决定待核实：${report.errors.join('；')}`);
   if(!set.bindings.length)throw new Error('本节点没有实际产物，沿用既有无产物签批，不制造逐文件验收');
-  if(step===15&&jianyingRunning())throw new Error('剪映仍在运行，请保存并完全退出后再绑定当前草稿');
+  if(step===15)requireEditorClosed();
   const artifacts=[],bindings=[];
   for(const binding of set.bindings) {
     if(!binding.snapshot||!binding.path)throw new Error(`审阅产物缺失或不可读：${binding.slot}`);
@@ -364,7 +369,7 @@ export function commitFinalApproval(dir,prepared) {
   if(!progress(dir).history?.some(h=>h.approvalId===approval.id&&h.step===approval.step))throw new Error('既有流程批准尚未成功存档，不能追加交付验收');
   const current=finalDeliveryReport(dir).reviewSets[approval.step];
   if(current.deliveryRevision!==approval.revision)throw new Error('批准存档期间交付版本变化，未绑定旧审阅');
-  if(approval.step===15&&jianyingRunning())throw new Error('剪映仍在运行，请保存并完全退出再存档');
+  if(approval.step===15)requireEditorClosed();
   for(const a of prepared.artifacts||[])if(!data.artifacts.some(old=>old.id===a.id))data.artifacts.push(a);
   const contract=finalContract(dir);if(!data.contracts.some(c=>c.id===contract.id))data.contracts.push(contract);
   data.approvals.push(approval);
@@ -415,8 +420,12 @@ export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
   });
   const ready=items.filter(i=>i.availability==='present'&&i.freshness==='current'&&['passed','accepted-with-warnings'].includes(i.technical));
   const accepted=ready.filter(i=>i.acceptance==='accepted');
-  const blocks=items.filter(i=>!accepted.includes(i)).map(i=>({slot:i.slot,reasons:i.reasons,actor:i.availability!=='present'||i.freshness!=='current'||i.technical==='hard-error'||i.technical==='unknown'?'agent':'reviewer',next:i.availability!=='present'?'补齐或核验该产物':i.freshness!=='current'?'核对来源/文件变化及证据；保留现有文件':'审阅并签批当前版本'}));
-  let status=ready.length===items.length&&items.length?'awaiting-acceptance':ready.length?'partial':items.some(i=>i.availability!=='present')?'incomplete':'needs-verification';
+  const blocks=items.filter(i=>!accepted.includes(i)).map(i=>{
+    const edited=i.kind==='draft'&&i.availability==='present'&&i.acceptance==='changed-after-acceptance';
+    return {slot:i.slot,reasons:i.reasons,actor:edited?'reviewer':i.availability!=='present'||i.freshness!=='current'||i.technical==='hard-error'||i.technical==='unknown'?'agent':'reviewer',next:edited?'保存退出剪映并复核当前版本；代理检查素材后重新绑定':i.availability!=='present'?'补齐或核验该产物':i.technical==='hard-error'?'修复该产物的确定技术错误，再提交核验':i.freshness!=='current'?'核对来源/文件变化及证据；保留现有文件':i.technical==='unknown'?'核对输出技术门槛及绑定的检查报告':'审阅并签批当前版本'};
+  });
+  const incomplete=items.some(i=>i.availability!=='present'||i.freshness==='changed'||i.technical==='hard-error');
+  let status=ready.length===items.length&&items.length?'awaiting-acceptance':ready.length?'partial':incomplete?'incomplete':'needs-verification';
   if(accepted.length===items.length&&items.length&&!contract.errors.length)status='accepted';
   if(contract.errors.length)status='needs-verification';
   const files=[],auditDiagnostics=[];
@@ -430,17 +439,18 @@ function atomicText(file,text) {
 }
 export function formatFinalDelivery(report) {
   const labels={accepted:'交付完成',partial:'部分完成',incomplete:'未完成','needs-verification':'待核实','awaiting-acceptance':'待验收'};
+  const name=i=>i.kind==='video'?(i.flavor==='burned'?'有字幕视频':'无字幕视频'):i.kind==='draft'?'剪映草稿':i.format==='zh'?'中文字幕':'英文字幕';
   const lines=['# 最终交付清单','',`${labels[report.status]} · 可用 ${report.summary.ready}/${report.summary.total} · 已验收 ${report.summary.accepted}/${report.summary.total}`,report.scope==='all'?'范围：全部已确认画幅':`范围：仅 ${report.scope}，不代表整片`,''];
   for(const aspect of [...new Set(report.items.map(i=>i.aspect))]) {
     lines.push(`## ${aspect}`,'');
     for(const i of report.items.filter(i=>i.aspect===aspect)) {
-      const label=i.kind==='video'?(i.flavor==='burned'?'有字幕视频':'无字幕视频'):i.kind==='draft'?'剪映草稿':i.format==='zh'?'中文字幕':'英文字幕';
+      const label=name(i);
       const status=i.section||(i.availability==='missing'?'缺失':'不可读');
       lines.push(`- ${label} · ${status}${i.artifactId?' · 版本 '+i.artifactId.slice(0,8):''}：${i.link||i.path||'尚无文件'}${i.previewStatus?'（预览未验证）':''}${i.reasons.length?'；'+i.reasons.join('；'):''}`);
     }
     lines.push('');
   }
-  lines.push(...report.blocks.map(b=>`- ${b.slot}：${b.actor==='agent'?'代理':'用户'} — ${b.next}`),...report.errors.map(e=>'- '+e),'');
+  lines.push(...report.blocks.map(b=>{const i=report.items.find(i=>i.slot===b.slot);return `- ${i.aspect} ${name(i)}：${b.actor==='agent'?'代理':'用户'} — ${b.next}`;}),...report.errors.map(e=>'- '+e),'');
   if(report.appendix)lines.push('技术材料与完整历史：'+(fileLink(report.appendix.markdown,{host:report.host})||report.appendix.markdown),'');
   lines.push(report.hostValidation,'');return lines.join('\n');
 }

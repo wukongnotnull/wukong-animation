@@ -23,6 +23,7 @@ import { resolveVariant, overrideShotPath } from './variants.mjs';
 import { prepareWordShots, writeWordReview } from './word-sync.mjs';
 import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFailure, requireTiming, checkOutputTiming, checkAnimaticTiming } from './timing.mjs';
 import { captureFinalGeneration, recordFinalArtifact } from './final-delivery.mjs';
+import { assertCompatibleProgress } from './state.mjs';
 
 import { outputSize, renderWorkers } from './render-profile.mjs';
 export { outputSize } from './render-profile.mjs';
@@ -32,6 +33,7 @@ export { outputSize } from './render-profile.mjs';
  *   aspect: 要处理的画幅，缺省为主版。副版换成副版尺寸、优先用覆盖镜头文件 sNN.<后缀>.<扩展名>
  */
 export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
+  assertCompatibleProgress(filmDir);
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);
@@ -279,6 +281,7 @@ export async function preview(filmDir, { only = null, proxy = true, aspect = nul
 
 /** 审阅副本写进片目录的 review/（不隐藏、体积小，聊天和访达里都能直接播放），返回绝对路径。 */
 export async function writeReview(filmDir, file, args) {
+  assertCompatibleProgress(filmDir);
   const out = path.join(ensureDir(path.join(path.resolve(filmDir), 'review')), file);
   await run([...args, out]);
   return out;

@@ -5,6 +5,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { atomicJson, readJson, digest, fileEvidence, treeEvidence } from './evidence.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
+import { assertCompatibleProgress } from './state.mjs';
 
 const ledgerFile=dir=>path.join(path.resolve(dir),'.cache/operations.json');
 const keyOf=({stage,aspect,proxy})=>`${aspect}|${proxy?'proxy':'full'}|${stage}`;
@@ -28,11 +29,13 @@ export function outputsMatch(outputs) {
   try {return outputs.length>0&&outputs.every(old=>digest(capture(old.file))===digest(old));}catch{return false;}
 }
 export function rememberArtifacts(dir,{stage,aspect,proxy=false,signature,value,outputs}) {
+  assertCompatibleProgress(dir);
   const data=load(dir),key=keyOf({stage,aspect,proxy});
   data.stages[key]={id:crypto.randomUUID(),stage,aspect,proxy,signature,implementation:implementationState(),sourceState:sourceState(dir),status:'completed',startedAt:new Date().toISOString(),completedAt:new Date().toISOString(),value,outputs:outputs.map(capture)};
   atomicJson(ledgerFile(dir),data); return data.stages[key];
 }
 export async function runStage(dir,{stage,aspect,proxy=false,signature,force=false,log=console.log,run,validate=()=>true,onReuse=()=>{}}) {
+  assertCompatibleProgress(dir);
   const key=keyOf({stage,aspect,proxy}),data=load(dir),old=data.stages[key];
   const label=`[${aspect} ${proxy?'小样':'高清'} · ${stage}]`;
   if(!force&&signature&&old?.signature===signature&&old.implementation===implementationState()&&old.status==='completed'&&outputsMatch(old.outputs)&&await validate(old.value)){
@@ -53,6 +56,7 @@ export async function runStage(dir,{stage,aspect,proxy=false,signature,force=fal
 }
 const alive=pid=>{try{process.kill(pid,0);return true;}catch(e){return e.code==='EPERM';}};
 export function lockProduction(dir) {
+  assertCompatibleProgress(dir);
   const file=path.join(path.resolve(dir),'.cache/operation.lock');fs.mkdirSync(path.dirname(file),{recursive:true});
   for(let n=0;n<2;n++){
     try{
@@ -68,6 +72,7 @@ export function lockProduction(dir) {
   throw new Error('工程忙，无法取得写入锁');
 }
 export function recoveryStatus(dir) {
+  assertCompatibleProgress(dir);
   const data=load(dir);
   const source=sourceState(dir),implementation=implementationState();
   const stages=Object.values(data.stages).map(s=>({...s,status:s.status==='running'?(s.host!==os.hostname()?'needs-review':alive(s.pid)?'running':'interrupted'):s.status==='completed'&&!outputsMatch(s.outputs)?(s.stage==='draft-export'?'user-modified':'stale'):s.status==='completed'&&(s.sourceState!==source||s.implementation!==implementation)?'stale':s.status}));

@@ -39,7 +39,7 @@ import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
 import { hasFfmpeg, generatedMixPadding } from '../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../audio/tts.mjs';
 import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, flowDiagnostic } from '../core/state.mjs';
+import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, flowDiagnostic, assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
@@ -650,8 +650,14 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
 }
 async function execute(){
   const writes=['signoff','qc','still','animatic','render','preview','clean','soundtrack','subtitles','final'];
+  // 先预检真正写入的片目录，再取锁/写 active-command；--force 不跳过版本保护。
+  if(cmd==='init-project')assertProjectCompatible(pos[0]||'.');
+  else if(['brief','init'].includes(cmd)&&pos[0])assertCompatibleProgress(path.resolve(opt('dir','.'),'films',pos[0]));
+  else if(pos[0]&&(writes.includes(cmd)||['delivery','audition'].includes(cmd)||(cmd==='sfx'&&!opt('list'))))assertCompatibleProgress(pos[0]);
   const unlock=(writes.includes(cmd)||(cmd==='delivery'&&opt('final')&&opt('record')))&&pos[0]?lockProduction(pos[0]):()=>{};
-  if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
-  try{await main();}finally{unlock();}
+  try{
+    if(writes.includes(cmd)&&pos[0])atomicJson(path.join(path.resolve(pos[0]),'.cache/active-command.json'),{argv:process.argv.slice(2)});
+    await main();
+  }finally{unlock();}
 }
 execute().catch((e) => fail(e.message));

@@ -9,7 +9,7 @@ import { validate } from './validate.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { migrateProgress } from './state.mjs';
+import { migrateProgress, assertCompatibleProgress } from './state.mjs';
 import { outputsMatch } from './operations.mjs';
 import { qcReview, readReviewNotes, isSoftFinding } from './review-evidence.mjs';
 import { qcConfig } from './qc.mjs';
@@ -226,6 +226,7 @@ function appendArtifact(dir,data,artifact) {
 
 // 仅由成功导出/字幕写入边界调用。回执先存，账本写入失败仍可 --record 安全重试。
 export function recordFinalArtifact(dir,{generation,path:file,stage,technical={status:'unknown',checks:[],errors:[]}}) {
+  assertCompatibleProgress(dir);
   const contract=finalContract(dir),slot=contract.slots.find(s=>s.slot===generation.slot)||generation.descriptor;
   if(!slot)throw new Error('生成后交付要求已取消，保留产物，待核实');
   const artifact={id:generation.id,slot:generation.slot,path:path.resolve(file),aspect:slot.aspect,format:slot.format,flavor:slot.flavor,generatedAt:new Date().toISOString(),snapshot:deliverySnapshot(file),contractDigest:generation.contractDigest,dependencies:generation.dependencies,tool:generation.tool,stage,provenance:'generated',technical,openStatus:'not-tested'};
@@ -239,6 +240,7 @@ export function recordFinalArtifact(dir,{generation,path:file,stage,technical={s
 }
 
 export function recordFinalEvidence(dir) {
+  assertCompatibleProgress(dir);
   const root=path.join(path.resolve(dir),'.wka/final-delivery-receipts'),data=ledger(dir),recorded=[];
   if(fs.existsSync(root))for(const name of fs.readdirSync(root).sort()) {
     if(!name.endsWith('.json'))continue;
@@ -363,6 +365,7 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
 }
 
 export function commitFinalApproval(dir,prepared) {
+  assertCompatibleProgress(dir);
   const data=ledger(dir),approval=prepared.existing||prepared.approval,old=data.approvals.find(a=>a.id===approval.id);
   if(old){if(digest(old)!==digest(approval))throw new Error('批准记录冲突，未覆盖原记录');return old;}
   if(!prepared.review||digest({step:approval.step,bindings:prepared.review.bindings})!==approval.revision)throw new Error('交付批准缺少完整审阅版本证明');
@@ -413,6 +416,7 @@ function evidencedCandidates(dir,data,items,host) {
 }
 
 export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
+  assertCompatibleProgress(dir);
   if(!['codex','claude','generic'].includes(host))throw new Error('host 应为 codex、claude 或 generic');
   dir=path.resolve(dir);const contract=finalContract(dir,{aspect}),data=ledger(dir),history=progress(dir).history||[];
   const items=contract.slots.map(s=>{
@@ -473,6 +477,7 @@ export function formatFinalDelivery(report) {
 }
 
 export function writeFinalDelivery(dir,options={}) {
+  assertCompatibleProgress(dir);
   const report=finalDeliveryReport(dir,options),suffix=report.scope==='all'?'':'-'+report.scope.replace(':','x');
   const base=path.join(path.resolve(dir),'review','最终交付清单'+suffix),audit=path.join(path.resolve(dir),'review','最终交付审计'+suffix);
   report.appendix={json:audit+'.json',markdown:audit+'.md'};

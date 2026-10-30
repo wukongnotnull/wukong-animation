@@ -1,8 +1,10 @@
 # 第二批可靠性优化：依赖锁定、流程版本保护、剪映 CI 必跑
 
-Status: Implemented and verified — PR #116 pending merge
+Status: Implemented, verified and merged — PR #116
 Date: 2026-10-30 (Asia/Shanghai)
 Spec approval: Approved by user on 2026-10-30
+
+后续授权：用户于 2026-10-30 要求审阅 PR #116、通过后合并并发布补丁及更新已安装插件。PR #116 已审阅合并；下文“不发布”的约束记录原实施阶段范围，后续交付见 [v0.19.3 发布说明](../../releases/v0.19.3.md)。
 
 基线：`abfd4f0319263f84f8f690cc30bf8a6820817a2e`，插件 v0.19.2，引擎包 0.2.0，工程状态流程 `flow: 5`。沿用 [Issue #113](https://github.com/wukongnotnull/wukong-animation/issues/113) 记录审核后续；该 issue 的关闭表示第一批交付，不表示本批已实施。
 

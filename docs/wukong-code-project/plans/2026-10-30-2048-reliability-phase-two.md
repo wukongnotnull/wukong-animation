@@ -1,6 +1,8 @@
 # 第二批可靠性优化实施计划
 
-Status: Implemented and verified — PR #116 pending merge
+Status: Implemented, verified and merged — PR #116
+
+后续授权：用户于 2026-10-30 要求审阅 PR #116、通过后合并并发布补丁及更新已安装插件。PR #116 已审阅合并；下文“不发布”的约束记录原实施阶段范围，后续交付见 [v0.19.3 发布说明](../../releases/v0.19.3.md)。
 
 目标：按[已批准规格](../specs/2026-10-30-2045-reliability-phase-two-design.md)交付锁定依赖安装、较新流程保护和剪映必跑 CI，逐项验证 A1–A12。
 
@@ -149,4 +151,4 @@ Status: Implemented and verified — PR #116 pending merge
 - 检查内部链接、验收编号、占位符和自相矛盾的说法；仅有文档差异，没有运行时代码/测试/workflow 修改。
 - 既有 state 基线 17 通过与未来 flow 被改写的隔离复现分开记录，不把基线通过当成修复完成。
 
-任务 1–7 已顺序实施，失败回归、真实安装、完整测试及三种 CI 触发证据见[验收报告](../reports/2026-10-30-reliability-phase-two-validation.md)。推荐下一步：审阅 PR #116 后按后续授权合并、发布；本批没有升级已安装插件。
+任务 1–7 已顺序实施，失败回归、真实安装、完整测试及三种 CI 触发证据见[验收报告](../reports/2026-10-30-reliability-phase-two-validation.md)。PR #116 已审阅合并；推荐下一步：按后续授权完成 v0.19.3 发布与安装升级验证，再继续后续性能规格。

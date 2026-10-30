@@ -9,6 +9,7 @@ import { aspectOf } from './variants.mjs';
 import { readProgress } from './state.mjs';
 import { parseArgs } from '../bin/args.mjs';
 import { subtitleSettings,subtitleOutputs } from './subtitles.mjs';
+export { finalDeliveryReport, writeFinalDelivery } from './final-delivery.mjs';
 
 function expectedFiles(dir,ctx,aspect) {
   const active=readJson(path.join(dir,'.cache/active-command.json'));

@@ -1,0 +1,151 @@
+{
+  "testedCommit": "32ff7ee",
+  "method": "只调用 finalDeliveryReport；目录清单/文件大小/mtime 前后对照，state 另作字节摘要；证据文件保存于代码仓库，不写客户工程。",
+  "status": "needs-verification",
+  "summary": {
+    "ready": 0,
+    "accepted": 0,
+    "total": 10
+  },
+  "items": [
+    {
+      "slot": "16:9/video/mp4/burned",
+      "name": "Codex自动剪辑_有字幕.mp4",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "16:9/video/mp4/clean",
+      "name": "Codex自动剪辑_无字幕.mp4",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "16:9/subtitle/zh",
+      "name": "Codex自动剪辑_字幕.srt",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "16:9/subtitle/en",
+      "name": "Codex自动剪辑_英文字幕.srt",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "16:9/draft/jianying",
+      "name": "Codex 自动剪辑_v3",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "9:16/video/mp4/burned",
+      "name": "Codex自动剪辑-9x16_有字幕.mp4",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "9:16/video/mp4/clean",
+      "name": "Codex自动剪辑-9x16_无字幕.mp4",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "9:16/subtitle/zh",
+      "name": "Codex自动剪辑-9x16_字幕.srt",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "9:16/subtitle/en",
+      "name": "Codex自动剪辑-9x16_英文字幕.srt",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    },
+    {
+      "slot": "9:16/draft/jianying",
+      "name": "Codex 自动剪辑-9x16_v2",
+      "availability": "present",
+      "freshness": "unknown",
+      "acceptance": "historical-only",
+      "linked": true
+    }
+  ],
+  "auditFiles": 2034,
+  "singleAspect": {
+    "scope": "9:16",
+    "count": 5,
+    "allSelected": true,
+    "genericNoLinks": true,
+    "explicitScope": true
+  },
+  "checks": [
+    {
+      "label": "production",
+      "before": {
+        "count": 3558,
+        "sha256": "e45de36e4cb76c9eba2348cd844fa425a4d1dc350661e20c216b402d1e645aa8"
+      },
+      "after": {
+        "count": 3558,
+        "sha256": "e45de36e4cb76c9eba2348cd844fa425a4d1dc350661e20c216b402d1e645aa8"
+      },
+      "unchanged": true
+    },
+    {
+      "label": "draft-16:9",
+      "before": {
+        "count": 304,
+        "sha256": "1a140398bc741142a021aeefe8a85c8dd23fa9690f86da522c86a39b8e8292c9"
+      },
+      "after": {
+        "count": 304,
+        "sha256": "1a140398bc741142a021aeefe8a85c8dd23fa9690f86da522c86a39b8e8292c9"
+      },
+      "unchanged": true
+    },
+    {
+      "label": "draft-9:16",
+      "before": {
+        "count": 301,
+        "sha256": "988a55c1f3f4ee500ec8668141c03ae545b34887311abf954ace3acf11baa0d2"
+      },
+      "after": {
+        "count": 301,
+        "sha256": "988a55c1f3f4ee500ec8668141c03ae545b34887311abf954ace3acf11baa0d2"
+      },
+      "unchanged": true
+    },
+    {
+      "label": "font-cache",
+      "before": {
+        "count": 6,
+        "sha256": "6763374b8e972f2531d18828b1f1562d6daf53275ddbe55157a63ddd76e4428a"
+      },
+      "after": {
+        "count": 6,
+        "sha256": "6763374b8e972f2531d18828b1f1562d6daf53275ddbe55157a63ddd76e4428a"
+      },
+      "unchanged": true
+    }
+  ],
+  "stateBytesUnchanged": true
+}

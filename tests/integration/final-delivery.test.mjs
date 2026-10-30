@@ -57,4 +57,6 @@ test('A4/A5/A11 real video, SRT and draft export bind existing signoff nodes and
   fs.writeFileSync(path.join(dir,'subtitles.srt'),'1\n00:00:00,000 --> 00:00:01,000\n中文\n');
   ok(call('final',dir));report=JSON.parse(call('delivery',dir,'--final','--json').stdout);
   const subtitle=report.items.find(i=>i.kind==='subtitle');assert.equal(subtitle.freshness,'current');assert.equal(fs.readFileSync(subtitle.path,'utf8'),fs.readFileSync(path.join(dir,'subtitles.srt'),'utf8'));
+  fs.writeFileSync(path.join(dir,'.wka/decisions.json'),'{ broken decisions');
+  const proxy=call('render',dir,'--proxy');ok(proxy);assert.match(proxy.stdout,/小样来源未取证/);
 });

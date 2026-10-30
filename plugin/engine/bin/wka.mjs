@@ -555,7 +555,8 @@ async function main() {
       if (!pos[0]) fail('用法：wka render <片目录>');
       const proxy = !!opt('proxy');
       await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
-      const sourceGeneration=proxy?captureFinalProxy(pos[0],{aspect:aspectOpt()}):null;
+      let sourceGeneration=null;
+      if(proxy)try{sourceGeneration=captureFinalProxy(pos[0],{aspect:aspectOpt()});}catch(e){log(`  ! 小样来源未取证，保留渲染任务：${e.message}`);}
       const { video, job } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), aspect: aspectOpt(), log });
       if (!proxy) return;
       // 小样配上声轨，放进 review/ 交给用户审阅
@@ -565,7 +566,7 @@ async function main() {
       const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(mix,job.timeline.duration,job.fps), '-shortest'] : ['-i', video, '-c', 'copy'];
       const out = await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart']);
       checkOutputTiming(job, out, { proxy, log });
-      try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts),finalFontUnknown(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
+      if(sourceGeneration)try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts),finalFontUnknown(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
       registerReview(pos[0],'proxy',[out],aspectOpt(),true);
       log(`小样：${out}`);
       return;

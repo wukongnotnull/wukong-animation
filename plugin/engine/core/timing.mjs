@@ -207,7 +207,7 @@ export function checkTiming(ctx, { proxy = false, fresh = false, log = () => {} 
 
 export function requireTiming(ctx, options) {
   const report = checkTiming(ctx, options);
-  if (!report.ok) throw new Error(`视频时间轴未验证：${report.errors.join('；')}`);
+  if (!report.ok) throw new Error(`${report.purpose}视频时间轴未验证：${report.errors.join('；')}`);
   return report;
 }
 

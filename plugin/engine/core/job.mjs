@@ -181,7 +181,7 @@ export async function render(filmDir, { proxy = false, only = null, selected = n
   log(`《${ctx.film.title}》${ctx.variant.isMain ? '' : `${ctx.variant.aspect} 副版 · `}风格 ${ctx.style.id} · 管线 ${job.pipeline.name} · ${job.W}×${job.H} @${job.fps}fps${proxy ? ' (预览)' : ''}`);
   for (const r of job.fonts.report) log(`  字体 ${r}`);
 
-  const cache = new ShotCache(ctx.filmDir, ctx.variant.cacheDir);
+  const cache = new ShotCache(ctx.filmDir, ctx.variant.cacheDir, { log });
   const keyOf = (s) => (proxy ? `${s.id}-proxy` : s.id);
   const todo = [];
   const segments = [];

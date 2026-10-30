@@ -1,5 +1,8 @@
 {
-  "status": "in-progress",
+  "status": "Baseline complete; candidate not yet measured",
+  "archive": "assets/performance-phase-three/baseline.tar.gz",
+  "archiveSha256": "5766890e91b011278b02acf8a0b4d7cdb73c96c172d1d6e7bf5974ac221e77c1",
+  "measurementCaveat": "Historical probes also registered some never-read empty write descriptors as 0-byte completeReads. Plain times and nonempty audio reads are unaffected. Raw evidence is preserved; paired measurement uses the corrected tool.",
   "hash": {
     "complete": true,
     "environment": {
@@ -4383,5 +4386,1066 @@
       }
     }
   },
-  "workflow": null
+  "workflow": {
+    "environment": {
+      "started": "2026-10-30T15:41:32.856Z",
+      "options": {
+        "rounds": 5,
+        "suite": "workflow",
+        "timeout": 1200000,
+        "engine": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+        "out": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/workflow-baseline"
+      },
+      "scenarios": [
+        "browser-example-preview-cold",
+        "browser-example-preview-unchanged",
+        "browser-example-preview-single",
+        "browser-example-render-cold",
+        "browser-example-render-unchanged",
+        "browser-example-render-single",
+        "browser-long-preview-cold",
+        "browser-long-preview-unchanged",
+        "browser-long-preview-single",
+        "browser-long-render-cold",
+        "browser-long-render-unchanged",
+        "browser-long-render-single",
+        "browser-long-resume",
+        "browser-long-qc",
+        "browser-long-delivery",
+        "browser-large-audio-preview-cold",
+        "browser-large-audio-preview-unchanged",
+        "browser-large-audio-preview-single",
+        "browser-large-audio-render-cold",
+        "browser-large-audio-render-unchanged",
+        "browser-large-audio-render-single",
+        "browser-large-audio-resume",
+        "browser-large-audio-qc",
+        "browser-large-audio-delivery",
+        "remotion-example-preview-cold",
+        "remotion-example-preview-unchanged",
+        "remotion-example-preview-single",
+        "remotion-example-render-cold",
+        "remotion-example-render-unchanged",
+        "remotion-example-render-single",
+        "remotion-long-preview-cold",
+        "remotion-long-preview-unchanged",
+        "remotion-long-preview-single",
+        "remotion-long-render-cold",
+        "remotion-long-render-unchanged",
+        "remotion-long-render-single",
+        "remotion-long-resume",
+        "remotion-long-qc",
+        "remotion-long-delivery",
+        "remotion-large-audio-preview-cold",
+        "remotion-large-audio-preview-unchanged",
+        "remotion-large-audio-preview-single",
+        "remotion-large-audio-render-cold",
+        "remotion-large-audio-render-unchanged",
+        "remotion-large-audio-render-single",
+        "remotion-large-audio-resume",
+        "remotion-large-audio-qc",
+        "remotion-large-audio-delivery"
+      ],
+      "node": "v25.8.1",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpus": 10,
+      "cpu": "Apple M1 Pro",
+      "memory": 17179869184,
+      "engines": [
+        {
+          "label": "baseline",
+          "engine": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase3-_q_fm3wp/baseline/plugin/engine",
+          "commit": "5957b73e90f014011fb27d3e015d4987c39db6ba",
+          "package": "26be6aac3cefa487b1ad82b3f1d7facf315d6b78235f184ecb0bca65bb46bca5",
+          "lock": "c9f6d42d99b46616e9cdab1afed510c5a393630819c50e0bf9dfa992fd5c3ac7"
+        }
+      ],
+      "tool": {
+        "file": "/Users/wukong/Documents/wukong-animation/tools/bench-performance.mjs",
+        "sha256": "28725012e49304b0c6e8d262cd793fd76b9f84d4e543d47515cf3301547c8af7",
+        "metrics": "7ef2023e2d497f55bc04c21ba54076d2db0edff2d3f16b4ca56a5eedebbaf9e7",
+        "fixtures": "07a5c1555cd0b464e3a3f1c3f897ccf2b74d70a32133e91869b46476c4b812c4"
+      },
+      "ffmpeg": {
+        "code": 0,
+        "version": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers"
+      },
+      "ffprobe": {
+        "code": 0,
+        "version": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers"
+      },
+      "osFileCache": "uncontrolled; never purged",
+      "memoryScope": "main Node lifetime maximum RSS KiB, excludes descendants",
+      "timing": "uninstrumented samples; one separate attribution probe after timed rounds; setup/restore/output validation excluded; hash operation time additionally excludes module imports",
+      "audioInterval": "track start 0; mixed to film duration; alternating one-second tone/silence",
+      "workers": "engine defaults",
+      "fontDownload": false
+    },
+    "samples": 240,
+    "probes": 48,
+    "failures": 0,
+    "scenarios": [
+      {
+        "scenario": "browser-example-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 15025.10841700001,
+        "minMs": 14603.379417000004,
+        "maxMs": 15350.867333000002,
+        "cpuMedianMs": 2223.119,
+        "maxRSSMedianMiB": 177.75,
+        "audioProbe": {
+          "bytes": 114348136,
+          "maxReadRequest": 8167724,
+          "completeReads": 14
+        },
+        "fullFrameProbes": 12,
+        "ffmpegProcesses": 13
+      },
+      {
+        "scenario": "browser-example-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 308.04429200000595,
+        "minMs": 302.47416699999303,
+        "maxMs": 310.50012500000594,
+        "cpuMedianMs": 215.772,
+        "maxRSSMedianMiB": 115.390625,
+        "audioProbe": {
+          "bytes": 114348136,
+          "maxReadRequest": 8167724,
+          "completeReads": 14
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-example-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 1401.5070410000044,
+        "minMs": 1343.5400829999999,
+        "maxMs": 1563.9024590000045,
+        "cpuMedianMs": 721.006,
+        "maxRSSMedianMiB": 236.703125,
+        "audioProbe": {
+          "bytes": 114348136,
+          "maxReadRequest": 8167724,
+          "completeReads": 14
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 2
+      },
+      {
+        "scenario": "browser-example-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 14961.012916999985,
+        "minMs": 14860.229332999996,
+        "maxMs": 15535.507874999981,
+        "cpuMedianMs": 2077.781,
+        "maxRSSMedianMiB": 188.359375,
+        "audioProbe": {
+          "bytes": 81677240,
+          "maxReadRequest": 8167724,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 8,
+        "ffmpegProcesses": 9
+      },
+      {
+        "scenario": "browser-example-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 2013.6953750000102,
+        "minMs": 2008.5615420000104,
+        "maxMs": 2096.093957999983,
+        "cpuMedianMs": 232.85,
+        "maxRSSMedianMiB": 114.28125,
+        "audioProbe": {
+          "bytes": 81677240,
+          "maxReadRequest": 8167724,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 8,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "browser-example-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 3123.6073329999927,
+        "minMs": 3083.8787500000035,
+        "maxMs": 3413.019292000012,
+        "cpuMedianMs": 759.444,
+        "maxRSSMedianMiB": 208.5625,
+        "audioProbe": {
+          "bytes": 81677240,
+          "maxReadRequest": 8167724,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 8,
+        "ffmpegProcesses": 3
+      },
+      {
+        "scenario": "browser-long-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 34450.49912499997,
+        "minMs": 34215.00208300003,
+        "maxMs": 35536.04458399996,
+        "cpuMedianMs": 15701.288,
+        "maxRSSMedianMiB": 289.5,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 62,
+        "ffmpegProcesses": 215
+      },
+      {
+        "scenario": "browser-long-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 7418.167500000098,
+        "minMs": 7377.4065829999745,
+        "maxMs": 7489.374124999973,
+        "cpuMedianMs": 7813.42,
+        "maxRSSMedianMiB": 190.890625,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-long-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 8779.59458299994,
+        "minMs": 8386.93491699989,
+        "maxMs": 8868.655584000051,
+        "cpuMedianMs": 11574.776,
+        "maxRSSMedianMiB": 259.59375,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 2
+      },
+      {
+        "scenario": "browser-long-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 22431.39862500003,
+        "minMs": 21940.827500000014,
+        "maxMs": 23064.603374999948,
+        "cpuMedianMs": 4615.731,
+        "maxRSSMedianMiB": 292.15625,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 110
+      },
+      {
+        "scenario": "browser-long-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 3945.502959000063,
+        "minMs": 3885.0194159999955,
+        "maxMs": 4027.346249999944,
+        "cpuMedianMs": 693.607,
+        "maxRSSMedianMiB": 198.796875,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "browser-long-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 4626.491665999987,
+        "minMs": 4443.702540999977,
+        "maxMs": 4846.633583999937,
+        "cpuMedianMs": 1195.06,
+        "maxRSSMedianMiB": 270.390625,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 3
+      },
+      {
+        "scenario": "browser-long-resume",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 280.0115830000723,
+        "minMs": 247.11933299992234,
+        "maxMs": 299.05220799997915,
+        "cpuMedianMs": 205.631,
+        "maxRSSMedianMiB": 193.421875,
+        "audioProbe": {
+          "bytes": 126345732,
+          "maxReadRequest": 42115244,
+          "completeReads": 3
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-long-qc",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 2340.1845840000315,
+        "minMs": 2264.2319170000264,
+        "maxMs": 2522.964500000002,
+        "cpuMedianMs": 829.071,
+        "maxRSSMedianMiB": 206.921875,
+        "audioProbe": {
+          "bytes": 84230488,
+          "maxReadRequest": 42115244,
+          "completeReads": 2
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "browser-long-delivery",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 480.14816700003576,
+        "minMs": 462.66954200004693,
+        "maxMs": 522.4688749999041,
+        "cpuMedianMs": 434.777,
+        "maxRSSMedianMiB": 198.265625,
+        "audioProbe": {
+          "bytes": 252691464,
+          "maxReadRequest": 42115244,
+          "completeReads": 6
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-large-audio-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 63941.20308299991,
+        "minMs": 63416.46487500006,
+        "maxMs": 65352.08695899998,
+        "cpuMedianMs": 47826.223,
+        "maxRSSMedianMiB": 720.890625,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 62,
+        "ffmpegProcesses": 215
+      },
+      {
+        "scenario": "browser-large-audio-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 36169.18566700001,
+        "minMs": 35974.97474999982,
+        "maxMs": 36859.71470800019,
+        "cpuMedianMs": 36319.645,
+        "maxRSSMedianMiB": 612.703125,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-large-audio-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 37788.22520800005,
+        "minMs": 37609.832167000044,
+        "maxMs": 37925.30374999996,
+        "cpuMedianMs": 43601.184,
+        "maxRSSMedianMiB": 681.09375,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 2
+      },
+      {
+        "scenario": "browser-large-audio-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 25186.97387500014,
+        "minMs": 24503.10820799996,
+        "maxMs": 25420.74770800001,
+        "cpuMedianMs": 6379.579,
+        "maxRSSMedianMiB": 876.328125,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 110
+      },
+      {
+        "scenario": "browser-large-audio-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 5520.784791000187,
+        "minMs": 5310.039040999953,
+        "maxMs": 5668.89462500019,
+        "cpuMedianMs": 2086.938,
+        "maxRSSMedianMiB": 843.78125,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "browser-large-audio-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 6231.135584000032,
+        "minMs": 5974.89833400026,
+        "maxMs": 6769.670500000007,
+        "cpuMedianMs": 2692.562,
+        "maxRSSMedianMiB": 899.84375,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 3
+      },
+      {
+        "scenario": "browser-large-audio-resume",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 762.5062079997733,
+        "minMs": 679.8304169997573,
+        "maxMs": 841.5204579997808,
+        "cpuMedianMs": 641.564,
+        "maxRSSMedianMiB": 624.6875,
+        "audioProbe": {
+          "bytes": 805306500,
+          "maxReadRequest": 268435500,
+          "completeReads": 3
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "browser-large-audio-qc",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 2682.0263340002857,
+        "minMs": 2631.2932500001043,
+        "maxMs": 2852.7520419997163,
+        "cpuMedianMs": 1150.208,
+        "maxRSSMedianMiB": 670.046875,
+        "audioProbe": {
+          "bytes": 536871000,
+          "maxReadRequest": 268435500,
+          "completeReads": 2
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "browser-large-audio-delivery",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 1341.6008330001496,
+        "minMs": 1304.1118339998648,
+        "maxMs": 1388.9272079998627,
+        "cpuMedianMs": 1237.336,
+        "maxRSSMedianMiB": 666.53125,
+        "audioProbe": {
+          "bytes": 1610613000,
+          "maxReadRequest": 268435500,
+          "completeReads": 6
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-example-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 24556.049708999693,
+        "minMs": 24238.98549999995,
+        "maxMs": 25071.081375000067,
+        "cpuMedianMs": 12924.367,
+        "maxRSSMedianMiB": 1161.078125,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 8,
+        "ffmpegProcesses": 19
+      },
+      {
+        "scenario": "remotion-example-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 222.63216700032353,
+        "minMs": 218.60016599996015,
+        "maxMs": 249.97437499975786,
+        "cpuMedianMs": 133.771,
+        "maxRSSMedianMiB": 82.046875,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-example-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 10663.42216600012,
+        "minMs": 10249.404249999672,
+        "maxMs": 11288.540417000186,
+        "cpuMedianMs": 8546.391,
+        "maxRSSMedianMiB": 771.375,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 6
+      },
+      {
+        "scenario": "remotion-example-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 24514.4390420001,
+        "minMs": 24247.869541999884,
+        "maxMs": 24897.508750000037,
+        "cpuMedianMs": 12845.465,
+        "maxRSSMedianMiB": 1101.75,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 17
+      },
+      {
+        "scenario": "remotion-example-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 1125.698958999943,
+        "minMs": 1069.9302500002086,
+        "maxMs": 1186.5629170001484,
+        "cpuMedianMs": 181.334,
+        "maxRSSMedianMiB": 85.015625,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "remotion-example-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 11648.562249999959,
+        "minMs": 10863.960707999766,
+        "maxMs": 11724.556290999986,
+        "cpuMedianMs": 8593.792,
+        "maxRSSMedianMiB": 751.0625,
+        "audioProbe": {
+          "bytes": 26880440,
+          "maxReadRequest": 2688044,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 7
+      },
+      {
+        "scenario": "remotion-long-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 227785.56679200009,
+        "minMs": 227153.913375,
+        "maxMs": 236348.64329100028,
+        "cpuMedianMs": 40306.663,
+        "maxRSSMedianMiB": 1125.59375,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 62,
+        "ffmpegProcesses": 431
+      },
+      {
+        "scenario": "remotion-long-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 7274.322166999802,
+        "minMs": 7185.274582999758,
+        "maxMs": 7388.74662499968,
+        "cpuMedianMs": 7670.808,
+        "maxRSSMedianMiB": 191.53125,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-long-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 12912.581958999857,
+        "minMs": 12212.94637500029,
+        "maxMs": 13175.053541000001,
+        "cpuMedianMs": 16752.875,
+        "maxRSSMedianMiB": 676.625,
+        "audioProbe": {
+          "bytes": 9096892704,
+          "maxReadRequest": 42115244,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 6
+      },
+      {
+        "scenario": "remotion-long-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 213996.35883300006,
+        "minMs": 213716.3584169997,
+        "maxMs": 215043.57004200015,
+        "cpuMedianMs": 26303.062,
+        "maxRSSMedianMiB": 1152.515625,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 326
+      },
+      {
+        "scenario": "remotion-long-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 3848.100250000134,
+        "minMs": 3770.547707999125,
+        "maxMs": 3899.206375000067,
+        "cpuMedianMs": 659.4,
+        "maxRSSMedianMiB": 201.015625,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "remotion-long-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 7558.5358330002055,
+        "minMs": 7523.600250000134,
+        "maxMs": 8612.195582999848,
+        "cpuMedianMs": 3495.063,
+        "maxRSSMedianMiB": 792.0,
+        "audioProbe": {
+          "bytes": 421152440,
+          "maxReadRequest": 42115244,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 7
+      },
+      {
+        "scenario": "remotion-long-resume",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 269.11325000040233,
+        "minMs": 247.02970799989998,
+        "maxMs": 307.42466699983925,
+        "cpuMedianMs": 199.136,
+        "maxRSSMedianMiB": 193.296875,
+        "audioProbe": {
+          "bytes": 126345732,
+          "maxReadRequest": 42115244,
+          "completeReads": 3
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-long-qc",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 2071.475832999684,
+        "minMs": 1968.1868329998106,
+        "maxMs": 2153.429417000152,
+        "cpuMedianMs": 781.998,
+        "maxRSSMedianMiB": 221.9375,
+        "audioProbe": {
+          "bytes": 84230488,
+          "maxReadRequest": 42115244,
+          "completeReads": 2
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "remotion-long-delivery",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 469.71804099995643,
+        "minMs": 446.04183400049806,
+        "maxMs": 483.6165000004694,
+        "cpuMedianMs": 421.452,
+        "maxRSSMedianMiB": 199.6875,
+        "audioProbe": {
+          "bytes": 252691464,
+          "maxReadRequest": 42115244,
+          "completeReads": 6
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-large-audio-preview-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 254843.80545799993,
+        "minMs": 254522.86666700058,
+        "maxMs": 255802.41108400002,
+        "cpuMedianMs": 74166.948,
+        "maxRSSMedianMiB": 1166.09375,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 62,
+        "ffmpegProcesses": 431
+      },
+      {
+        "scenario": "remotion-large-audio-preview-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 35255.07437499985,
+        "minMs": 35174.597083000466,
+        "maxMs": 35481.48716700077,
+        "cpuMedianMs": 35854.113,
+        "maxRSSMedianMiB": 614.515625,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-large-audio-preview-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 40922.58337499946,
+        "minMs": 40860.134583000094,
+        "maxMs": 41442.03899999894,
+        "cpuMedianMs": 50447.495,
+        "maxRSSMedianMiB": 968.40625,
+        "audioProbe": {
+          "bytes": 57982068000,
+          "maxReadRequest": 268435500,
+          "completeReads": 216
+        },
+        "fullFrameProbes": 1,
+        "ffmpegProcesses": 6
+      },
+      {
+        "scenario": "remotion-large-audio-render-cold",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 216327.18225000054,
+        "minMs": 216108.33216699958,
+        "maxMs": 216443.74045800045,
+        "cpuMedianMs": 27592.405,
+        "maxRSSMedianMiB": 1208.1875,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 326
+      },
+      {
+        "scenario": "remotion-large-audio-render-unchanged",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 5278.923666998744,
+        "minMs": 5268.077499998733,
+        "maxMs": 5584.235582999885,
+        "cpuMedianMs": 2032.32,
+        "maxRSSMedianMiB": 843.625,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "remotion-large-audio-render-single",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 9835.193250000477,
+        "minMs": 9486.544792000204,
+        "maxMs": 10089.948208000511,
+        "cpuMedianMs": 5084.302,
+        "maxRSSMedianMiB": 1113.15625,
+        "audioProbe": {
+          "bytes": 2684355000,
+          "maxReadRequest": 268435500,
+          "completeReads": 10
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 7
+      },
+      {
+        "scenario": "remotion-large-audio-resume",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 810.5924580004066,
+        "minMs": 746.7663750015199,
+        "maxMs": 909.5738749988377,
+        "cpuMedianMs": 673.842,
+        "maxRSSMedianMiB": 618.53125,
+        "audioProbe": {
+          "bytes": 805306500,
+          "maxReadRequest": 268435500,
+          "completeReads": 3
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      },
+      {
+        "scenario": "remotion-large-audio-qc",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 2428.6907499991357,
+        "minMs": 2372.84616599977,
+        "maxMs": 2614.9583330005407,
+        "cpuMedianMs": 1108.485,
+        "maxRSSMedianMiB": 677.171875,
+        "audioProbe": {
+          "bytes": 536871000,
+          "maxReadRequest": 268435500,
+          "completeReads": 2
+        },
+        "fullFrameProbes": 6,
+        "ffmpegProcesses": 1
+      },
+      {
+        "scenario": "remotion-large-audio-delivery",
+        "ok": true,
+        "expected": 5,
+        "total": 5,
+        "valid": 5,
+        "failed": 0,
+        "medianMs": 1305.5793750006706,
+        "minMs": 1285.6432920005172,
+        "maxMs": 1407.937207998708,
+        "cpuMedianMs": 1237.428,
+        "maxRSSMedianMiB": 670.078125,
+        "audioProbe": {
+          "bytes": 1610613000,
+          "maxReadRequest": 268435500,
+          "completeReads": 6
+        },
+        "fullFrameProbes": 0,
+        "ffmpegProcesses": 0
+      }
+    ]
+  }
 }

@@ -36,7 +36,31 @@ export function parseOptions(args) {
 export function claimOutput(out) {fs.mkdirSync(out);json(path.join(out,'owner.json'),{tool:self,pid:process.pid,created:new Date().toISOString()});}
 export function summarize(rows,expected) {
   const valid=rows.filter(row=>row.ok),times=valid.map(r=>r.wallMs).sort((a,b)=>a-b),n=times.length;
-  return {ok:rows.length===expected&&n===expected&&new Set(rows.map(r=>r.round)).size===expected,expected,total:rows.length,valid:n,failed:rows.length-n,medianMs:n?(times[Math.floor((n-1)/2)]+times[Math.floor(n/2)])/2:null,minMs:n?times[0]:null,maxMs:n?times[n-1]:null};
+  const rounds=new Set(rows.map(r=>r.round));
+  return {ok:rows.length===expected&&n===expected&&Array.from({length:expected},(_,i)=>i+1).every(round=>rounds.has(round)),expected,total:rows.length,valid:n,failed:rows.length-n,medianMs:n?(times[Math.floor((n-1)/2)]+times[Math.floor(n/2)])/2:null,minMs:n?times[0]:null,maxMs:n?times[n-1]:null};
+}
+export function verifyDigest(payload,expected) {
+  if(!Object.hasOwn(payload,'result')||payload.result==null||JSON.stringify(payload.result)!==JSON.stringify(expected))throw Error('hash digest differs or is missing');
+  return payload;
+}
+function stopOwnedTree(child) {
+  if(!child.pid)return;
+  if(process.platform==='win32') {
+    const result=spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{encoding:'utf8',timeout:10000});
+    if(result.status!==0)throw Error(`owned process cleanup failed: ${result.stderr||result.error||result.status}`);
+    return;
+  }
+  const result=spawnSync('ps',['-axo','pid=,ppid='],{encoding:'utf8',timeout:5000});
+  if(result.status!==0)throw Error(`cannot inspect owned descendants: ${result.stderr||result.error}`);
+  const parents=new Map(result.stdout.trim().split('\n').map(line=>line.trim().split(/\s+/).map(Number)));
+  if(!parents.has(child.pid))return;
+  if(parents.get(child.pid)!==process.pid)throw Error('refusing to stop a process no longer owned by this benchmark');
+  const descendants=[child.pid];
+  for(let index=0;index<descendants.length;index++)for(const [pid,parent] of parents)if(parent===descendants[index])descendants.push(pid);
+  const kill=pid=>{try{process.kill(pid,'SIGKILL');}catch(e){if(e.code!=='ESRCH')throw e;}};
+  // Chromium may detach its own process group; ancestry still identifies owned children.
+  for(const pid of descendants.slice(1).reverse())kill(pid);
+  kill(-child.pid);
 }
 export async function runCommand(command,args,{log,timeoutMs=1200000,env=process.env,accepted=[0]}={}) {
   const fd=fs.openSync(log,'wx'),start=performance.now();
@@ -44,11 +68,11 @@ export async function runCommand(command,args,{log,timeoutMs=1200000,env=process
     let timedOut=false,error=null,settled=false;
     const child=spawn(command,args,{env,stdio:['ignore',fd,fd],detached:process.platform!=='win32'});
     const stop=()=>{
-      if(!child.pid)return;
-      try {
-        if(process.platform==='win32')spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{stdio:'ignore'});
-        else process.kill(-child.pid,'SIGKILL');
-      } catch(e) {if(e.code!=='ESRCH')error=String(e);}
+      try {stopOwnedTree(child);}catch(e){
+        error=String(e);
+        // Preserve a cleanup failure, but do not leave the direct owned command unbounded.
+        if(child.exitCode===null)child.kill('SIGKILL');
+      }
     };
     const timer=setTimeout(()=>{timedOut=true;stop();},timeoutMs);
     const interrupt=()=>{error='benchmark interrupted';stop();};
@@ -61,11 +85,16 @@ export async function runCommand(command,args,{log,timeoutMs=1200000,env=process
     });
   });
 }
-function identity(engine) {
+export async function readEngineManifest(engine) {
+  const {dependencyManifest}=await import(pathToFileURL(path.join(engine,'core/dependency-manifest.mjs')));
+  return dependencyManifest(engine);
+}
+async function identity(engine) {
+  const manifest=await readEngineManifest(engine);
   const git=args=>{const r=spawnSync('git',['-C',engine,...args],{encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout.trim();};
   const status=git(['status','--porcelain']);
   if(status)throw new Error(`engine checkout must be clean: ${engine}`);
-  return {engine,commit:git(['rev-parse','HEAD']),package:sha(path.join(engine,'package.json')),lock:sha(path.join(engine,'package-lock.json'))};
+  return {engine,commit:git(['rev-parse','HEAD']),package:sha(path.join(engine,'package.json')),lock:sha(path.join(engine,'package-lock.json')),dependencyIdentity:manifest.identity};
 }
 export function plannedScenarios(options) {
   if(options.suite==='hash')return [8,64,256].flatMap(n=>['fileDigest','sourceState','deliverySnapshot'].map(method=>`${method}-${n}MiB`));
@@ -102,6 +131,7 @@ async function hashWorker(engine,method,dir,out) {
   json(out,{operationMs:performance.now()-start,cpu:process.cpuUsage(cpu),result});
 }
 async function hashSuite(contexts,options) {
+  const expected=new Map();
   for(const size of [8,64,256]) {
     for(const ctx of contexts) {
       const dir=path.join(ctx.root,`hash-${size}`);writeSynthetic(dir,{pipeline:'browser',home:ctx.home,audioBytes:4});
@@ -110,7 +140,10 @@ async function hashSuite(contexts,options) {
     for(const method of ['fileDigest','sourceState','deliverySnapshot'])for(let round=1;round<=options.rounds+1;round++) {
       for(const ctx of round%2?[...contexts]:[...contexts].reverse()) {
         const instrumented=round>options.rounds,scenario=`${method}-${size}MiB`,out=path.join(ctx.out,`${ctx.label}-${scenario}-${round}.operation.json`);
-        await measured(ctx,scenario,round,[self,'--hash-worker',ctx.engine,method,ctx.fixture,out],{instrumented,validate:()=>read(out)});
+        await measured(ctx,scenario,round,[self,'--hash-worker',ctx.engine,method,ctx.fixture,out],{instrumented,validate:()=>{
+          const payload=read(out);if(!expected.has(scenario))expected.set(scenario,payload.result);
+          return verifyDigest(payload,expected.get(scenario));
+        }});
       }
     }
   }
@@ -208,18 +241,21 @@ async function workflowSuite(contexts,options) {
     }
   }
 }
-function treeIdentity(dir) {
+export function treeIdentity(dir) {
   const rows={};
   const walk=base=>{for(const entry of fs.readdirSync(base,{withFileTypes:true})){
-    const file=path.join(base,entry.name);if(entry.isDirectory())walk(file);else {const stat=fs.statSync(file,{bigint:true});rows[path.relative(dir,file).split(path.sep).join('/')]=`${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;}
+    const file=path.join(base,entry.name),name=path.relative(dir,file).split(path.sep).join('/');
+    if(entry.isDirectory()){rows[name]='directory';walk(file);}else {const stat=fs.lstatSync(file,{bigint:true});rows[name]=`${stat.mode}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;}
   }};walk(dir);return rows;
 }
 async function runtimeWorker(engine,out) {
   const {dependencyInfo,requireDep}=await import(pathToFileURL(path.join(engine,'core/deps.mjs')));
   const {headlessShellFrom}=await import(pathToFileURL(path.join(engine,'pipelines/remotion/entry.mjs')));
+  const {treeEvidence}=await import(pathToFileURL(path.join(engine,'core/evidence.mjs')));
   const info=dependencyInfo(),browser=requireDep('playwright').chromium.executablePath(),shell=headlessShellFrom(browser,fs);
   if(!shell)throw Error('pinned Chromium headless shell required');
-  json(out,{identity:info.identity,browser:{file:browser,sha256:sha(browser)},headless:{file:shell,sha256:sha(shell)},versions:Object.fromEntries(['playwright','remotion','@remotion/bundler','@remotion/renderer','react','react-dom'].map(name=>[name,read(path.join(info.root,'node_modules',name,'package.json')).version]))});
+  const fontDirs=process.platform==='darwin'?['/System/Library/Fonts','/Library/Fonts',path.join(os.homedir(),'Library/Fonts')]:process.platform==='win32'?[path.join(process.env.WINDIR||'C:\\Windows','Fonts'),path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'AppData/Local'),'Microsoft/Windows/Fonts')]:['/usr/share/fonts','/usr/local/share/fonts',path.join(os.homedir(),'.fonts'),path.join(os.homedir(),'.local/share/fonts')];
+  json(out,{identity:info.identity,browser:{file:browser,sha256:sha(browser)},headless:{file:shell,sha256:sha(shell)},systemFonts:fontDirs.map(dir=>[dir,treeEvidence(dir)]),versions:Object.fromEntries(['playwright','remotion','@remotion/bundler','@remotion/renderer','react','react-dom'].map(name=>[name,read(path.join(info.root,'node_modules',name,'package.json')).version]))});
 }
 async function main() {
   if(process.argv[2]==='--hash-worker')return hashWorker(...process.argv.slice(3));
@@ -233,16 +269,19 @@ async function main() {
   }
   const options=parseOptions(process.argv.slice(2));
   const engines=[{label:'baseline',engine:options.engine},...(options.candidate?[{label:'candidate',engine:options.candidate}]:[])];
-  const identities=engines.map(e=>({...e,...identity(e.engine)}));
+  const identities=[];for(const engine of engines)identities.push({...engine,...await identity(engine.engine)});
   if(identities.some(i=>i.lock!==identities[0].lock||i.package!==identities[0].package))throw Error('comparison requires identical locked dependencies');
   claimOutput(options.out);
+  for(const [source,relative] of [[self,'tools/bench-performance.mjs'],[metrics,'tools/bench-metrics.mjs'],[fileURLToPath(new URL('../tests/fixtures/performance.mjs',import.meta.url)),'tests/fixtures/performance.mjs']]) {
+    const target=path.join(options.out,'tool-source',relative);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(source,target);
+  }
   const version=command=>{const r=spawnSync(command,['-version'],{encoding:'utf8',timeout:10000});return {code:r.status,version:(r.stdout||r.stderr||'').split('\n')[0]};};
-  const environment={started:new Date().toISOString(),options,scenarios:plannedScenarios(options),node:process.version,platform:process.platform,arch:process.arch,cpus:os.cpus().length,cpu:os.cpus()[0]?.model,memory:os.totalmem(),engines:identities,tool:{file:self,sha256:sha(self),metrics:sha(metrics),fixtures:sha(fileURLToPath(new URL('../tests/fixtures/performance.mjs',import.meta.url)))},ffmpeg:version('ffmpeg'),ffprobe:version('ffprobe'),osFileCache:'uncontrolled; never purged',memoryScope:'main Node lifetime maximum RSS KiB, excludes descendants',timing:'uninstrumented samples; one separate attribution probe after timed rounds; setup/restore/output validation excluded; hash operation time additionally excludes module imports',audioInterval:'track start 0; mixed to film duration; alternating one-second tone/silence',workers:process.env.WKA_WORKERS||'engine defaults',fontDownload:false};
+  const environment={started:new Date().toISOString(),options,scenarios:plannedScenarios(options),node:process.version,platform:process.platform,osRelease:os.release(),osVersion:os.version(),arch:process.arch,cpus:os.cpus().length,cpu:os.cpus()[0]?.model,memory:os.totalmem(),engines:identities,tool:{file:self,sha256:sha(self),metrics:sha(metrics),fixtures:sha(fileURLToPath(new URL('../tests/fixtures/performance.mjs',import.meta.url)))},ffmpeg:version('ffmpeg'),ffprobe:version('ffprobe'),osFileCache:'uncontrolled; never purged',memoryScope:'main Node lifetime maximum RSS KiB, excludes descendants',timing:'uninstrumented samples; one separate attribution probe after timed rounds; setup/restore/output validation excluded; hash operation time additionally excludes module imports',audioInterval:'track start 0; mixed to film duration; alternating one-second tone/silence',workers:process.env.WKA_WORKERS||'engine defaults',fontDownload:false};
   json(path.join(options.out,'environment.json'),environment);
   const rows=[],preparations=[];
   const contexts=engines.map(e=>{
     const root=path.join(options.out,e.label),home=path.join(root,'home');fs.mkdirSync(home,{recursive:true});
-    return {...e,...options,label:e.label,engine:e.engine,root,home,rows,preparations,environment,env:{...process.env,WUKONG_ANIMATION_HOME:home,WKA_JIANYING_DRAFTS:path.join(root,'drafts'),WKA_NO_FONT_DOWNLOAD:'1'}};
+    return {...e,...options,label:e.label,engine:e.engine,root,home,rows,preparations,environment,env:{...process.env,WUKONG_ANIMATION_HOME:home,WKA_JIANYING_DRAFTS:path.join(root,'drafts'),WKA_NO_FONT_DOWNLOAD:'1',PLAYWRIGHT_SKIP_BROWSER_GC:'1',npm_config_cache:path.join(root,'npm-cache')}};
   });
   await (options.suite==='hash'?hashSuite:workflowSuite)(contexts,options);
   json(path.join(options.out,'results.json'),{complete:true,environment,rows,summaries:summaries(rows,options.rounds,environment)});

@@ -95,7 +95,7 @@ export function initProject(dir, { log = console.log } = {}) {
       log('  ! ' + IDENTITY_HINT);
     } else {
       git(dir, ['add', '.gitignore']);
-      const r = git(dir, ['commit', '-m', 'wukong-animation: 初始化项目']);
+      const r = git(dir, ['commit', '-m', 'wukong-animation: 初始化项目', '--', '.gitignore']);
       log(r.ok ? '  ✓ 已创建初始提交' : `  ! 初始提交失败：${r.err}`);
     }
   }

@@ -92,3 +92,5 @@ node install-agent.mjs uninstall --agent cursor --scope project --project "<项�
 目录依据固定到 [skills 适配器源码 92a9a34](https://github.com/vercel-labs/skills/blob/92a9a34ac3bf88e695e468b90c7bf32f163d32c8/docs/agents.md)，Cascade 的当前目录补充[官方文档](https://docs.devin.ai/desktop/cascade/skills)。[调查报告](wukong-code-project/reports/2026-10-29-agent-installation-coverage.md)列出其他官方资料。
 
 只有合同测试通过的具名 family 才计安装适配数；地区版和 IDE/CLI 不重复计数。远程/云端不继承本地资源或预览能力，应在其实际工作区安装检查。第三方安装器只有通过完整目录复制测试后才可作为渠道，本指南不承诺 npx skills add 本仓库已可用。
+
+故意制造生成文档不一致，用于拒绝合并验证。

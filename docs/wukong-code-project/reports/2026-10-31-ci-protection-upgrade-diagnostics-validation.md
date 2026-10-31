@@ -1,6 +1,6 @@
 # 第五批实施与验收记录
 
-状态：合并检查与升级诊断已实现；main 保护的实际激活和服务器拒绝合并验证，待实现 PR 按后续授权合入 main 后执行。不得将 CI 汇总失败等同于服务器保护已生效。
+状态：第五批实现、main 保护激活及服务器拒绝验证均完成；用户已授权发布 v0.19.6。下文保留实施时点的记录，最终激活证据见文末。
 
 基线：v0.19.5 / `9b913f2e4bc37835406f6366efb4c06305ff8268`。规格和计划已获用户明确批准。实现见 [PR #122](https://github.com/wukongnotnull/wukong-animation/pull/122)，跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。
 
@@ -60,3 +60,14 @@ Windows 首轮在测试夹具使用 URL.pathname 时产生 `D:\\D:` 路径，日
 原始阶段日志与配置快照见[证据归档](assets/ci-protection-upgrade-diagnostics/local-evidence.tar.gz)，包含失败诊断而不隐藏中途问题；不包含完整宿主配置、凭据、媒体或依赖缓存。合并、保护激活及正式补丁发布结果分别记录在 PR 与 #113 中。
 
 归档文件数：36；SHA256：`72988bbcc68782901001a3964f76027b3c5f88b1b800cdd236bc56e9658d6172`。
+
+
+## main 保护实际激活与服务器验收
+
+PR #122 合并为 `850124cec8f97fee003773790b2d79f4c4a25c90` 后应用并读回保护：要求 PR、最新基线、merge-gate（App 15368）成功，管理员受约束，禁止强推/删除，审批人数为零。
+
+[临时 PR #125](https://github.com/wukongnotnull/wukong-animation/pull/125) 基于最新 main，非草稿、behind_by=0；[生成文档漂移使门禁失败](https://github.com/wukongnotnull/wukong-animation/actions/runs/41170318527)后，管理员使用准确 head SHA 调用合并 API，实际得到 HTTP 405：`Required status check "merge-gate" is failing.`。PR 未合并，main SHA 保持。
+
+[恢复文档后全部必过检查成功](https://github.com/wukongnotnull/wukong-animation/actions/runs/41170564088)，服务器状态 CLEAN、MERGEABLE；随后关闭临时 PR，不合入测试内容。A3 至此完成；前文待激活标记为历史时点。原配置、应用和读回及实际拒绝响应已保存，并在 #113 和 PR #122 留存结果。
+
+本次 v0.19.6 发布只同步版本与说明，不改变已验收的引擎代码或保护设置；发布提交的 CI、正式包和安装升级另按发布流程验证。

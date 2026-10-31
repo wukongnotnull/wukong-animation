@@ -1,6 +1,6 @@
 # 第五批实施计划
 
-Status: Implemented — main activation pending authorized merge
+Status: Implemented and activated — v0.19.6 release authorized
 Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnostics-design.md)
 
 目标：强制执行 main 合并检查，并提供只读升级诊断。
@@ -51,3 +51,5 @@ Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnosti
 用户已明确批准第五批规格与实施计划，要求从 CI 合并保护开始实施。
 
 实施与阶段验证见[第五批验收记录](../reports/2026-10-31-ci-protection-upgrade-diagnostics-validation.md)。main 保护和服务器拒绝验证尚未完成；必须先按后续授权合入工作流定义，再激活。最终提交 CI 结果见 PR #122。
+
+PR #122 已合并为 850124cec8f97fee003773790b2d79f4c4a25c90；main 保护已激活，管理员实际合并故障 PR #125 被 HTTP 405 拒绝，恢复后 CLEAN，临时 PR 已关闭且未合并。用户已授权发布第五批补丁。

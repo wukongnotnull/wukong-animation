@@ -2,7 +2,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 // Only repository prose is eligible: skill instructions and unknown paths run media checks.
-export const documentationOnly=files=>files.length>0&&files.every(f=>/^(README\.md|LICENSE(?:\.[A-Za-z]+)?|docs\/.+\.(md|txt))$/.test(f));
+export const documentationOnly=files=>files.length>0&&files.every(f=>/^(README\.md|LICENSE(?:\.md|\.txt)?|docs\/.+\.(md|txt))$/.test(f));
 export function gatePassed(docs,results){
  return ['lint','installation','jianying'].every(k=>results[k]==='success')&&
    (results.smoke==='success'||(docs&&results.smoke==='skipped'));

@@ -96,7 +96,7 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
       if(opt('upgrade')) {
         const result=installationDiagnostics();
         if(opt('json'))log(JSON.stringify(result,null,2));
-        else {log(`插件 ${result.plugin.version||'未知'} · 引擎 ${result.engine.version||'未知'}`);log(`路径 ${result.plugin.root} · 来源 ${result.installation.kind}`);log(`依赖 ${result.dependencies?.root||'未就绪'}`);for(const text of [...result.guidance,...result.warnings])log('  '+text);}
+        else {log(`插件 ${result.plugin.version||'未知'} · 引擎 ${result.engine.version||'未知'}`);log(`路径 ${result.plugin.root} · 来源 ${result.installation.kind}`);log(`依赖 ${result.dependencies?.root||'未就绪'}（来源 ${result.dependencies?.source||'未知'} · 身份 ${result.dependencies?.identity?.slice(0,12)||'未知'}）`);for(const text of [...result.guidance,...result.warnings])log('  '+text);}
         return result.exitCode;
       }
       return (await cmdCheck()) ? 1 : 0;

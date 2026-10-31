@@ -1,6 +1,6 @@
 # 第五批实施计划
 
-Status: Approved — implementation in progress
+Status: Implemented — main activation pending authorized merge
 Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnostics-design.md)
 
 目标：强制执行 main 合并检查，并提供只读升级诊断。
@@ -49,3 +49,5 @@ Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnosti
 每项代码任务采用：失败测试 → 确认有效失败 → 最小实现 → 对应检查通过 → 独立提交。配置操作使用真实 GitHub 验证，不把本地策略单测当成服务器保护已生效。
 
 用户已明确批准第五批规格与实施计划，要求从 CI 合并保护开始实施。
+
+实施与阶段验证见[第五批验收记录](../reports/2026-10-31-ci-protection-upgrade-diagnostics-validation.md)。main 保护和服务器拒绝验证尚未完成；必须先按后续授权合入工作流定义，再激活。最终提交 CI 结果见 PR #122。

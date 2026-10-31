@@ -77,20 +77,30 @@ for(const mutation of ['truncate','grow','replace','remove','rewrite-with-restor
   requireApi();const file=fixture(t,CHUNK+3);if(mutation==='rewrite-with-restored-mtime')fs.utimesSync(file,1234567890,1234567890);
   const before=fs.statSync(file),observed=track(t,file),read=fs.readSync;
   const replacement=file+'.new';if(mutation==='replace')fs.writeFileSync(replacement,Buffer.alloc(CHUNK+3,1));
-  let first=true;
+  let first=true,mutated=false;
   t.mock.method(fs,'readSync',function(...args){
-    if(mutation==='early-eof'&&!first)return 0;
+    if(mutation==='early-eof'&&!first){mutated=true;return 0;}
     const n=read.apply(this,args);
     if(first){first=false;
       if(mutation==='truncate')fs.truncateSync(file,3);
       if(mutation==='grow')fs.appendFileSync(file,'growth');
-      if(mutation==='replace')fs.renameSync(replacement,file);
+      // Rebind the path without overwriting an open destination (denied on Windows).
+      if(mutation==='replace'){fs.renameSync(file,file+'.old');fs.renameSync(replacement,file);}
       if(mutation==='remove')fs.unlinkSync(file);
       if(mutation==='rewrite-with-restored-mtime'){fs.writeFileSync(file,Buffer.alloc(CHUNK+3,2));fs.utimesSync(file,before.atime,before.mtime);}
+      if(mutation!=='early-eof')mutated=true;
     }
     return n;
   });
-  assert.throws(()=>api.hashFile(file),/变化|changed|ENOENT|EIO|读取|read/i);assert.equal(observed.opened.size,0);
+  assert.throws(()=>api.hashFile(file),error=>{
+    assert.equal(mutated,true,'the fixture mutation must complete before the observation rejects it');
+    // Windows can report a delete-pending open file as EPERM rather than ENOENT.
+    if(mutation==='remove'&&process.platform==='win32'&&error.code==='EPERM')assert.equal(error.syscall,'stat');
+    else assert.match(error.message,/变化|changed|ENOENT|EIO|读取|read/i);
+    return true;
+  });assert.equal(observed.opened.size,0);
+  if(mutation==='replace')assert.equal(sha(fs.readFileSync(file)),sha(Buffer.alloc(CHUNK+3,1)),'the replacement must really occupy the observed path');
+  if(mutation==='remove')assert.equal(fs.existsSync(file),false,'the file must really be removed after closing');
   if(mutation==='rewrite-with-restored-mtime')assert.equal(fs.statSync(file).mtimeMs,before.mtimeMs,'mtime really was restored exactly');
 });
 

@@ -24,3 +24,8 @@ test('native conflicts and tampered portable resources are rejected',async()=>{
  json('bundle.json',{schemaVersion:1,pluginVersion:'0.19.5',engineVersion:'0.2.0',files:[{path:'../outside',sha256:'invalid'}]});assert.equal(inspect().exitCode,1);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('invalid version values are reported as null rather than echoed',async()=>{
+ const {installationDiagnostics}=await import('../../plugin/engine/core/installation-diagnostics.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-version-'));
+ try{fs.mkdirSync(path.join(dir,'engine'));fs.writeFileSync(path.join(dir,'plugin.json'),JSON.stringify({version:{secret:'hidden'}}));fs.writeFileSync(path.join(dir,'engine/package.json'),JSON.stringify({version:42}));const r=installationDiagnostics({pluginRoot:dir,configFile:path.join(dir,'none'),dependency:()=>({root:'/deps'})});assert.equal(r.plugin.version,null);assert.equal(r.engine.version,null);assert.equal(r.exitCode,1);assert.ok(!JSON.stringify(r).includes('hidden'));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

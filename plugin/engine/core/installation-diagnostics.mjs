@@ -45,5 +45,6 @@ export function installationDiagnostics({pluginRoot=PLUGIN_ROOT,dependency=depen
  warnings.push('离线诊断未查询远端最新版本；宿主是否已重载无法判断');
  if(kind==='unknown')warnings.push('安装来源证据不足');
  const guidance=kind==='portable'?['下载同一发布版本的 ZIP 与 SHA256SUMS 并核对摘要','使用新包安装器和原 agent、scope、project、variant 执行 upgrade']:kind==='native'?['已识别原生包格式；具体宿主和安装渠道需核对','若通过 Codex wukong-animation marketplace 安装：codex plugin marketplace upgrade wukong-animation；随后 codex plugin add wukong-animation@wukong-animation','更新后打开新聊天，必要时按宿主要求重载']:kind==='development'?['通过当前仓库的正常 Git 更新和开发初始化流程维护']:['先核对实际安装渠道，再选择该渠道的更新方式'];
- return {schemaVersion:1,plugin:{version,root},engine:{version:engine?.version||null},installation:{kind,sourceCommit,hostLoaded:null,latestVersion:null},dependencies,guidance,warnings,exitCode:failed?1:0};
+ const normalized=v=>typeof v==='string'&&/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(v)?v:null;
+ return {schemaVersion:1,plugin:{version:normalized(version),root},engine:{version:normalized(engine?.version)},installation:{kind,sourceCommit,hostLoaded:null,latestVersion:null},dependencies,guidance,warnings,exitCode:failed?1:0};
 }

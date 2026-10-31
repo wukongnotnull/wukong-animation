@@ -61,8 +61,7 @@ const VARIANT_STEP = 14; // 第 14 道「改版」：副版定稿
 const { cmd, pos, opt } = parseArgs(process.argv.slice(2));
 const log = (...a) => console.log(...a);
 const fail = (msg) => {
-  console.error(`✗ ${msg}`);
-  process.exit(1);
+  throw new Error(msg);
 };
 /** --aspect：要处理的画幅（副版），缺省为主版 */
 const aspectOpt = () => {
@@ -660,4 +659,7 @@ async function execute(){
     await main();
   }finally{unlock();}
 }
-execute().catch((e) => fail(e.message));
+execute().catch((e) => {
+  console.error(`✗ ${e.message}`);
+  process.exitCode = 1;
+});

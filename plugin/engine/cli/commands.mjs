@@ -1,34 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { getRegistry, getStyles, loadModule } from '../core/registry.mjs';
-import { ENGINE_VERSION, ENGINE_ROOT, PLUGIN_ROOT, HOME, TEMPLATES_DIR, USER_STYLES_DIR, ensureDir } from '../core/paths.mjs';
-import { dependencyInfo } from '../core/deps.mjs';
-import { setupDependencies } from '../core/setup.mjs';
-import { copyTemplate, NAME_RE } from '../core/scaffold.mjs';
+import { ensureDir } from '../core/paths.mjs';
 import { render, preview, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
 import { cleanRenderCache } from '../core/cache.mjs';
 import { snapshotMain, checkMainUnchanged } from '../core/approval.mjs';
 import { listAspects } from '../core/variants.mjs';
-import { initProject, commitSnapshot, hasGit } from '../core/project.mjs';
-import { hasFfmpeg, generatedMixPadding } from '../core/ffmpeg.mjs';
-import { detectTtsEngine } from '../audio/tts.mjs';
-import { resolveStyle } from '../core/resolver.mjs';
-import { recordProgress, readProgress, variantStale, staleVariants, listProductions, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, flowDiagnostic, assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
+import { commitSnapshot } from '../core/project.mjs';
+import { generatedMixPadding } from '../core/ffmpeg.mjs';
+import { readProgress, variantStale, staleVariants, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
-import {preflightSubtitles,requireSubtitlePreflight,preflightBase} from '../core/subtitle-preflight.mjs';
+import { preflightSubtitles, requireSubtitlePreflight, preflightBase } from '../core/subtitle-preflight.mjs';
 import { requireTiming, checkTiming, checkOutputTiming } from '../core/timing.mjs';
 import { checkShotSizes } from '../core/shot-sizes.mjs';
 import { buildSubtitles, formatSrt, parseSrt, attachEnglish, checkSubtitles, subtitleSettings, subtitleOutputs, syncEnglish, checkEnglish, englishSrt, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
-import { runStage, lockProduction, recoveryStatus,rememberArtifacts,implementationState } from '../core/operations.mjs';
-import { writeDelivery,readDecisions,decisionConflicts } from '../core/delivery.mjs';
+import { runStage, rememberArtifacts, implementationState } from '../core/operations.mjs';
+import { writeDelivery, readDecisions, decisionConflicts } from '../core/delivery.mjs';
 import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, finalFontUnknown, captureFinalProxy, withGenerationFonts, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
 import { draftAudioDifference } from '../core/review-evidence.mjs';
-import { digest, fileDigest, readJson, atomicJson,treeEvidence } from '../core/evidence.mjs';
-
+import { digest, fileDigest, readJson, atomicJson, treeEvidence } from '../core/evidence.mjs';
 import { fail } from './context.mjs';
+import { environmentCommands } from './commands/environment.mjs';
+import { projectCommands } from './commands/project.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
 const SUBTITLES_STEP = 10; // 第 10 道「字幕制作」：还没有小样，版式预检即可
@@ -37,145 +31,18 @@ const FINAL_REVIEW_STEP = 13; // 第 13 道「终检与交付」：主版定稿
 const VARIANT_STEP = 14; // 第 14 道「改版」：副版定稿
 
 // 每次调用独立持有参数与日志；任务 3 按职责提取处理器。
-export function commandsFor({ pos, opt, log, aspectOpt }) {
-const STYLE_SCHEMA = path.join(ENGINE_ROOT, 'schemas', 'style.schema.json');
+export function commandsFor(context) {
+  const { pos, opt, log, aspectOpt } = context;
+  const groups = {
+    'environment': environmentCommands(context),
+    'project': projectCommands(context),
+  };
+
 // 插件外的风格（用户目录等）找不到插件里的 schema，编辑器改用仓库 main 分支上的这份
-const STYLE_SCHEMA_URL = 'https://raw.githubusercontent.com/wukongnotnull/wukong-animation/main/plugin/engine/schemas/style.schema.json';
-
-const CATS = { dongfang: '东方神韵', shouhui: '手绘绘画', pingmian: '平面排版', katong: '卡通漫画', youxi: '游戏数字', dianying: '电影年代', caizhi: '材质 3D', xinxi: '信息叙事', custom: '自定义' };
-
-async function cmdCheck() {
-  log(`wukong-animation 引擎 ${ENGINE_VERSION}  ·  Node ${process.version}`);
-  log(`  插件目录 ${PLUGIN_ROOT}`);
-  log(`  用户目录 ${HOME}`);
-  const reg = getRegistry();
-  let bad = 0;
-  try {
-    const deps = dependencyInfo();
-    log(`  依赖目录 ${deps.root}（${deps.source} · ${deps.identity.slice(0, 12)}）`);
-  } catch (e) { log(`  ✗ 依赖未就绪：${e.message}`); bad++; }
-  log('\n基础工具');
-  const tools = [
-    ['ffmpeg', hasFfmpeg(), '必需：编码与混音'],
-    ['git', hasGit(), '推荐：项目版本管理'],
-    ['python3 + fonttools', spawnSync('python3', ['-c', 'import fontTools'], { stdio: 'ignore' }).status === 0, '推荐：中文字体子集化'],
-    ['pyJianYingDraft', spawnSync('python3', ['-c', 'import pyJianYingDraft'], { stdio: 'ignore' }).status === 0, '可选：导出剪映草稿（pip install pyJianYingDraft==0.3.1）'],
-  ];
-  for (const [n, ok, why] of tools) log(`  ${ok ? '✓' : '✗'} ${n.padEnd(20)} ${why}`);
-  if (!tools[0][1]) bad++;
-  const tts = detectTtsEngine();
-  log(`  ${tts.length ? '✓' : '·'} TTS                  ${tts.length ? tts.join(', ') : '未安装（可选：kokoro / edge-tts）'}`);
-
-  log('\n管线');
-  for (const p of reg.pipelines.values()) {
-    if (p.status === 'planned') {
-      log(`  · ${p.name.padEnd(10)} 规划中`);
-      continue;
-    }
-    const r = await (await loadModule(p)).check();
-    log(`  ${r.ok ? '✓' : '✗'} ${p.name.padEnd(10)} ${r.ok ? p.status : '缺少 ' + r.missing.join('、')}`);
-    if (!r.ok) bad++;
-  }
-  log('\n工具包');
-  for (const k of reg.kits.values()) log(`  ${k.status === 'planned' ? '·' : '✓'} ${k.name.padEnd(10)} ${k.version.padEnd(7)} ${k.status}`);
-  log('\n导出器');
-  for (const e of reg.exporters.values()) log(`  ✓ ${e.name.padEnd(10)} .${e.ext}`);
-  const { styles, problems } = getStyles();
-  const usable = [...styles.values()].filter((s) => resolveStyle(s, reg).errors.length === 0);
-  log(`\n风格  ${usable.length} 个可用 / ${styles.size} 个已登记`);
-  const all = [...reg.problems, ...problems];
-  if (all.length) {
-    log('\n问题');
-    for (const p of all) log(`  ✗ ${p}`);
-    bad += all.length;
-  }
-  log(bad ? `\n有 ${bad} 项需要处理。依赖缺失请运行 /wukong-animation:setup` : '\n一切就绪 ✓');
-  return bad;
-}
-
-function cmdSetup() {
-  setupDependencies({ log });
-  if (!hasFfmpeg()) log('! 还缺 ffmpeg：macOS 用 brew install ffmpeg，Ubuntu 用 sudo apt install ffmpeg');
-  if (!hasGit()) log('! 推荐安装 git，用于为每个审片节点做定版存档');
-  if (spawnSync('python3', ['-c', 'import fontTools'], { stdio: 'ignore' }).status !== 0) {
-    log('! 推荐：pip install fonttools brotli（中文字体子集化，渲染更快、体积更小）');
-  }
-  log('完成。运行 wka check 确认。');
-}
-
-function cmdList(what = 'styles') {
-  const reg = getRegistry();
-  if (what === 'styles') {
-    const { styles } = getStyles();
-    const rows = [...styles.values()].sort((a, b) => a.order - b.order);
-    for (const s of rows) {
-      const ok = resolveStyle(s, reg).errors.length === 0;
-      log(`${String(s.order).padStart(2, '0')}  ${s.id.padEnd(18)} ${s.name.padEnd(8)} ${(CATS[s.category] || s.category).padEnd(6)} ${s.pipeline}/${Object.keys(s.kits).join('+')}${ok ? '' : '  (不可用)'}${s.origin === 'user' ? '  [用户]' : ''}`);
-    }
-    if (!rows.length) log('（还没有风格）');
-    return;
-  }
-  const map = { pipelines: reg.pipelines, kits: reg.kits, exporters: reg.exporters }[what];
-  if (!map) fail(`未知类别 ${what}`);
-  for (const x of map.values()) log(`${x.name.padEnd(12)} ${x.version.padEnd(7)} ${x.status.padEnd(12)} ${x.description}`);
-}
-
-function cmdInit(name, { style, dir = '.', aspect = '16:9' }) {
-  if (!name) fail('用法：wka init <片名> --style <id>');
-  const { styles } = getStyles();
-  const st = styles.get(style);
-  if (!st) fail(`没有风格 "${style}"。可用：${[...styles.keys()].join(', ')}`);
-  const filmDir = path.resolve(dir, 'films', name);
-  if (fs.existsSync(path.join(filmDir, 'film.json'))) fail(`${filmDir} 已存在`);
-  const tpl = path.join(TEMPLATES_DIR, 'film');
-  fs.cpSync(tpl, filmDir, { recursive: true });
-  const size = aspect === '9:16' ? [1080, 1920] : aspect === '1:1' ? [1080, 1080] : [1920, 1080];
-  const film = JSON.parse(fs.readFileSync(path.join(filmDir, 'film.json'), 'utf8'));
-  Object.assign(film, { title: name, style: st.id, size, fps: st.fps });
-  // 模板里两种镜头写法都有：remotion 管线用 React 组件（.tsx），其余用 wk.shot（.js）
-  const ext = st.pipeline === 'remotion' ? 'tsx' : 'js';
-  fs.rmSync(path.join(filmDir, 'shots', ext === 'tsx' ? 's01.js' : 's01.tsx'), { force: true });
-  film.shots = film.shots.map((s) => ({ ...s, file: s.file.replace(/\.js$/, `.${ext}`) }));
-  fs.writeFileSync(path.join(filmDir, 'film.json'), JSON.stringify(film, null, 2) + '\n');
-  log(`✓ 已创建 ${path.relative(process.cwd(), filmDir) || '.'}（风格 ${st.name} · ${size.join('×')} @${st.fps}fps）`);
-  log(`  风格文档：${path.join(st.dir, 'STYLE.md')}`);
-  log(`  技术文档：${path.join(st.dir, 'TECH.md')}`);
-}
 
 /** 制作简报（第 2 道）：建占位片目录和 brief.md 空白稿；第 3 道 wka init 在这个目录上补齐工程。 */
-function cmdBrief(name, { dir = '.' }) {
-  if (!name) fail('用法：wka brief <片名> [--dir 项目目录]');
-  const filmDir = path.resolve(dir, 'films', name);
-  const brief = path.join(filmDir, 'brief.md');
-  if (fs.existsSync(brief)) fail(`${brief} 已存在`);
-  const tpl = fs.readFileSync(path.join(TEMPLATES_DIR, 'brief.md'), 'utf8');
-  fs.mkdirSync(filmDir, { recursive: true });
-  fs.writeFileSync(brief, tpl.replaceAll('<片名>', name));
-  recordProgress(filmDir, { step: 1, note: '建立占位片目录' });
-  log(`✓ 已创建 ${path.relative(process.cwd(), brief) || brief}`);
-}
 
 /** 新建风格：从引擎模板复制，默认放用户目录（升级插件不覆盖）；维护者用 --dest plugin/skills。 */
-function cmdNew(what, id, { name, category = 'custom', order = 101, dest = USER_STYLES_DIR }) {
-  if (what !== 'style') fail('wka new 只支持 style（工具包、管线、导出器要在插件仓库里实现）');
-  if (!id || !NAME_RE.test(id) || !name || name === true) fail('用法：wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]（id 只用小写字母、数字和连字符）');
-  if (!/^\d+$/.test(String(order)) || Number(order) < 1 || Number(order) > 999) fail(`--order 要是 1–999 的整数，收到 "${order}"`);
-  const dir = path.resolve(dest, id);
-  if (fs.existsSync(dir)) fail(`${dir} 已存在`);
-  const inPlugin = !path.relative(PLUGIN_ROOT, dir).startsWith('..');
-  copyTemplate(path.join(TEMPLATES_DIR, 'style-skill'), dir, {
-    ID: id,
-    NAME: name,
-    CATEGORY: category,
-    ORDER: Number(order),
-    SCHEMA: inPlugin ? path.relative(dir, STYLE_SCHEMA).split(path.sep).join('/') : STYLE_SCHEMA_URL,
-    GLOBAL: id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()),
-    ONE_LINE: '（一句话特征）',
-    WHEN: '（什么样的片子）',
-  });
-  log(`✓ 已创建 ${dir}（第 ${order} 变）`);
-  log('  下一步：写 STYLE.md 十节 → TECH.md → scripts/style.js → examples/ 示范片 → wka list styles 校验');
-}
 
 /** 读字幕文件并检查；有错误就中断，警告打印后继续。 */
 function readSubtitles(ctx, settings, { missing }) {
@@ -416,36 +283,14 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
       log(opt('json')?JSON.stringify(report,null,2):opt('final')?formatFinalDelivery(report):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
       return report.ok ? 0 : 2;
     } },
-    'resume': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      if(!pos[0]) throw new Error('用法：wka resume <片目录> [--json]');
-      const diagnostic=flowDiagnostic(pos[0]);
-      if(diagnostic){log(opt('json')?JSON.stringify(diagnostic,null,2):diagnostic.error);return 1;}
-      const status=recoveryStatus(path.resolve(pos[0]));
-      log(opt('json')?JSON.stringify(status,null,2):[...status.stages.map(s=>`[${s.aspect} ${s.proxy?'小样':'高清'} · ${s.stage}] ${s.status}${s.error?'：'+s.error:''}`),status.next].join('\n'));return;
-    } },
-    'setup': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      return cmdSetup();
-    } },
-    'check': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      return (await cmdCheck()) ? 1 : 0;
-    } },
-    'list': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      return cmdList(pos[0]);
-    } },
-    'init-project': { preflight: 'project', lock: 'none', active: false, run: async () => {
-      log('项目初始化');
-      initProject(pos[0] || '.', { log });
-      return;
-    } },
-    'brief': { preflight: 'new-film', lock: 'none', active: false, run: async () => {
-      return cmdBrief(pos[0], { dir: opt('dir', '.') });
-    } },
-    'new': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      return cmdNew(pos[0], pos[1], { name: opt('name'), category: opt('category', 'custom'), order: opt('order', 101), dest: opt('dest', USER_STYLES_DIR) });
-    } },
-    'init': { preflight: 'new-film', lock: 'none', active: false, run: async () => {
-      return cmdInit(pos[0], { style: opt('style'), dir: opt('dir', '.'), aspect: opt('aspect', '16:9') });
-    } },
+    'resume': { preflight: 'none', lock: 'none', active: false, run: groups['project']['resume'] },
+    'setup': { preflight: 'none', lock: 'none', active: false, run: groups['environment']['setup'] },
+    'check': { preflight: 'none', lock: 'none', active: false, run: groups['environment']['check'] },
+    'list': { preflight: 'none', lock: 'none', active: false, run: groups['environment']['list'] },
+    'init-project': { preflight: 'project', lock: 'none', active: false, run: groups['project']['init-project'] },
+    'brief': { preflight: 'new-film', lock: 'none', active: false, run: groups['project']['brief'] },
+    'new': { preflight: 'none', lock: 'none', active: false, run: groups['project']['new'] },
+    'init': { preflight: 'new-film', lock: 'none', active: false, run: groups['project']['init'] },
     'signoff': { preflight: 'film', lock: 'film', active: true, run: async () => {
       if (!pos[0] || !pos[1]) fail('用法：wka signoff <片目录> "<审片结论>" [--step N]');
       const step = opt('step') ? Number(opt('step')) : null;
@@ -502,20 +347,7 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
       void sha;
       return;
     } },
-    'status': { preflight: 'none', lock: 'none', active: false, run: async () => {
-      let exitCode = 0;
-      const list = listProductions(pos[0] || '.');
-      if (!list.length) return log('还没有片子。用 wka init <片名> --style <id> 开始。');
-      for (const f of list) {
-        log(`${f.name}  《${f.title}》 ${f.style}`);
-        if(f.compatible===false){log(`  ${f.error}`);exitCode=1;continue;}
-        if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
-        log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
-        if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
-        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 13 道重新签批过，要重做第 14 道「改版」`);
-      }
-      return exitCode;
-    } },
+    'status': { preflight: 'none', lock: 'none', active: false, run: groups['project']['status'] },
     'qc': { preflight: 'film', lock: 'film', active: true, run: async () => {
       if (!pos[0]) fail('用法：wka qc <片目录> [--proxy] [--aspect 9:16]');
       const r = await runQc(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });

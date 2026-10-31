@@ -1,11 +1,11 @@
 # 第四批代码质量与架构优化实施与验收记录
 
-状态：Q1/Q2/Q3 已实施，本地验收完成；当前分支尚未提交 PR，三平台远端 CI 待后续执行。A9 的跨平台部分和 A12 的远端部分不能由本地结果替代。
+状态：Q1/Q2/Q3、本地验收及 A9/A12 远端 CI 均完成；PR #120 已合并，用户已授权发布 v0.19.5。原始本地测量和归档保持，后续交付证据见文末。
 
 - 批准依据：[规格](../specs/2026-10-31-0916-code-quality-phase-four-design.md)、[实施计划](../plans/2026-10-31-0916-code-quality-phase-four.md)，用户于 2026-10-31 批准并要求从失败清理开始。
 - 基线：v0.19.4，`76c0d8a534decec724b72a141cb415ce5b6c506a`。
 - 冻结候选：`fe1730b5f6ab74613d8ad31802520e17f27fa48d`。完整回归、长时间轴和配对测量均针对这份代码；后续报告提交只改文档及证据文件。
-- 本地分支：`codex/code-quality-phase-four-spec`；沿用 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。本轮未推送、开 PR、合并、发布或更新已安装插件。
+- 本地分支：`codex/code-quality-phase-four-spec`；沿用 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。原测量轮仅实施及本地验收；用户随后授权 PR、合并和发布，具体记录见文末。
 
 命令受控失败现在会释放自己持有的锁，同时保留恢复记录；四模块静态循环已消除，结构检查已接入开发检查与三平台工作流。完整回归 553/553、严格剪映 19/19，均零跳过；9 张视觉样张零差异，107 镜的八种时间轴组合全部通过。21 个原定场景的 210 次正式计时与 42 次探针全部成功，中位数没有超过回退门槛。一处小样封装工作量差异及追加的等工作量测量完整记录在下文，不将它写成原始探针完全相同。
 
@@ -35,7 +35,7 @@
 
 两处已有非字面量动态入口仅按文件、函数与表达式形状允许：registry 扩展插槽与 soundtrack 用户脚本。它们不是引擎静态图的一部分，也不代表任意用户脚本已被证明无环。CLI 的直接退出和导入时启动检查结合真实导入测试使用，不宣称静态分析能证明所有副作用不存在。
 
-`npm run lint` 保留原检查并追加架构检查。lint、smoke 和 agent-installation 工作流安装根锁定依赖；三平台 Node 20 安装流程追加命令生命周期、契约及模块边界测试，原安装、文件 I/O 与严格剪映任务保留。远端执行结果仍待 PR 阶段确认。
+`npm run lint` 保留原检查并追加架构检查。lint、smoke 和 agent-installation 工作流安装根锁定依赖；三平台 Node 20 安装流程追加命令生命周期、契约及模块边界测试，原安装、文件 I/O 与严格剪映任务保留。原本地验收时远端待验证，后续已通过，结果见文末。
 
 ## 失败证据与回归
 
@@ -141,3 +141,17 @@ macOS 27.0 arm64，Node v25.8.1；兼容检查另用 Node v20.20.2。ffmpeg/ffpr
 归档含 700 个文件，1,035,566 字节；SHA-256：`4f915d68a9234fc65361315d09a66d926ffd551b6c6ed0c0c94fc6ea39ac5ce1`。
 
 实施按失败清理、执行器、低层提取和身份、分组命令、结构门禁分别提交，未修改用户作品或本机安装。下一步建议提交 PR 并运行当前提交的全部 CI，重点核实 Node 20 的三平台安装/命令/文件 I/O 检查；通过审阅后再按授权合并与发布。
+
+
+## 后续远端验收、合并与发布授权
+
+PR [#120](https://github.com/wukongnotnull/wukong-animation/pull/120) 的最终头提交为 `0093c073bb9c706fa5b7466c86943ee28668dd4e`，运行时代码与冻结候选一致。push 和 PR 共 12 个检查均成功；PR 合并测试提交为 `9792995f60acf4d285d6cc8ee876261b98a5b566`，基线为 `76c0d8a534decec724b72a141cb415ce5b6c506a`。
+
+- [三平台 Node 20](https://github.com/wukongnotnull/wukong-animation/actions/runs/41162985152)：Windows/macOS/Linux 各 29 项命令与架构、6 项便携安装、22 项文件 I/O，全部通过、零跳过；ZIP 传输和安装包上传成功。
+- [lint](https://github.com/wukongnotnull/wukong-animation/actions/runs/41162985132)：原检查及 76 模块结构检查通过。
+- [严格剪映](https://github.com/wukongnotnull/wukong-animation/actions/runs/41162985211)：19/19，零跳过。
+- [完整回归与视觉冒烟](https://github.com/wukongnotnull/wukong-animation/actions/runs/41162985140)：553 项中 538 通过、0 失败；普通环境的 15 项剪映依赖跳过项，已逐项核对在严格剪映中实际通过。9 张样张零像素差。
+
+A9 的三平台部分及 A12 的当前提交 CI 已补齐，上文的待验证标记和同名 JSON 是原本地验收时点的记录。2026-10-31，用户要求“合并，然后发布”，复核最终差异、CI 和审阅状态后，PR #120 合并为 `b34ab13bd27cf0e35a64568be7c62a8ce38218b6`；合并内容与上述最终头提交一致。
+
+[v0.19.5 说明](../../releases/v0.19.5.md)记录本次补丁与升级方式，发布提交的检查和正式产物以 Release 与原 issue 记录为准。

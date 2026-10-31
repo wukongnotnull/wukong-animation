@@ -1,7 +1,7 @@
 {
   "name": "wukong-animation-repo",
   "private": true,
-  "description": "仓库维护命令入口（不分发、无依赖；运行时依赖在 plugin/engine）",
+  "description": "仓库维护命令入口（不分发；开发检查依赖在根目录，运行时依赖在 plugin/engine）",
   "engines": {
     "node": ">=20"
   },
@@ -10,9 +10,13 @@
     "test": "node --test tests/unit/*.test.mjs tests/integration/*.test.mjs",
     "test:jianying": "node tools/test-jianying.mjs",
     "smoke": "node tests/smoke/run.mjs",
-    "lint": "node tools/lint.mjs && node tools/build-docs.mjs --check && node tools/build-agent-docs.mjs --check",
+    "lint": "node tools/lint.mjs && node tools/build-docs.mjs --check && node tools/build-agent-docs.mjs --check && npm run check:architecture",
     "catalog": "node tools/build-catalog.mjs",
     "build:portable": "node tools/build-portable.mjs",
-    "install:agent": "node tools/install-agent.mjs"
+    "install:agent": "node tools/install-agent.mjs",
+    "check:architecture": "node tools/check-architecture.mjs"
+  },
+  "devDependencies": {
+    "acorn": "8.19.0"
   }
 }

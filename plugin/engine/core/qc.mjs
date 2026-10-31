@@ -1,19 +1,22 @@
+import { qcSource } from './qc-source.mjs';
+import { qcConfig } from './qc-config.mjs';
+export { qcConfig } from './qc-config.mjs';
 // 量化技术质检（QC）：逐帧量出留白、点缀色面积、相邻帧差异、空帧，对照 style.json 的 qc 阈值。
 // 导演只需目视复核超标的帧（会拼成一张 qc-sheet.jpg）。
 import fs from 'node:fs';
-import { fileDigest,atomicJson,digest } from './evidence.mjs';
+import { atomicJson } from './evidence.mjs';
 import { readReviewNotes,qcReview } from './review-evidence.mjs';
 import { rememberArtifacts } from './operations.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { loadFilm } from './job.mjs';
+import { loadFilm } from './film-context.mjs';
 import { checkTiming } from './timing.mjs';
 import { run, drawLabel } from './ffmpeg.mjs';
 import { ensureDir } from './paths.mjs';
 import { labelPngs } from './labels.mjs';
 import { checkShotSizes, describeShotSizes } from './shot-sizes.mjs';
 
-const QC_DEFAULTS = { whitespace_min: 0, paper_tol: 20, accent_tol: 60, accent_max: 1, diff_max: 30, cuts_max: 99, skip_start: 0.5 };
+
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 
@@ -67,21 +70,15 @@ export function judgeFrames(frames, cfg, { boundaries, fps, fullBleed = new Set(
   return { issues, cuts };
 }
 
-/** 质检阈值：缺省值 ← style.json 的 qc ← qc.by_aspect[画幅] */
-export function qcConfig(style, aspect) {
-  const { by_aspect: byAspect = {}, ...qc } = style.qc || {};
-  return { ...QC_DEFAULTS, ...qc, ...(byAspect[aspect] || {}) };
-}
-
 export async function runQc(filmDir,options={}) {
   const {proxy=false,fps=10,aspect=null,log=console.log}=options;
-  const ctx=loadFilm(filmDir,{aspect}),video=path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4');
+  const ctx=loadFilm(filmDir,{aspect});
   let raw;
   try{raw=await runQcMeasured(filmDir,options);}
   catch(e){raw={ok:false,issues:[{kind:'解码或检查失败',shot:'未验证',t:null,msg:e.message}],shots:[],contactSheet:null,report:e.message};}
   let notes={},noteError=null;try{notes=readReviewNotes(ctx.filmDir);}catch(e){noteError=e.message;}
   const issues=[...raw.issues,...(noteError?[{kind:'审阅记录无效',shot:'未验证',t:null,msg:noteError}]:[])];
-  const source=digest({video:fs.existsSync(video)?fileDigest(video):null,timing:fs.existsSync(path.join(ctx.variant.cacheDir,proxy?'timing-proxy.json':'timing.json'))?fileDigest(path.join(ctx.variant.cacheDir,proxy?'timing-proxy.json':'timing.json')):null,algorithm:fileDigest(new URL(import.meta.url))});
+  const source=qcSource(ctx.variant.cacheDir,{proxy});
   const disposition=qcReview(issues,{source,cfg:{...qcConfig(ctx.style,ctx.variant.aspect),fps,duration:ctx.totalDuration},notes});
   const result={...raw,...disposition,ok:disposition.machineOk};
   result.report=raw.report+'\n\n人工处置（不改变原始测量）：'+`\n未处理 ${disposition.unresolved.length}；需修复 ${disposition.needsFix.length}；有依据接受 ${disposition.accepted.length}；过期备注 ${disposition.staleNotes.length}`+

@@ -1,3 +1,4 @@
+import { qcSource } from '../../plugin/engine/core/qc-source.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -214,7 +215,7 @@ test('A5 known current QC hard errors cannot be bypassed by a final approval not
   const video=path.join(dir,'.cache/video.mp4');fs.writeFileSync(video,'video');fs.writeFileSync(file,'video');
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'shots/s01.js')]}),path:file,stage:'encode:mp4',technical:{status:'passed'}});
   const qc=path.join(dir,'review/QC报告.json');fs.writeFileSync(qc,JSON.stringify({issues:[{kind:'空帧',shot:'s01',t:0.5,msg:'no content'}]}));
-  const source=digest({video:fileDigest(video),timing:null,algorithm:fileDigest(path.resolve('plugin/engine/core/qc.mjs'))});
+  const source=qcSource(path.join(dir,'.cache'));
   rememberArtifacts(dir,{stage:'review:qc',aspect:'16:9',signature:source,outputs:[qc],value:qc});
   const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');assert.equal(report.status,'incomplete');
   assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:13,revision:report.reviewSets[13].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);

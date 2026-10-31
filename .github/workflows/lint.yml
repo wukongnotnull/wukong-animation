@@ -12,5 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: 安装仓库开发检查依赖
+        run: npm ci --no-audit --no-fund
       - name: 结构与清单校验、工具包文档是否最新
         run: npm run lint

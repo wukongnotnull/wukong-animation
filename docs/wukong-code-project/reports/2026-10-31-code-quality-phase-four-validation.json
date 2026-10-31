@@ -1,0 +1,2969 @@
+{
+  "status": "implementation and local validation complete; PR and remote CI pending",
+  "baseline": "76c0d8a534decec724b72a141cb415ce5b6c506a",
+  "candidate": "fe1730b5f6ab74613d8ad31802520e17f27fa48d",
+  "environment": {
+    "baseline": "76c0d8a534decec724b72a141cb415ce5b6c506a",
+    "candidate": "fe1730b5f6ab74613d8ad31802520e17f27fa48d",
+    "system": "macOS-27.0-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "node": "v25.8.1",
+    "node20": "v20.20.2",
+    "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+    "ffprobe": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers",
+    "python": "Python 3.13.3",
+    "pyJianYingDraft": "0.3.1",
+    "engine-package.json-sha256": "26be6aac3cefa487b1ad82b3f1d7facf315d6b78235f184ecb0bca65bb46bca5",
+    "engine-package-lock.json-sha256": "c9f6d42d99b46616e9cdab1afed510c5a393630819c50e0bf9dfa992fd5c3ac7"
+  },
+  "localChecks": [
+    {
+      "name": "jianying",
+      "command": [
+        "npm",
+        "run",
+        "test:jianying"
+      ],
+      "env": {},
+      "exitCode": 0,
+      "elapsedSeconds": 81.26162754185498,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/jianying.log"
+    },
+    {
+      "name": "smoke",
+      "command": [
+        "npm",
+        "run",
+        "smoke"
+      ],
+      "env": {},
+      "exitCode": 0,
+      "elapsedSeconds": 34.31681816698983,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/smoke.log"
+    },
+    {
+      "name": "long-timing",
+      "command": [
+        "node",
+        "--test",
+        "--test-concurrency=1",
+        "tests/integration/timing.test.mjs"
+      ],
+      "env": {
+        "WKA_TIMING_LONG": "1"
+      },
+      "exitCode": 0,
+      "elapsedSeconds": 660.2047465420328,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/long-timing.log"
+    },
+    {
+      "name": "bounded-io",
+      "command": [
+        "node",
+        "--test",
+        "tests/unit/file-hash.test.mjs",
+        "tests/unit/source-state.test.mjs",
+        "tests/unit/operations.test.mjs"
+      ],
+      "env": {},
+      "exitCode": 0,
+      "elapsedSeconds": 0.7794189588166773,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/bounded-io.log"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "env": {},
+      "exitCode": 0,
+      "elapsedSeconds": 1.0839487500488758,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/lint.log"
+    },
+    {
+      "name": "portable",
+      "command": [
+        "npm",
+        "run",
+        "build:portable"
+      ],
+      "env": {},
+      "exitCode": 0,
+      "elapsedSeconds": 0.4983600419946015,
+      "log": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/portable.log"
+    }
+  ],
+  "benchmarkChecks": [
+    {
+      "suite": "hash",
+      "command": [
+        "node",
+        "tools/bench-performance.mjs",
+        "--engine",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/baseline/plugin/engine",
+        "--candidate",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/candidate/plugin/engine",
+        "--suite",
+        "hash",
+        "--rounds",
+        "5",
+        "--out",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/paired-hash"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 25.901327249594033,
+      "output": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/paired-hash"
+    },
+    {
+      "suite": "workflow",
+      "command": [
+        "node",
+        "tools/bench-performance.mjs",
+        "--engine",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/baseline/plugin/engine",
+        "--candidate",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/candidate/plugin/engine",
+        "--suite",
+        "workflow",
+        "--rounds",
+        "5",
+        "--out",
+        "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/paired-workflow",
+        "--cases",
+        "browser-example,remotion-example"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 1879.3062061253004,
+      "output": "/var/folders/zc/71mnngz96gb6qpm2yznd3n4c0000gn/T/wka-phase4-7frap0w3/paired-workflow"
+    }
+  ],
+  "performance": {
+    "timedRuns": 210,
+    "probeRuns": 42,
+    "failedRows": 0,
+    "scenarios": [
+      {
+        "suite": "hash",
+        "scenario": "fileDigest-8MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 5.495958999999999,
+          "minMs": 4.581083000000007,
+          "maxMs": 21.79325
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 5.541708,
+          "minMs": 5.192833000000007,
+          "maxMs": 7.0148750000000035
+        },
+        "deltaMs": 0.045749000000000706,
+        "deltaPercent": 0.8324115955013622,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              5.295375000000007,
+              8.613541999999995,
+              21.79325,
+              5.495958999999999,
+              4.581083000000007
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                32.684,
+                45.988,
+                38.606,
+                39.754,
+                32.769
+              ],
+              "median": 38.606
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                56.15625,
+                56.171875,
+                56.171875,
+                56.21875,
+                56.046875
+              ],
+              "median": 56.171875
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 4.958250000000007,
+              "cpu": {
+                "user": 5400,
+                "system": 1004
+              },
+              "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+            },
+            "audioReads": {
+              "bytes": 8388608,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              7.0148750000000035,
+              5.192833000000007,
+              5.227000000000004,
+              5.541708,
+              6.0198330000000055
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                32.476,
+                25.955,
+                26.569,
+                27.547,
+                26.782
+              ],
+              "median": 26.782
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                52.578125,
+                50.84375,
+                52.5625,
+                52.53125,
+                52.65625
+              ],
+              "median": 52.5625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 5.6035420000000045,
+              "cpu": {
+                "user": 5411,
+                "system": 1022
+              },
+              "result": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+            },
+            "audioReads": {
+              "bytes": 8388608,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "sourceState-8MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 30.236582999999996,
+          "minMs": 26.445542000000003,
+          "maxMs": 31.84675
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 34.06041600000002,
+          "minMs": 29.411500000000004,
+          "maxMs": 36.566625
+        },
+        "deltaMs": 3.823833000000022,
+        "deltaPercent": 12.646379387512214,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              30.64987500000001,
+              31.84675,
+              30.236582999999996,
+              26.445542000000003,
+              27.326249999999987
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                62.525,
+                63.545,
+                61.668,
+                57.589,
+                56.686
+              ],
+              "median": 61.668
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.5,
+                61.796875,
+                61.53125,
+                61.4375,
+                61.5625
+              ],
+              "median": 61.53125
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 136.96083300000004,
+              "cpu": {
+                "user": 33958,
+                "system": 16009
+              },
+              "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+            },
+            "audioReads": {
+              "bytes": 8388608,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              34.32725000000001,
+              29.411500000000004,
+              36.566625,
+              34.06041600000002,
+              33.85641699999999
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                59.139,
+                54.016,
+                58.261,
+                59.932,
+                57.703
+              ],
+              "median": 58.261
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.34375,
+                61.125,
+                61.140625,
+                61.265625,
+                60.984375
+              ],
+              "median": 61.140625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 26.901542000000006,
+              "cpu": {
+                "user": 27352,
+                "system": 8222
+              },
+              "result": "3dfa82d398780c3bf9b2c0bd7ce815dc160695c2459850b61b91a16e96a0e992"
+            },
+            "audioReads": {
+              "bytes": 8388608,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "deliverySnapshot-8MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 12.091082999999998,
+          "minMs": 9.741459000000006,
+          "maxMs": 14.140208999999999
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 10.593833000000004,
+          "minMs": 10.105082999999993,
+          "maxMs": 12.850583
+        },
+        "deltaMs": -1.497249999999994,
+        "deltaPercent": -12.383092564991856,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              12.96158299999999,
+              9.741459000000006,
+              10.72529200000001,
+              12.091082999999998,
+              14.140208999999999
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                49.79,
+                39.055,
+                41.011,
+                40.408,
+                42.425
+              ],
+              "median": 41.011
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                57.296875,
+                57.046875,
+                57.1875,
+                57.078125,
+                57.140625
+              ],
+              "median": 57.140625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 11.263750000000002,
+              "cpu": {
+                "user": 9070,
+                "system": 2366
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 8388608,
+                    "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+                  }
+                ],
+                "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+              }
+            },
+            "audioReads": {
+              "bytes": 16777216,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              12.850583,
+              11.82354199999999,
+              10.105082999999993,
+              10.593833000000004,
+              10.350083999999995
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                34.857,
+                32.63,
+                30.272,
+                30.41,
+                30.298
+              ],
+              "median": 30.41
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                53.75,
+                53.59375,
+                53.546875,
+                53.703125,
+                53.640625
+              ],
+              "median": 53.640625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 12.119541999999996,
+              "cpu": {
+                "user": 10479,
+                "system": 2704
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 8388608,
+                    "sha256": "e30bf605eea4ded4db684836b38e1d8a1708ac40d4f3456cd246704a9a5e0e99"
+                  }
+                ],
+                "sha256": "e00b0121802ce6e86ba948b853a0962c75a808be8fa557d611ddfe1448f02476"
+              }
+            },
+            "audioReads": {
+              "bytes": 16777216,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "fileDigest-64MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 36.769499999999994,
+          "minMs": 34.918249999999986,
+          "maxMs": 38.831625
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 36.90054199999999,
+          "minMs": 35.404916,
+          "maxMs": 43.56866699999999
+        },
+        "deltaMs": 0.13104199999999366,
+        "deltaPercent": 0.35638776703516145,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              36.014416,
+              38.439541000000006,
+              38.831625,
+              34.918249999999986,
+              36.769499999999994
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                61.799,
+                65.561,
+                63.081,
+                61.851,
+                65.813
+              ],
+              "median": 63.081
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                56.09375,
+                56.109375,
+                56.203125,
+                56.28125,
+                56.125
+              ],
+              "median": 56.125
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 39.71716700000002,
+              "cpu": {
+                "user": 31163,
+                "system": 7411
+              },
+              "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+            },
+            "audioReads": {
+              "bytes": 67108864,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              36.90054199999999,
+              43.56866699999999,
+              36.099917000000005,
+              35.404916,
+              38.226917
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                55.947,
+                60.565,
+                55.959,
+                54.198,
+                56.892
+              ],
+              "median": 55.959
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                52.625,
+                52.46875,
+                52.640625,
+                52.484375,
+                52.625
+              ],
+              "median": 52.625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 36.803291,
+              "cpu": {
+                "user": 30781,
+                "system": 6601
+              },
+              "result": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+            },
+            "audioReads": {
+              "bytes": 67108864,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "sourceState-64MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 63.60629200000001,
+          "minMs": 57.30729199999999,
+          "maxMs": 86.502709
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 60.863125,
+          "minMs": 56.42937500000001,
+          "maxMs": 73.029375
+        },
+        "deltaMs": -2.743167000000014,
+        "deltaPercent": -4.31272899857142,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              86.502709,
+              63.60629200000001,
+              71.614625,
+              58.15820799999999,
+              57.30729199999999
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                99.696,
+                95.003,
+                99.14,
+                87.844,
+                99.261
+              ],
+              "median": 99.14
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.453125,
+                61.578125,
+                61.65625,
+                61.453125,
+                61.59375
+              ],
+              "median": 61.578125
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 61.185666,
+              "cpu": {
+                "user": 49461,
+                "system": 14454
+              },
+              "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+            },
+            "audioReads": {
+              "bytes": 67108864,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              73.029375,
+              63.164167000000006,
+              58.27395899999999,
+              56.42937500000001,
+              60.863125
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                92.295,
+                87.621,
+                82.634,
+                82.54,
+                83.836
+              ],
+              "median": 83.836
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.421875,
+                61.265625,
+                61.234375,
+                60.984375,
+                61.21875
+              ],
+              "median": 61.234375
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 61.77262500000002,
+              "cpu": {
+                "user": 53633,
+                "system": 15223
+              },
+              "result": "254ea9f9fee671cce93ccc3cfe8de20d6a18e986ea8cd216dd4558f5c6087bc2"
+            },
+            "audioReads": {
+              "bytes": 67108864,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "deliverySnapshot-64MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 73.43995899999999,
+          "minMs": 72.545584,
+          "maxMs": 82.66545799999999
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 78.839166,
+          "minMs": 74.809458,
+          "maxMs": 84.96045899999999
+        },
+        "deltaMs": 5.399207000000018,
+        "deltaPercent": 7.351865487833427,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              73.440833,
+              82.66545799999999,
+              73.43995899999999,
+              72.545584,
+              73.05045799999999
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                98.187,
+                107.558,
+                100.04,
+                102.674,
+                102.589
+              ],
+              "median": 102.589
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                57.375,
+                57.15625,
+                57.25,
+                57.1875,
+                57.21875
+              ],
+              "median": 57.21875
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 78.108666,
+              "cpu": {
+                "user": 59759,
+                "system": 14060
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 67108864,
+                    "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+                  }
+                ],
+                "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+              }
+            },
+            "audioReads": {
+              "bytes": 134217728,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              79.363083,
+              84.96045899999999,
+              74.809458,
+              78.839166,
+              78.44866699999999
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                95.723,
+                92.189,
+                93.514,
+                92.479,
+                94.436
+              ],
+              "median": 93.514
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                53.828125,
+                53.84375,
+                53.703125,
+                53.6875,
+                53.71875
+              ],
+              "median": 53.71875
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 82.71091700000001,
+              "cpu": {
+                "user": 59938,
+                "system": 14089
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 67108864,
+                    "sha256": "dfc51ae1eca42d151aa28c7dff28b433402001d657891da7b026d76d22c09234"
+                  }
+                ],
+                "sha256": "cd2a12e5f6470204d99b557e10ffc935e803c6c9c1456bb702bdfeca404ca8a8"
+              }
+            },
+            "audioReads": {
+              "bytes": 134217728,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "fileDigest-256MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 155.592875,
+          "minMs": 151.975958,
+          "maxMs": 345.921833
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 163.77450000000002,
+          "minMs": 150.616666,
+          "maxMs": 228.020375
+        },
+        "deltaMs": 8.181625000000025,
+        "deltaPercent": 5.258354535835928,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              155.592875,
+              151.975958,
+              167.762583,
+              152.735167,
+              345.921833
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                172.83,
+                179.163,
+                180.075,
+                173.596,
+                193.51
+              ],
+              "median": 179.163
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                56.34375,
+                56.390625,
+                56.3125,
+                56.203125,
+                56.15625
+              ],
+              "median": 56.3125
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 140.589333,
+              "cpu": {
+                "user": 114781,
+                "system": 25455
+              },
+              "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+            },
+            "audioReads": {
+              "bytes": 268435456,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              163.77450000000002,
+              150.616666,
+              228.020375,
+              176.62154200000003,
+              156.386
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                167.204,
+                167.759,
+                172.874,
+                176.135,
+                168.453
+              ],
+              "median": 168.453
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                52.53125,
+                52.515625,
+                52.65625,
+                52.734375,
+                52.546875
+              ],
+              "median": 52.546875
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 146.719666,
+              "cpu": {
+                "user": 116999,
+                "system": 27034
+              },
+              "result": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+            },
+            "audioReads": {
+              "bytes": 268435456,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "sourceState-256MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 169.58858300000003,
+          "minMs": 160.61929200000003,
+          "maxMs": 193.92325
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 164.047125,
+          "minMs": 162.032583,
+          "maxMs": 169.229667
+        },
+        "deltaMs": -5.541458000000034,
+        "deltaPercent": -3.267589068775952,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              175.03120800000002,
+              193.92325,
+              163.747458,
+              160.61929200000003,
+              169.58858300000003
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                198.948,
+                204.369,
+                195.616,
+                189.257,
+                192.151
+              ],
+              "median": 195.616
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.84375,
+                61.40625,
+                61.4375,
+                61.546875,
+                61.46875
+              ],
+              "median": 61.46875
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 159.667708,
+              "cpu": {
+                "user": 133353,
+                "system": 30735
+              },
+              "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+            },
+            "audioReads": {
+              "bytes": 268435456,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              167.461042,
+              162.032583,
+              169.229667,
+              163.706875,
+              164.047125
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                191.183,
+                185.054,
+                189.328,
+                185.513,
+                186.147
+              ],
+              "median": 186.147
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                61.203125,
+                61.03125,
+                61.28125,
+                61.3125,
+                61.09375
+              ],
+              "median": 61.203125
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 164.42325,
+              "cpu": {
+                "user": 137831,
+                "system": 32523
+              },
+              "result": "91576d858abff8b23e9a166de72a1d4a5db72e806df687ad4eaff23176d78e44"
+            },
+            "audioReads": {
+              "bytes": 268435456,
+              "maxReadRequest": 1048576,
+              "completeReads": 1
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "hash",
+        "scenario": "deliverySnapshot-256MiB",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 292.885917,
+          "minMs": 290.687417,
+          "maxMs": 333.89025
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 288.248917,
+          "minMs": 275.355416,
+          "maxMs": 338.631541
+        },
+        "deltaMs": -4.6370000000000005,
+        "deltaPercent": -1.5832102982268008,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              290.687417,
+              309.48408299999994,
+              333.89025,
+              292.885917,
+              291.11070800000005
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                306.628,
+                315.924,
+                323.368,
+                312.164,
+                307.031
+              ],
+              "median": 312.164
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                57.109375,
+                57.140625,
+                57.109375,
+                57.5,
+                57.3125
+              ],
+              "median": 57.140625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 280.34633299999996,
+              "cpu": {
+                "user": 229781,
+                "system": 49804
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 268435456,
+                    "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+                  }
+                ],
+                "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+              }
+            },
+            "audioReads": {
+              "bytes": 536870912,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              276.1855,
+              275.355416,
+              338.631541,
+              313.030042,
+              288.248917
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                293.172,
+                294.203,
+                316.96,
+                306.542,
+                301.944
+              ],
+              "median": 301.944
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                53.984375,
+                53.875,
+                54.0,
+                53.90625,
+                53.8125
+              ],
+              "median": 53.90625
+            },
+            "probeProcessCounts": {},
+            "probeValidation": {
+              "operationMs": 290.889042,
+              "cpu": {
+                "user": 232948,
+                "system": 53902
+              },
+              "result": {
+                "kind": "file",
+                "entries": [
+                  {
+                    "path": "track.wav",
+                    "size": 268435456,
+                    "sha256": "b52bc0550975b7e19ba2ca5ff6870f2c8053e98fe02076c77032eb94782f3c3a"
+                  }
+                ],
+                "sha256": "f9248bca82132ef6b009494d0885107b862a8380068ab742d97f403a31bf1cfa"
+              }
+            },
+            "audioReads": {
+              "bytes": 536870912,
+              "maxReadRequest": 1048576,
+              "completeReads": 2
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-preview-cold",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 15747.621541999979,
+          "minMs": 14645.752624999994,
+          "maxMs": 15949.779832999993
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 16287.410791999995,
+          "minMs": 15191.199999999997,
+          "maxMs": 16895.82845900001
+        },
+        "deltaMs": 539.7892500000162,
+        "deltaPercent": 3.427750968997836,
+        "gateMs": 1574.762154199998,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              15949.779832999993,
+              14645.752624999994,
+              15747.621541999979,
+              15388.946333,
+              15748.020667000004
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                2184.85,
+                2010.419,
+                2167.571,
+                2133.253,
+                2203.407
+              ],
+              "median": 2167.571
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                170.640625,
+                181.9375,
+                171.203125,
+                169.453125,
+                166.078125
+              ],
+              "median": 170.640625
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 13,
+              "chrome-headless-shell": 1,
+              "ffprobe": 13
+            },
+            "probeValidation": {
+              "rerendered": 6,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              16287.410791999995,
+              15191.199999999997,
+              15479.96220899999,
+              16319.49308299998,
+              16895.82845900001
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                2194.91,
+                2106.381,
+                2209.655,
+                2207.102,
+                2341.253
+              ],
+              "median": 2207.102
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                155.234375,
+                162.09375,
+                184.515625,
+                155.546875,
+                155.609375
+              ],
+              "median": 155.609375
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 13,
+              "chrome-headless-shell": 1,
+              "ffprobe": 13
+            },
+            "probeValidation": {
+              "rerendered": 6,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-preview-unchanged",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 300.15608300000895,
+          "minMs": 273.79187499999534,
+          "maxMs": 325.86758299998473
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 335.14345899998443,
+          "minMs": 293.40916599996854,
+          "maxMs": 813.9832080000197
+        },
+        "deltaMs": 34.987375999975484,
+        "deltaPercent": 11.656394116781716,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              300.15608300000895,
+              273.79187499999534,
+              311.49775000003865,
+              325.86758299998473,
+              285.28033300000243
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                197.775,
+                185.718,
+                201.413,
+                207.364,
+                191.47
+              ],
+              "median": 197.775
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                70.9375,
+                71.34375,
+                70.8125,
+                71.21875,
+                71.75
+              ],
+              "median": 71.21875
+            },
+            "probeProcessCounts": {
+              "ffprobe": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              813.9832080000197,
+              335.14345899998443,
+              328.21362499997485,
+              293.40916599996854,
+              611.7732090000063
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                325.263,
+                218.1,
+                215.953,
+                203.521,
+                229.804
+              ],
+              "median": 218.1
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                69.4375,
+                71.28125,
+                71.28125,
+                71.9375,
+                71.65625
+              ],
+              "median": 71.28125
+            },
+            "probeProcessCounts": {
+              "ffprobe": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-preview-single",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 1727.0410830000183,
+          "minMs": 1456.2311249999912,
+          "maxMs": 3880.6910829999833
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 1524.2492500000517,
+          "minMs": 1414.858292000019,
+          "maxMs": 1761.7794579999754
+        },
+        "deltaMs": -202.79183299996657,
+        "deltaPercent": -11.742154543752935,
+        "gateMs": 172.70410830000185,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              3880.6910829999833,
+              1727.0410830000183,
+              1883.470708000008,
+              1471.6302499999874,
+              1456.2311249999912
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                815.264,
+                728.708,
+                745.288,
+                648.546,
+                639.999
+              ],
+              "median": 728.708
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                166.09375,
+                184.53125,
+                165.5,
+                191.6875,
+                188.9375
+              ],
+              "median": 184.53125
+            },
+            "probeProcessCounts": {
+              "ffprobe": 2,
+              "ffmpeg": 2,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              1681.4780000000028,
+              1761.7794579999754,
+              1524.2492500000517,
+              1414.858292000019,
+              1468.0947910000104
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                731.692,
+                736.46,
+                740.736,
+                646.2,
+                671.855
+              ],
+              "median": 731.692
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                174.625,
+                175.3125,
+                192.453125,
+                193.578125,
+                194.40625
+              ],
+              "median": 192.453125
+            },
+            "probeProcessCounts": {
+              "ffprobe": 2,
+              "ffmpeg": 2,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 6,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s06"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-render-cold",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 15211.64162499999,
+          "minMs": 14875.594166999974,
+          "maxMs": 15634.208250000025
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 15664.730541000026,
+          "minMs": 15050.984583999962,
+          "maxMs": 16666.30899999995
+        },
+        "deltaMs": 453.088916000037,
+        "deltaPercent": 2.9785668580003595,
+        "gateMs": 1521.164162499999,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              15634.208250000025,
+              15211.64162499999,
+              14875.594166999974,
+              15138.191041999962,
+              15270.104583000008
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                2100.599,
+                2104.387,
+                2064.803,
+                2064.391,
+                2091.708
+              ],
+              "median": 2091.708
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                166.765625,
+                175.875,
+                168.375,
+                162.1875,
+                166.25
+              ],
+              "median": 166.765625
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 9,
+              "chrome-headless-shell": 1,
+              "ffprobe": 16
+            },
+            "probeValidation": {
+              "rerendered": 6,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              15276.258375000034,
+              16666.30899999995,
+              15897.317375000042,
+              15664.730541000026,
+              15050.984583999962
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                2046.228,
+                2267.53,
+                1501.978,
+                2127.309,
+                2155.251
+              ],
+              "median": 2127.309
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                190.546875,
+                174.015625,
+                170.953125,
+                157.390625,
+                169.921875
+              ],
+              "median": 170.953125
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 9,
+              "chrome-headless-shell": 1,
+              "ffprobe": 16
+            },
+            "probeValidation": {
+              "rerendered": 6,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-render-unchanged",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 2150.434707999928,
+          "minMs": 2119.497500000056,
+          "maxMs": 2243.748542000074
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 2068.801041999948,
+          "minMs": 2041.5902500000084,
+          "maxMs": 2270.832334000035
+        },
+        "deltaMs": -81.63366599997971,
+        "deltaPercent": -3.796147155563044,
+        "gateMs": 215.0434707999928,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              2243.748542000074,
+              2168.8087909999304,
+              2119.497500000056,
+              2150.434707999928,
+              2144.459082999965
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                258.317,
+                239.047,
+                246.74,
+                230.769,
+                233.535
+              ],
+              "median": 239.047
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                76.125,
+                77.359375,
+                78.015625,
+                76.90625,
+                82.484375
+              ],
+              "median": 77.359375
+            },
+            "probeProcessCounts": {
+              "ffprobe": 10,
+              "ffmpeg": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              2270.832334000035,
+              2041.5902500000084,
+              2051.527083000052,
+              2068.801041999948,
+              2096.7260839999653
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                244.686,
+                225.609,
+                225.927,
+                227.025,
+                238.458
+              ],
+              "median": 227.025
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                74.578125,
+                82.84375,
+                82.71875,
+                79.28125,
+                82.9375
+              ],
+              "median": 82.71875
+            },
+            "probeProcessCounts": {
+              "ffprobe": 10,
+              "ffmpeg": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "browser-example-render-single",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 3193.5544999999693,
+          "minMs": 3089.0457910000114,
+          "maxMs": 3581.120709000039
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 3152.788291999954,
+          "minMs": 3083.6805829999503,
+          "maxMs": 3302.5891249999404
+        },
+        "deltaMs": -40.76620800001547,
+        "deltaPercent": -1.2765151808123476,
+        "gateMs": 319.35544999999695,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              3581.120709000039,
+              3390.25766699994,
+              3193.5544999999693,
+              3172.084957999992,
+              3089.0457910000114
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                691.567,
+                706.73,
+                666.262,
+                681.009,
+                662.237
+              ],
+              "median": 681.009
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                159.8125,
+                172.8125,
+                174.4375,
+                178.390625,
+                182.40625
+              ],
+              "median": 174.4375
+            },
+            "probeProcessCounts": {
+              "ffprobe": 10,
+              "ffmpeg": 3,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              3169.813749999972,
+              3140.1011660000077,
+              3302.5891249999404,
+              3152.788291999954,
+              3083.6805829999503
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                728.926,
+                731.676,
+                709.978,
+                674.875,
+                723.281
+              ],
+              "median": 723.281
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                177.125,
+                157.515625,
+                165.90625,
+                175.421875,
+                188.859375
+              ],
+              "median": 175.421875
+            },
+            "probeProcessCounts": {
+              "ffprobe": 10,
+              "ffmpeg": 3,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 638,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-preview-cold",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 29974.230624999967,
+          "minMs": 24344.758334000013,
+          "maxMs": 32970.31433299999
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 31416.362667000038,
+          "minMs": 27234.569833000074,
+          "maxMs": 33934.538833
+        },
+        "deltaMs": 1442.1320420000702,
+        "deltaPercent": 4.8112395612158325,
+        "gateMs": 2997.423062499997,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              32970.31433299999,
+              29974.230624999967,
+              32445.659417000017,
+              25867.65916599997,
+              24344.758334000013
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                18466.524,
+                16062.396,
+                15640.534,
+                14060.269,
+                12282.895
+              ],
+              "median": 15640.534
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                923.75,
+                1093.75,
+                1060.3125,
+                1166.328125,
+                1109.890625
+              ],
+              "median": 1093.75
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 19,
+              "esbuild": 1,
+              "chrome-headless-shell": 1,
+              "ffprobe": 9
+            },
+            "probeValidation": {
+              "rerendered": 4,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              31724.742791000055,
+              33934.538833,
+              27234.569833000074,
+              31416.362667000038,
+              29037.792208000086
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                17898.352,
+                16738.456,
+                13268.028,
+                16192.65,
+                14262.836
+              ],
+              "median": 16192.65
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                892.59375,
+                1091.09375,
+                1179.609375,
+                878.4375,
+                804.890625
+              ],
+              "median": 892.59375
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 19,
+              "esbuild": 1,
+              "chrome-headless-shell": 1,
+              "ffprobe": 9
+            },
+            "probeValidation": {
+              "rerendered": 4,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-preview-unchanged",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 239.1804589999374,
+          "minMs": 225.44200000003912,
+          "maxMs": 269.72154199983925
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 232.08900000015274,
+          "minMs": 230.05841600010172,
+          "maxMs": 269.5775000001304
+        },
+        "deltaMs": -7.091458999784663,
+        "deltaPercent": -2.9648989844051266,
+        "gateMs": 100,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              269.72154199983925,
+              239.1804589999374,
+              230.35054100002162,
+              255.48516599996947,
+              225.44200000003912
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                140.215,
+                137.815,
+                133.515,
+                143.891,
+                133.561
+              ],
+              "median": 137.815
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                70.265625,
+                70.15625,
+                70.734375,
+                70.984375,
+                70.265625
+              ],
+              "median": 70.265625
+            },
+            "probeProcessCounts": {
+              "ffprobe": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              267.3746669997927,
+              232.08900000015274,
+              230.25779199996032,
+              269.5775000001304,
+              230.05841600010172
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                157.261,
+                139.199,
+                139.763,
+                148.859,
+                138.897
+              ],
+              "median": 139.763
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                71.578125,
+                69.609375,
+                70.390625,
+                71.625,
+                69.140625
+              ],
+              "median": 70.390625
+            },
+            "probeProcessCounts": {
+              "ffprobe": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-preview-single",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 12318.483958000084,
+          "minMs": 11495.305957999779,
+          "maxMs": 15500.02204099996
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 13381.563958999934,
+          "minMs": 12121.325959000038,
+          "maxMs": 17605.002541000023
+        },
+        "deltaMs": 1063.0800009998493,
+        "deltaPercent": 8.629958074584701,
+        "gateMs": 1231.8483958000086,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              12318.483958000084,
+              11795.305875000078,
+              11495.305957999779,
+              13512.769708000124,
+              15500.02204099996
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                9188.447,
+                8842.131,
+                8902.294,
+                9710.451,
+                10767.061
+              ],
+              "median": 9188.447
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                747.359375,
+                761.21875,
+                763.953125,
+                744.34375,
+                699.015625
+              ],
+              "median": 747.359375
+            },
+            "probeProcessCounts": {
+              "ffprobe": 2,
+              "ffmpeg": 6,
+              "esbuild": 1,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              12406.606374999974,
+              12121.325959000038,
+              13381.563958999934,
+              17605.002541000023,
+              14068.045832999982
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                9632.608,
+                9216.612,
+                9039.525,
+                12109.775,
+                10726.13
+              ],
+              "median": 9632.608
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                741.203125,
+                707.046875,
+                699.125,
+                652.84375,
+                726.4375
+              ],
+              "median": 707.046875
+            },
+            "probeProcessCounts": {
+              "ffprobe": 3,
+              "ffmpeg": 7,
+              "esbuild": 1,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 4,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true,
+              "audioIntervalsChecked": [
+                "s01",
+                "s04"
+              ]
+            }
+          }
+        },
+        "probeProcessCountsEqual": false
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-render-cold",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 25699.338249999797,
+          "minMs": 22868.50920900004,
+          "maxMs": 32856.28229200002
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 22973.95779100014,
+          "minMs": 22796.103041999973,
+          "maxMs": 32578.131083999993
+        },
+        "deltaMs": -2725.380458999658,
+        "deltaPercent": -10.604866290670655,
+        "gateMs": 2569.93382499998,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              30695.135208000196,
+              32856.28229200002,
+              25699.338249999797,
+              22886.931249999907,
+              22868.50920900004
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                17110.197,
+                16251.735,
+                13922.551,
+                11624.148,
+                11502.254
+              ],
+              "median": 13922.551
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                1042.046875,
+                1046.125,
+                1068.75,
+                1046.609375,
+                1141.796875
+              ],
+              "median": 1046.609375
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 17,
+              "esbuild": 1,
+              "chrome-headless-shell": 1,
+              "ffprobe": 12
+            },
+            "probeValidation": {
+              "rerendered": 4,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              30671.42933299998,
+              32578.131083999993,
+              22796.103041999973,
+              22973.95779100014,
+              22956.023291000165
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                17589.912,
+                19058.572,
+                11560.685,
+                11742.386,
+                11574.049
+              ],
+              "median": 11742.386
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                839.296875,
+                926.546875,
+                1149.234375,
+                1132.6875,
+                1217.5625
+              ],
+              "median": 1132.6875
+            },
+            "probeProcessCounts": {
+              "ffmpeg": 17,
+              "esbuild": 1,
+              "chrome-headless-shell": 1,
+              "ffprobe": 12
+            },
+            "probeValidation": {
+              "rerendered": 4,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-render-unchanged",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 1332.7592079997994,
+          "minMs": 1267.1962919998914,
+          "maxMs": 1490.27633399982
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 1296.2429160000756,
+          "minMs": 1224.2412909998093,
+          "maxMs": 1399.3785839998163
+        },
+        "deltaMs": -36.51629199972376,
+        "deltaPercent": -2.739901685205934,
+        "gateMs": 133.27592079997996,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              1292.4363329999615,
+              1332.7592079997994,
+              1490.27633399982,
+              1396.5332499998622,
+              1267.1962919998914
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                207.14,
+                219.013,
+                223.087,
+                208.798,
+                202.879
+              ],
+              "median": 208.798
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                79.453125,
+                78.375,
+                76.015625,
+                72.28125,
+                77.828125
+              ],
+              "median": 77.828125
+            },
+            "probeProcessCounts": {
+              "ffprobe": 8,
+              "ffmpeg": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              1224.2412909998093,
+              1290.7528750000056,
+              1399.3785839998163,
+              1363.8312919999007,
+              1296.2429160000756
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                227.705,
+                226.185,
+                265.478,
+                223.467,
+                216.545
+              ],
+              "median": 226.185
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                74.71875,
+                75.9375,
+                73.609375,
+                76.28125,
+                77.078125
+              ],
+              "median": 75.9375
+            },
+            "probeProcessCounts": {
+              "ffprobe": 8,
+              "ffmpeg": 1
+            },
+            "probeValidation": {
+              "rerendered": 0,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      },
+      {
+        "suite": "workflow",
+        "scenario": "remotion-example-render-single",
+        "baseline": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 16414.830791000044,
+          "minMs": 15377.851792000001,
+          "maxMs": 17643.61395899998
+        },
+        "candidate": {
+          "ok": true,
+          "expected": 5,
+          "total": 5,
+          "valid": 5,
+          "failed": 0,
+          "medianMs": 14798.208542000037,
+          "minMs": 14211.883250000188,
+          "maxMs": 16742.183833000017
+        },
+        "deltaMs": -1616.6222490000073,
+        "deltaPercent": -9.848546534432582,
+        "gateMs": 1641.4830791000045,
+        "gatePassed": true,
+        "metrics": {
+          "baseline": {
+            "timedWallMs": [
+              16966.629582999973,
+              17643.61395899998,
+              15566.530000000028,
+              16414.830791000044,
+              15377.851792000001
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                11889.308,
+                12423.706,
+                11521.048,
+                11839.495,
+                10969.721
+              ],
+              "median": 11839.495
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                760.703125,
+                703.6875,
+                775.0,
+                637.609375,
+                784.21875
+              ],
+              "median": 760.703125
+            },
+            "probeProcessCounts": {
+              "ffprobe": 12,
+              "ffmpeg": 8,
+              "esbuild": 1,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          },
+          "candidate": {
+            "timedWallMs": [
+              14454.918874999974,
+              15946.560708000092,
+              14798.208542000037,
+              14211.883250000188,
+              16742.183833000017
+            ],
+            "mainNodeCpuMs": {
+              "samples": [
+                10762.422,
+                11122.883,
+                10834.543,
+                10548.023,
+                11942.122
+              ],
+              "median": 10834.543
+            },
+            "mainNodeMaxRssMiB": {
+              "samples": [
+                784.546875,
+                761.984375,
+                796.734375,
+                762.421875,
+                789.625
+              ],
+              "median": 784.546875
+            },
+            "probeProcessCounts": {
+              "ffprobe": 12,
+              "ffmpeg": 8,
+              "esbuild": 1,
+              "chrome-headless-shell": 1
+            },
+            "probeValidation": {
+              "rerendered": 1,
+              "outputs": 1,
+              "size": [
+                960,
+                540
+              ],
+              "fps": 15,
+              "frames": 210,
+              "audio": true
+            }
+          }
+        },
+        "probeProcessCountsEqual": true
+      }
+    ],
+    "workloadDiagnostic": {
+      "reason": "Original single-shot benchmark changes only a source comment. Both baseline and candidate sometimes reuse the preview mux when newly encoded segment bytes match their warm snapshot; exact ffmpeg counts differ for one probe. Unchanged production preview/runStage logic uses actual segment content digest. All original samples are retained.",
+      "originalUnequalProbeScenarios": [
+        "remotion-example-preview-single"
+      ],
+      "originalSinglePreviewMuxRuns": {
+        "baseline": [
+          {
+            "round": 1,
+            "instrumented": false,
+            "muxRuns": 0
+          },
+          {
+            "round": 2,
+            "instrumented": false,
+            "muxRuns": 0
+          },
+          {
+            "round": 3,
+            "instrumented": false,
+            "muxRuns": 0
+          },
+          {
+            "round": 4,
+            "instrumented": false,
+            "muxRuns": 1
+          },
+          {
+            "round": 5,
+            "instrumented": false,
+            "muxRuns": 0
+          },
+          {
+            "round": 6,
+            "instrumented": true,
+            "muxRuns": 0
+          }
+        ],
+        "candidate": [
+          {
+            "round": 1,
+            "instrumented": false,
+            "muxRuns": 1
+          },
+          {
+            "round": 2,
+            "instrumented": false,
+            "muxRuns": 1
+          },
+          {
+            "round": 3,
+            "instrumented": false,
+            "muxRuns": 1
+          },
+          {
+            "round": 4,
+            "instrumented": false,
+            "muxRuns": 1
+          },
+          {
+            "round": 5,
+            "instrumented": false,
+            "muxRuns": 0
+          },
+          {
+            "round": 6,
+            "instrumented": true,
+            "muxRuns": 1
+          }
+        ]
+      },
+      "controlledVisibleChange": {
+        "additionalTimedRuns": 10,
+        "additionalProbeRuns": 2,
+        "summaries": {
+          "baseline": {
+            "ok": true,
+            "expected": 5,
+            "total": 5,
+            "valid": 5,
+            "failed": 0,
+            "medianMs": 13004.297915999996,
+            "minMs": 11854.845417000004,
+            "maxMs": 14097.721542
+          },
+          "candidate": {
+            "ok": true,
+            "expected": 5,
+            "total": 5,
+            "valid": 5,
+            "failed": 0,
+            "medianMs": 12401.797334000003,
+            "minMs": 12200.623208,
+            "maxMs": 12856.796583999996
+          }
+        },
+        "deltaMs": -602.5005819999933,
+        "gateMs": 1300.4297915999996,
+        "gatePassed": true,
+        "probeProcessCounts": {
+          "candidate": {
+            "ffprobe": 3,
+            "ffmpeg": 7,
+            "esbuild": 1,
+            "chrome-headless-shell": 1
+          },
+          "baseline": {
+            "ffprobe": 3,
+            "ffmpeg": 7,
+            "esbuild": 1,
+            "chrome-headless-shell": 1
+          }
+        },
+        "eachRun": {
+          "rerenderedShots": 1,
+          "previewMuxRuns": 1,
+          "reusedPreviews": 3,
+          "mediaStreamsMatchedWarm": true
+        },
+        "raw": "workload-diagnostic/results.json"
+      }
+    }
+  },
+  "validation": {
+    "baseline": "76c0d8a534decec724b72a141cb415ce5b6c506a",
+    "candidate": "fe1730b5f6ab74613d8ad31802520e17f27fa48d",
+    "approved": true,
+    "implementation": "tasks 0–5 complete locally; A9 three-OS and A12 remote CI pending",
+    "fullRegression": {
+      "tests": 553,
+      "passed": 553,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 233787.753083
+    },
+    "node20Contracts": {
+      "tests": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    "strictJianying": {
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "visualSamples": {
+      "samples": 9,
+      "changedPixels": 0
+    },
+    "longTiming": {
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "matrixCases": 8,
+      "cutsPerCase": 107,
+      "fullFrames": 3274,
+      "proxyFrames": 1637
+    },
+    "performancePairs": {
+      "scenarios": 21,
+      "timed": 210,
+      "probes": 42,
+      "gatePassed": 21,
+      "failed": 0,
+      "supplementalVisibleChangeTimed": 10,
+      "supplementalVisibleChangeProbes": 2
+    },
+    "remoteCI": "not run; PR not requested",
+    "helperASTComparison": {
+      "cliHelpers": 18,
+      "extractedPublicOperations": 6,
+      "onlyRelocatedImportPathsNormalized": true
+    }
+  },
+  "portable": {
+    "candidate": "fe1730b5f6ab74613d8ad31802520e17f27fa48d",
+    "archive": "/Users/wukong/Documents/wukong-animation/dist/wukong-animation-agent-skills-v0.19.4.zip",
+    "sha256": "329db7a4177527dd29d02e59cfdc054cc3cb87eec4c7b4adc037aadfb4780094",
+    "crcPassed": true,
+    "entries": 233,
+    "manifestFilesVerified": 230,
+    "trackedEngineFilesVerified": 148,
+    "existingMarkdownPortabilityTransform": [
+      "plugin/engine/templates/style-skill/SKILL.md"
+    ],
+    "developmentDependenciesAbsent": true,
+    "sourceCommit": "fe1730b5f6ab74613d8ad31802520e17f27fa48d",
+    "runtimeManifestAndLockUnchanged": true
+  },
+  "architecture": {
+    "beforeModules": 60,
+    "afterModules": 76,
+    "beforeErrors": [
+      "core must not depend on CLI: core/delivery.mjs -> bin/args.mjs",
+      "cycle: core/final-delivery.mjs -> core/delivery.mjs -> core/final-delivery.mjs",
+      "cycle: core/job.mjs -> core/final-delivery.mjs -> core/delivery.mjs -> core/job.mjs",
+      "cycle: core/job.mjs -> core/final-delivery.mjs -> core/job.mjs",
+      "cycle: core/job.mjs -> core/final-delivery.mjs -> core/qc.mjs -> core/job.mjs"
+    ],
+    "afterErrors": [],
+    "opaqueExtensionCount": 2
+  },
+  "evidenceArchive": {
+    "path": "assets/code-quality-phase-four/local-validation-and-paired.tar.gz",
+    "files": 700,
+    "bytes": 1035566,
+    "sha256": "4f915d68a9234fc65361315d09a66d926ffd551b6c6ed0c0c94fc6ea39ac5ce1",
+    "excludes": "synthetic media, installed dependencies, mutable worktrees and npm/browser caches; includes all primary and supplemental raw JSON/logs and tool-source snapshots"
+  }
+}

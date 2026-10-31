@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
+import {fileURLToPath} from 'node:url';import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 test('installation diagnostics reads identities without changing files',async()=>{
  const mod=await import('../../plugin/engine/core/installation-diagnostics.mjs').catch(()=>null);assert.ok(mod,'missing read-only installation diagnostics');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-diag-'));
@@ -10,7 +10,7 @@ test('installation diagnostics reads identities without changing files',async()=
 test('stale unrelated marketplaces are warnings without disclosing credentials',async()=>{
  const {installationDiagnostics}=await import('../../plugin/engine/core/installation-diagnostics.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-host-'));
  try{const config=path.join(dir,'config.toml');fs.writeFileSync(config,'api_key="must-not-appear"\n[marketplaces.old]\nsource_type="local"\nsource="/does-not-exist-wka"\n');
- const r=installationDiagnostics({pluginRoot:new URL('../../plugin',import.meta.url).pathname,configFile:config,dependency:()=>({root:'/deps'})});assert.ok(r.warnings.some(w=>w.includes('old')&&w.includes('/does-not-exist-wka')));assert.ok(!JSON.stringify(r).includes('must-not-appear'));assert.equal(r.exitCode,0);
+ const r=installationDiagnostics({pluginRoot:fileURLToPath(new URL('../../plugin',import.meta.url)),configFile:config,dependency:()=>({root:'/deps'})});assert.ok(r.warnings.some(w=>w.includes('old')&&w.includes('/does-not-exist-wka')));assert.ok(!JSON.stringify(r).includes('must-not-appear'));assert.equal(r.exitCode,0);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('native conflicts and tampered portable resources are rejected',async()=>{

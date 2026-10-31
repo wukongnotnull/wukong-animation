@@ -1,6 +1,6 @@
 # Agent 安装指南
 
-正式发布包是 GitHub Release [v0.19.5](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.5) 的 `wukong-animation-agent-skills-v0.19.5.zip` 与同一次发布的 SHA256SUMS。源码也可运行 `npm run build:portable` 生成 dist。已有 Claude/Codex/ChatGPT 原生插件继续使用 README 原生安装方式。
+正式发布包是 GitHub Release [v0.19.6](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.6) 的 `wukong-animation-agent-skills-v0.19.6.zip` 与同一次发布的 SHA256SUMS。源码也可运行 `npm run build:portable` 生成 dist。已有 Claude/Codex/ChatGPT 原生插件继续使用 README 原生安装方式。
 
 ## 升级诊断
 

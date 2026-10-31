@@ -1,6 +1,6 @@
 {
   "name": "wukong-animation",
-  "version": "0.19.4",
+  "version": "0.19.5",
   "description": "代码七十二变：动画风格库与本地制作流程，用代码逐帧渲染短片，不用视频生成模型。",
   "author": { "name": "悟空非空也" },
   "license": "MIT",

@@ -1,7 +1,7 @@
 # 第四批代码质量与架构优化实施计划
 
-Status: Implemented — local validation passed; PR / remote CI pending
-Implementation result: [第四批本地验收报告](../reports/2026-10-31-code-quality-phase-four-validation.md)；任务 0–5 的实施与本地验收已完成，A9 三平台远端部分及 A12 当前提交 CI 待 PR 阶段验证。
+Status: Merged — all implementation CI passed; v0.19.5 release authorized
+Implementation result: [第四批本地验收报告](../reports/2026-10-31-code-quality-phase-four-validation.md)；任务 0–5 与 A1–A12 已完成；PR #120 的三平台及全部 CI 通过并已合并，用户已授权发布 v0.19.5。
 
 Spec: [第四批已批准规格](../specs/2026-10-31-0916-code-quality-phase-four-design.md)
 Baseline: `76c0d8a534decec724b72a141cb415ce5b6c506a` / v0.19.4

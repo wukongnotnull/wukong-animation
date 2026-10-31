@@ -38,6 +38,7 @@ export function installationDiagnostics({pluginRoot=PLUGIN_ROOT,dependency=depen
    }
    if(!entry)continue;
    const value=line.match(/^\s*(source_type|source)\s*=\s*("(?:[^"\\]|\\.)*"|'[^']*')\s*$/);
+   if(!value&&/^\s*(source_type|source)\s*=/.test(line))warnings.push('部分 marketplace 配置格式无法识别，请用宿主工具核对');
    if(value){try{entry[value[1]]=value[2][0]==="'"?value[2].slice(1,-1):JSON.parse(value[2]);}catch{warnings.push('部分宿主配置格式无法识别');}}
   }
   for(const e of entries)if(e.source_type==='local'&&typeof e.source==='string'&&path.isAbsolute(e.source)&&!['.agents/plugins/marketplace.json','.claude-plugin/marketplace.json'].some(f=>fs.existsSync(path.join(e.source,f))))warnings.push(`marketplace ${e.name} 的本地目录缺少清单：${e.source}；请手动核对该条目，保留其他配置`);

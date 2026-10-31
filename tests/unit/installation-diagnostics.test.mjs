@@ -29,3 +29,8 @@ test('invalid version values are reported as null rather than echoed',async()=>{
  try{fs.mkdirSync(path.join(dir,'engine'));fs.writeFileSync(path.join(dir,'plugin.json'),JSON.stringify({version:{secret:'hidden'}}));fs.writeFileSync(path.join(dir,'engine/package.json'),JSON.stringify({version:42}));const r=installationDiagnostics({pluginRoot:dir,configFile:path.join(dir,'none'),dependency:()=>({root:'/deps'})});assert.equal(r.plugin.version,null);assert.equal(r.engine.version,null);assert.equal(r.exitCode,1);assert.ok(!JSON.stringify(r).includes('hidden'));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('unsupported marketplace value syntax gives a safe warning',async()=>{
+ const {installationDiagnostics}=await import('../../plugin/engine/core/installation-diagnostics.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-syntax-'));
+ try{const config=path.join(dir,'config.toml');fs.writeFileSync(config,'[marketplaces.old]\nsource_type="local"\nsource="/missing" # private-comment\n');const r=installationDiagnostics({pluginRoot:fileURLToPath(new URL('../../plugin',import.meta.url)),configFile:config,dependency:()=>({root:'/deps'})});assert.ok(r.warnings.some(x=>x.includes('格式')));assert.ok(!JSON.stringify(r).includes('private-comment'));assert.equal(r.exitCode,0);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

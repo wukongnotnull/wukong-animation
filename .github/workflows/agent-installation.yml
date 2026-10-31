@@ -17,6 +17,8 @@ jobs:
         with:
           node-version: 20
       - run: node --test tests/integration/portable-installation.test.mjs
+      - name: Verify bounded hashing and source observations
+        run: node --test tests/unit/file-hash.test.mjs tests/unit/source-state.test.mjs
       - run: npm run build:portable
       - name: Verify ZIP transport
         shell: bash

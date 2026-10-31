@@ -171,14 +171,26 @@ test('A7 dynamic audio and missing fonts remain unknown without touching operati
 });
 
 test('A10 unstable scan and a running native editor reject approval',t=>{
-  const dir=fixture(t),draft=draftArtifact(dir),file=path.join(draft,'draft_content.json'),read=fs.readFileSync;
-  let count=0;t.mock.method(fs,'readFileSync',function(name,...args){const bytes=read.call(fs,name,...args);if(name===file&&count++===0)fs.appendFileSync(file,' ');return bytes;});
+  const dir=fixture(t),draft=draftArtifact(dir),file=path.join(draft,'draft_content.json'),read=fs.readdirSync;
+  // Change the content between two directory scans, independently of the file read API.
+  let count=0;t.mock.method(fs,'readdirSync',function(name,...args){const entries=read.call(fs,name,...args);if(name===draft&&++count===2)fs.appendFileSync(file,' ');return entries;});
   assert.throws(()=>final.deliverySnapshot(draft),/扫描期间/);t.mock.restoreAll();
   if(process.platform==='darwin') {
     process.env.WKA_JIANYING_PROCESS=path.basename(process.execPath);
     const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
     assert.throws(()=>final.prepareFinalApproval(dir,{id:'running',step:15,revision,source:'用户',note:'通过'}),/仍在运行/);
   }
+});
+
+test('deliverySnapshot keeps two independent complete passes with bounded file reads',t=>{
+  const dir=fixture(t),file=path.join(dir,'large.bin'),body=Buffer.alloc(2*1024*1024+17,19);fs.writeFileSync(file,body);
+  const expected=digest(body),whole=fs.readFileSync,open=fs.openSync,chunk=fs.readSync,close=fs.closeSync,fds=new Set();let bytes=0,passes=0;
+  t.mock.method(fs,'readFileSync',function(name,...args){assert.notEqual(name,file,'delivery snapshot must not allocate the entire file');return whole.call(this,name,...args);});
+  t.mock.method(fs,'openSync',function(name,...args){const fd=open.call(this,name,...args);if(name===file){fds.add(fd);passes++;}return fd;});
+  t.mock.method(fs,'readSync',function(fd,buffer,offset,length,position){if(fds.has(fd))assert.ok(buffer.length<=1024*1024&&length<=1024*1024);const n=chunk.call(this,fd,buffer,offset,length,position);if(fds.has(fd))bytes+=n;return n;});
+  t.mock.method(fs,'closeSync',function(fd){fds.delete(fd);return close.call(this,fd);});
+  const snapshot=final.deliverySnapshot(file);assert.equal(snapshot.entries[0].sha256,expected);
+  assert.equal(bytes,body.length*2);assert.equal(passes,2);assert.equal(fds.size,0);
 });
 
 test('A8 complete pending version proof can be recorded after state commit, never a vague note',t=>{

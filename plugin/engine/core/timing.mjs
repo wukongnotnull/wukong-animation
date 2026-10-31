@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { outputFps } from './render-profile.mjs';
+import { hashFile as fileSha } from './file-hash.mjs';
 export const TIMING_VERSION = 1;
 
 export function buildFrameTimeline(shots, fps) {
@@ -61,7 +62,6 @@ export function assertVideo(file, expected, options) {
 }
 
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
-const fileSha = (file) => sha(fs.readFileSync(file));
 const sessionChecks = new Map();
 const probeVersions = new Map();
 const checker = fileSha(new URL(import.meta.url));

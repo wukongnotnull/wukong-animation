@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { ensureDir } from './paths.mjs';
 import { atomicJson } from './evidence.mjs';
+import { updateHashFromFile } from './file-hash.mjs';
 
 // 文件部件只哈希文件名和内容，不哈希绝对路径：插件每个版本装在不同目录，
 // 带上路径会让每次更新后所有镜头缓存失效。各部件按顺序哈希，内容前带长度，
@@ -13,9 +14,8 @@ export function hashParts(parts) {
   const h = crypto.createHash('sha256');
   for (const p of parts) {
     if (p && typeof p === 'object' && p.file) {
-      const body = fs.existsSync(p.file) ? fs.readFileSync(p.file) : null;
-      h.update(`file:${path.basename(p.file)}:${body ? body.length : 'MISSING'}\n`);
-      if (body) h.update(body);
+      if(fs.existsSync(p.file))updateHashFromFile(h,p.file,{prefix:size=>`file:${path.basename(p.file)}:${size}\n`});
+      else h.update(`file:${path.basename(p.file)}:MISSING\n`);
     } else {
       h.update(typeof p === 'string' ? p : JSON.stringify(p));
     }

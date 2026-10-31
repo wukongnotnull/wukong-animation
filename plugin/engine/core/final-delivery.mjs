@@ -39,7 +39,7 @@ export function deliverySnapshot(file) {
       const st=fs.lstatSync(name);
       if(st.isSymbolicLink()||(!st.isFile()&&!st.isDirectory()))throw new Error(`链接或特殊文件无法核实：${name}`);
       if(st.isDirectory())for(const child of fs.readdirSync(name).sort())walk(path.join(name,child),rel?rel+'/'+child:child);
-      else entries.push({path:rel||path.basename(name),size:st.size,sha256:digest(fs.readFileSync(name))});
+      else entries.push({path:rel||path.basename(name),size:st.size,sha256:fileDigest(name)});
     };
     walk(file,'');
     if(!entries.length||!entries.some(e=>e.size))throw new Error(`文件或目录为空：${file}`);

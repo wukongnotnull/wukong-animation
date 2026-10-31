@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import { atomicJson, readJson, digest, fileEvidence, treeEvidence } from './evidence.mjs';
+import { atomicJson, readJson, digest, fileDigest, fileEvidence, treeEvidence } from './evidence.mjs';
+import { fileVersion } from './file-hash.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
 import { assertCompatibleProgress } from './state.mjs';
 
@@ -15,13 +16,53 @@ const load=dir=>{
 };
 export const implementationState=()=>digest(treeEvidence(ENGINE_ROOT,(rel,ent)=>ent.isDirectory()&&['node_modules','.cache'].includes(ent.name)));
 export function sourceState(dir) {
+  // 摘要只在本次同步观察中共享；所有声明和树条目仍保留在原投影中。
+  const versions=new Map(),hashes=new Map(),guards=[];
+  const changed=file=>new Error(`来源在观察期间发生变化：${file}`);
+  const observe=file=>{
+    file=path.resolve(file);
+    const current=fileVersion(file);
+    if(versions.has(file)&&versions.get(file)!==current)throw changed(file);
+    versions.set(file,current);
+    return current;
+  };
+  const readDigest=file=>{
+    file=path.resolve(file);observe(file);
+    if(!hashes.has(file))hashes.set(file,fileDigest(file));
+    return hashes.get(file);
+  };
+  const source=file=>observe(file)===null?null:fileEvidence(file,readDigest).sha256;
+  const shape=(base,exclude)=>{
+    if(!fs.existsSync(base))return null;
+    const entries=[];
+    const walk=dir=>{
+      for(const ent of fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))) {
+        const file=path.join(dir,ent.name),rel=path.relative(base,file);
+        if(exclude(rel,ent))continue;
+        if(ent.isDirectory()){entries.push([rel,'directory']);walk(file);}
+        else if(ent.isFile())entries.push([rel,'file']);
+      }
+    };
+    walk(base);return JSON.stringify(entries);
+  };
+  const tree=(base,exclude=()=>false)=>{
+    const before=shape(base,exclude);
+    guards.push(()=>{if(shape(base,exclude)!==before)throw changed(base);});
+    return treeEvidence(base,exclude,readDigest);
+  };
   const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','subtitle-layout.json','review-notes.json','.wka/decisions.json'];
-  const data=roots.map(rel=>[rel,fs.existsSync(path.join(dir,rel))?fileEvidence(path.join(dir,rel)).sha256:null]);
+  const data=roots.map(rel=>[rel,source(path.join(dir,rel))]);
   const film=readJson(path.join(dir,'film.json'),{});
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
-  for(const rel of references) data.push([rel,fs.existsSync(path.resolve(dir,rel))?fileEvidence(path.resolve(dir,rel)).sha256:null]);
-  data.push(['shots',treeEvidence(path.join(dir,'shots'))],['audio',treeEvidence(path.join(dir,'audio'),(rel,ent)=>ent.isDirectory()&&ent.name==='generated')]);
-  if(fs.existsSync(dir)) for(const f of fs.readdirSync(dir).filter(f=>/^subtitles.*\.(srt|json)$/.test(f))) data.push([f,fileEvidence(path.join(dir,f)).sha256]);
+  for(const rel of references)data.push([rel,source(path.resolve(dir,rel))]);
+  data.push(['shots',tree(path.join(dir,'shots'))],['audio',tree(path.join(dir,'audio'),(rel,ent)=>ent.isDirectory()&&ent.name==='generated')]);
+  const subtitleNames=()=>fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>/^subtitles.*\.(srt|json)$/.test(f)):[];
+  const subtitles=subtitleNames();
+  guards.push(()=>{if(JSON.stringify(subtitleNames())!==JSON.stringify(subtitles))throw changed(dir);});
+  for(const file of subtitles)data.push([file,fileEvidence(path.join(dir,file),readDigest).sha256]);
+  // 检查新增/删除条目和缺失引用；排除目录及无关缓存写入不触发目录 mtime 误报。
+  for(const guard of guards)guard();
+  for(const file of versions.keys())observe(file);
   return digest(data);
 }
 const capture=file=>fs.statSync(file).isDirectory()?{file:path.resolve(file),kind:'directory',entries:treeEvidence(file)}:{...fileEvidence(file),kind:'file'};

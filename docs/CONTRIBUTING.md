@@ -15,6 +15,21 @@
 
 开发依赖统一使用 `npm run setup`；直接执行 npm ci 不会登记安装凭据。用户的 `wka setup` 使用随插件分发的同一清单与锁文件，但安装在用户目录，按锁摘要、平台、架构和 Node 主版本隔离。旧版依赖目录保留，第一次切换到新身份需要 setup；`wka check` 会显示实际来源，不能用父目录或全局同名包补齐缺失依赖。
 
+## 性能基准
+
+开发测量工具不随插件分发。从明确提交的干净 Git 副本测量，先保存基线，再修改生产代码。两份副本必须使用相同 package/lock；工具把依赖、影片、制作缓存和剪映路径隔离在全新的输出目录中，不清理系统缓存。正式计时不启用读取探针；每个场景另运行一次探针，仅用于统计逻辑读取与子进程工作量。
+
+```bash
+node tools/bench-performance.mjs --engine /absolute/baseline/plugin/engine --suite hash --rounds 5 --out /absolute/new-hash-results
+node tools/bench-performance.mjs --engine /absolute/baseline/plugin/engine --candidate /absolute/candidate/plugin/engine --suite workflow --rounds 5 --out /absolute/new-workflow-results
+```
+
+`hash` 覆盖 8/64/256 MiB 文件及 107 镜状态观察；`workflow` 覆盖 browser/Remotion 的例片、107 镜长片、256 MiB 有效 PCM 音轨。每组分别测 preview 与 render --proxy 的首次、无改和单镜变化；长片还测 resume、QC 和最终交付查询。准备时间单列。已有缓存的每轮都恢复到同一路径下的固定快照，单镜变化只追加注释。工具核对重渲数量、帧数、尺寸、帧率及首末局部小样的音频区间；不会替测试作品做用户签批。
+
+可用 `--cases browser-example,remotion-long` 分批运行 workflow，允许的名字为 `browser|remotion` 加 `example|long|large-audio`；`--timeout` 为单命令毫秒上限（默认 20 分钟）。每场景至少 5 轮。输出目录已存在即拒绝覆盖；失败/超时保留日志，结果标记为未完成，不能删掉失败后称整组通过。只终止本工具启动的进程树。
+
+`environment.json` 记录提交、工具摘要和环境，`preparations.json` 保存安装与预热时间，`results.json` 保存原始样本和中位数/范围。`*.operation.json` 是排除导入开销的哈希耗时；workflow 的墙钟含整个命令。`*.metrics.json` 的 CPU 与最大 RSS 只属于主 Node 进程，不包含 Chromium/ffmpeg；文件计数是逻辑读取、完整读取次数和最大请求字节，不是物理磁盘吞吐。哈希套件的目标文件完整读取对应完整内容哈希；制作流程的读取还可能来自文本解析等用途。OS 文件缓存未控制，不能称为冷磁盘测量。正式比较应串行交替两个版本，期间不要另跑渲染或测试。 探针只覆盖主 Node 显式同步文件 API，排除模块加载器、原生库和子进程 I/O；`fsCalls` 是这些 API 的调用次数，不是完整系统调用计数。子进程耗时可能重叠，不能直接相加。工具会验证依赖清单、保存自身源码，并在运行时身份中记录 Chromium 与系统字体内容摘要；隔离安装禁用浏览器垃圾回收。
+
 ## 流程版本保护
 
 当前支持 flow 5，缺失 flow 字段按历史 flow 1 迁移；已知 1–4 的迁移规则保持不变。遇到较新版本会报 `WKA_FLOW_TOO_NEW`，非法 flow 或损坏 JSON 会报 `WKA_FLOW_INVALID`，不会写锁、缓存、签批、报告或 Git。`--force` 不绕过此检查；较新工程需升级插件后继续，损坏状态需核实备份，不能靠删掉版本字段恢复。

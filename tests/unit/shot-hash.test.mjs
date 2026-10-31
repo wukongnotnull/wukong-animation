@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { hashParts, fontCssParts } from '../../plugin/engine/core/cache.mjs';
+import crypto from 'node:crypto';
+import { fileDigest } from '../../plugin/engine/core/evidence.mjs';
 
 /** 模拟两个插件版本目录：同样的相对布局，装在不同的绝对路径下。 */
 function install(files) {
@@ -55,4 +57,15 @@ test('字体 CSS 按字体文件名和内容哈希，不随片目录、用户目
   assert.equal(hashParts(fontCssParts(css(a))), hashParts(fontCssParts(css(b))));
   const c = install({ 'work/fonts/Inter.woff2': 'other subset' });
   assert.notEqual(hashParts(fontCssParts(css(a))), hashParts(fontCssParts(css(c))));
+});
+
+test('fileDigest and hashParts use bounded reads while preserving all original byte separators',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-bounded-parts-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const file=path.join(dir,'large.bin'),empty=path.join(dir,'empty.bin'),missing=path.join(dir,'missing.bin'),bytes=Buffer.alloc(2*1024*1024+13,171);
+  fs.writeFileSync(file,bytes);fs.writeFileSync(empty,'');
+  const parts=['before',{file},{file:empty},{file:missing},{flag:true},'after'];
+  const old=crypto.createHash('sha256').update('before\0').update(`file:large.bin:${bytes.length}\n`).update(bytes).update('\0file:empty.bin:0\n\0file:missing.bin:MISSING\n\0{"flag":true}\0after\0').digest('hex').slice(0,16);
+  const read=fs.readFileSync;t.mock.method(fs,'readFileSync',function(name,...args){assert.notEqual(name,file,'whole-file hashing is forbidden');return read.call(this,name,...args);});
+  assert.equal(fileDigest(file),crypto.createHash('sha256').update(bytes).digest('hex'));
+  assert.equal(hashParts(parts),old);
 });

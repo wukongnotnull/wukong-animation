@@ -1,7 +1,7 @@
 # 第四批代码质量与架构优化实施计划
 
-Status: Draft — pending user review
-Spec: [第四批规格草案](../specs/2026-10-31-0916-code-quality-phase-four-design.md)
+Status: Approved — implementation in progress
+Spec: [第四批已批准规格](../specs/2026-10-31-0916-code-quality-phase-four-design.md)
 Baseline: `76c0d8a534decec724b72a141cb415ce5b6c506a` / v0.19.4
 
 目标：消除命令受控失败后的锁残留与核心静态循环依赖，并用自动检查保护命令和取证边界。
@@ -10,7 +10,7 @@ Baseline: `76c0d8a534decec724b72a141cb415ce5b6c506a` / v0.19.4
 
 技术栈：Node.js 20+ ESM、node:test、现有 browser/Remotion/ffmpeg、Git、现有基准工具；新增仅开发使用的 Acorn 8.19.0 与根锁文件。顺序实施，不新增代理并行任务。
 
-本计划依用户“先整理规格与实施计划”的明确要求，与规格同时提供草案；两份文件均待批准。开始实施时先更新批准记录。本轮不写实现、不运行制作矩阵，不推送或创建 PR；后续沿用 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。
+两份文件已于 2026-10-31 获用户明确批准，审阅未发现实施阻碍；从任务 0 和命令失败清理开始顺序实施，进度沿用 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。本次授权包括实施与本地验收，PR、合并、发布和安装升级按后续授权执行。
 
 ## 全局约束（原样摘自规格）
 
@@ -21,7 +21,7 @@ Baseline: `76c0d8a534decec724b72a141cb415ce5b6c506a` / v0.19.4
 5. 所有移出代码都必须纳入相应实现指纹；允许旧证据按现有规则变为待核实，不伪造通过、不改写历史批准。
 6. 只做必要提取及涉及代码的清晰排版，不全仓格式化、不迁移 TypeScript、不引入通用框架，不重写音频/渲染/最终交付整个子系统。
 7. 保留完整回归、严格剪映、9 张视觉样张与三平台检查；不跳过、删除或放宽既有断言，不更新视觉基准。
-8. 规格和计划获批后再实施；本轮仅提交两份草案，PR、合并、发布和本机安装升级另按后续授权执行。
+8. 规格和计划已于 2026-10-31 获用户批准，按计划实施；PR、合并、发布和本机安装升级另按后续授权执行。
 
 ## 文件与职责
 
@@ -38,7 +38,7 @@ Baseline: `76c0d8a534decec724b72a141cb415ce5b6c506a` / v0.19.4
 | 按需扩充 flow-guard、recovery-delivery、desktop-plugin、portable-installation 测试 | 新入口仍遵守流程保护、恢复和分发契约，不改已有断言强度 |
 | 新建 `tools/check-architecture.mjs`、根 `package-lock.json`；修改根 `package.json` | 开发期模块解析与门禁，固定 Acorn；更新“根无依赖”的过时描述，保留制作 setup 命令 |
 | 修改 `.github/workflows/lint.yml`、`smoke.yml`、`agent-installation.yml` 与 `docs/CONTRIBUTING.md` | 需要检查器的任务安装根开发锁依赖；三平台执行无媒体依赖的新增测试；说明两套依赖用途 |
-| 新建 `docs/wukong-code-project/reports/<验收日期>-code-quality-phase-four-validation.md` 及证据索引 | 实施后填写 A1–A12、真实命令结果、静态图与配对数据；本轮不创建虚假的验收结果 |
+| 新建 `docs/wukong-code-project/reports/<验收日期>-code-quality-phase-four-validation.md` 及证据索引 | 实施后填写 A1–A12、真实命令结果、静态图与配对数据；只记录实际完成的验收结果 |
 
 不计划改动运行时锁文件、schema、FLOW/TIMING_VERSION、媒体算法、基准工具或视觉基准。若实际提取必须修改本表外的调用点，先核对是否仍是原规格允许的导入替换；超出边界则先更新规格。
 
@@ -109,7 +109,7 @@ node tools/bench-performance.mjs --engine "$phase4_baseline_engine" --candidate 
 4. 执行 `node --test tests/unit/file-hash.test.mjs tests/unit/source-state.test.mjs tests/unit/operations.test.mjs`：最大读取 1 MiB、一次 sourceState 去重、独立观察和交付双读继续满足。需要 Node 20 的本地兼容检查使用可验证的 Node 20 环境，不能只以 Node 25 结果代替。
 5. 执行 `npm test`、`npm run test:jianying`、`npm run smoke`、`WKA_TIMING_LONG=1 node --test --test-concurrency=1 tests/integration/timing.test.mjs`、`npm run lint`、`npm run build:portable`、`git diff --check`。长片开关已按现有 timing 测试核实，报告必须包含两个管线各四种组合，不能把未启用矩阵当已完成。
 6. 完整时间轴须覆盖 browser/Remotion、主/副画幅、原规格/小样 107 镜；9 张视觉样张零差异。严格剪映全部实际执行、零跳过；普通回归若有可选剪映跳过，逐项核对专项覆盖，不能仅看总退出码。
-7. 逐条填写 A1–A12、命令退出码/数量、静态边与动态入口、指纹变化/旧证据处理、分发文件和性能限制。报告明确本地与远端边界；当前用户仅授权计划，后续获准开 PR 时再运行当前提交的全部 CI，合并/发布/安装升级仍需相应授权。
+7. 逐条填写 A1–A12、命令退出码/数量、静态边与动态入口、指纹变化/旧证据处理、分发文件和性能限制。报告明确本地与远端边界；当前用户已授权实施与本地验收，后续获准开 PR 时再运行当前提交的全部 CI，合并/发布/安装升级仍需相应授权。
 
 ## 停止或调整条件
 

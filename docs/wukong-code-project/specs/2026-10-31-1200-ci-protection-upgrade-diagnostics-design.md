@@ -1,6 +1,6 @@
 # 第五批：CI 合并保护与升级诊断
 
-Status: Draft — pending user review
+Status: Approved — implementation in progress
 Baseline: v0.19.5 / 9b913f2e4bc37835406f6366efb4c06305ff8268
 
 ## 问题与目标
@@ -54,3 +54,5 @@ main 采用分支保护：要求 PR、最新基线及 `merge-gate` 成功，管�
 | A8 | 原 check、22 命令契约、架构检查、安装包和完整回归保持；记录当前提交的 CI |
 
 本文件与配套计划均为待审草案。用户本轮明确要求同时整理规格和计划，因此先提供可审阅的计划草案；获批后实施。
+
+用户已明确批准第五批规格与实施计划，要求从 CI 合并保护开始实施。

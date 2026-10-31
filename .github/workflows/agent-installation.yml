@@ -1,5 +1,5 @@
 name: agent-installation
-on: [push, pull_request, workflow_dispatch]
+on: [push, workflow_dispatch, workflow_call]
 concurrency:
   group: agent-installation-${{ github.ref }}
   cancel-in-progress: true

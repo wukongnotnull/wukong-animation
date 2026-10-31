@@ -1,6 +1,6 @@
 # 第五批实施计划
 
-Status: Draft — pending user review
+Status: Approved — implementation in progress
 Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnostics-design.md)
 
 目标：强制执行 main 合并检查，并提供只读升级诊断。
@@ -47,3 +47,5 @@ Spec: [第五批规格](../specs/2026-10-31-1200-ci-protection-upgrade-diagnosti
 执行 npm test、npm run test:jianying、npm run smoke、npm run lint、npm run build:portable 和 git diff --check；验证打包后的仓库外诊断，以及原生和便携身份。核对 A1–A8、保留原始记录。提交 PR 后在当前提交运行三平台及全部必过检查，复核 main 保护读回；合并和补丁发布按后续授权执行。
 
 每项代码任务采用：失败测试 → 确认有效失败 → 最小实现 → 对应检查通过 → 独立提交。配置操作使用真实 GitHub 验证，不把本地策略单测当成服务器保护已生效。
+
+用户已明确批准第五批规格与实施计划，要求从 CI 合并保护开始实施。

@@ -1,6 +1,6 @@
 # 第三批性能优化实施计划
 
-Status: Approved — local implementation and validation complete; remote CI pending
+Status: Approved — implementation and local/remote validation complete; merged in PR #118
 Spec: [已批准第三批性能规格](../specs/2026-10-30-2309-performance-phase-three-design.md)
 Baseline: `5957b73e90f014011fb27d3e015d4987c39db6ba` / v0.19.3
 
@@ -145,3 +145,6 @@ git diff --check
 - 2026-10-31 08:22：本地最终验证完成。完整回归 521/521、严格剪映 19/19、视觉样张 9/9（零像素差），完整 107 镜的两管线×横竖×原规格/小样 8 组合均通过；lint、便携构建与 diff 检查通过。Node 20 纯文件 I/O 22/22 已在前述独立验证通过；测试零跳过，未更新视觉基准。
 - 任务 0–4 及任务 5 的本地测量、回退判断、完整验证、证据与报告均完成。详见[最终报告](../reports/2026-10-31-performance-phase-three-validation.md)及其原始数据归档；报告保留了内存持平/增加与时间差落在波动范围内的场景。
 - 任务 5 的后续远端步骤仍待用户按计划授权提交 PR：运行当前提交三平台 Node 20 安装/纯 I/O CI 和现有严格剪映、冒烟、lint 等检查。A12 远端部分尚未完成，合并、发布与安装升级不在本轮范围。
+
+- 2026-10-31 08:49：用户后续授权开 PR、运行 CI 并合并；[PR #118](https://github.com/wukongnotnull/wukong-animation/pull/118) 以 `0f5d287` 合并。最终 head `aa2d9dd` 的三平台、lint、smoke、严格剪映全部成功，A12 远端验收完成。Windows 测试夹具兼容修正仅改测试，运行时代码与冻结候选相同。
+- 2026-10-31：用户进一步授权发布补丁版本，让已安装插件获得第三批优化；按现有发布流程准备 [v0.19.4](../../releases/v0.19.4.md)，发布与安装结果在原 issue 和 Release 中补充。

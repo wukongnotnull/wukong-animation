@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { loadFilm, writeReview } from '../../core/job.mjs';
+import { writeReview } from '../../core/job.mjs';
+import { loadFilm } from '../../core/film-context.mjs';
 import { fail } from '../context.mjs';
 import { reviewArtifacts } from '../review-artifacts.mjs';
 

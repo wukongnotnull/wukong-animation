@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadFilm } from '../core/job.mjs';
+import { loadFilm } from '../core/film-context.mjs';
 import { preflightBase } from '../core/subtitle-preflight.mjs';
 import { parseSrt, checkSubtitles, subtitleSettings, syncEnglish, checkEnglish, splitEnglishForVariant } from '../core/subtitles.mjs';
 import { rememberArtifacts } from '../core/operations.mjs';

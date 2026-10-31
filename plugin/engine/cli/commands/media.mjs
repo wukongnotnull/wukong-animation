@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { render, preview, stills, animatic, loadFilm, writeReview } from '../../core/job.mjs';
+import { render, preview, stills, animatic, writeReview } from '../../core/job.mjs';
+import { loadFilm } from '../../core/film-context.mjs';
 import { cleanRenderCache } from '../../core/cache.mjs';
 import { checkMainUnchanged } from '../../core/approval.mjs';
 import { generatedMixPadding } from '../../core/ffmpeg.mjs';

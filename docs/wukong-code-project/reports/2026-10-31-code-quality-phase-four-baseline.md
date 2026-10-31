@@ -13,7 +13,7 @@
 | 来源 | 当前生产者/校验者 | 提取后的必要覆盖 |
 | --- | --- | --- |
 | job.loadFilm | 最终交付 encoding 显式包含 core/job.mjs；renderer 显式为 cache/word-sync/timing/fonts | film-context 应加入实际相关的 renderer/encoding 文件列表；保持投影分组 |
-| qcConfig、QC 测量 | qc.runQc 和 final-delivery.qcState 各自计算 video/timing 摘要，algorithm 仅哈希 qc.mjs | 两端统一 qc-source，包含 qc、qc-config、qc-source 的稳定相对标识和文件摘要 |
+| qcConfig、QC 测量 | qc.runQc 和 final-delivery.technicalStatus 各自计算 video/timing 摘要，algorithm 仅哈希 qc.mjs | 两端统一 qc-source，包含 qc、qc-config、qc-source 的稳定相对标识和文件摘要 |
 | 命令编排、其余引擎代码 | operations.implementationState 与主版复核的全引擎身份 | 新 cli/core 模块仍在全引擎身份范围内；不能跨调用缓存 |
 | 参数解析、交付输入 | 原 bin/args 和 delivery 导出 | 保持原入口与语义；仅替换依赖方向，不伪造旧证据兼容 |
 

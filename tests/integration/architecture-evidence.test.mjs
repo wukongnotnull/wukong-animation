@@ -4,13 +4,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const plugin = fileURLToPath(new URL('../../plugin/', import.meta.url));
 async function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-extracted-evidence-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const copy = path.join(root, 'plugin');
-  fs.cpSync(plugin, copy, { recursive: true, filter: file => !['node_modules', '.cache'].includes(path.basename(file)) });
+  const files = execFileSync('git', ['ls-files', '-z', '--', '.'], { cwd: plugin, encoding: 'utf8' }).split('\0').filter(Boolean);
+  assert.ok(files.includes('engine/core/qc-source.mjs'), 'the candidate engine must be tracked before evidence validation');
+  for (const file of files) {
+    const target = path.join(copy, file); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(plugin, file), target);
+  }
   const engine = path.join(copy, 'engine'), film = path.join(root, 'film');
   for (const dir of ['shots', '.wka', '.cache', 'review']) fs.mkdirSync(path.join(film, dir), { recursive: true });
   fs.writeFileSync(path.join(film, 'shots/s01.js'), 'wk.shot({render(){}});');

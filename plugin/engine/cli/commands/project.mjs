@@ -4,7 +4,7 @@ import { getStyles } from '../../core/registry.mjs';
 import { ENGINE_ROOT, PLUGIN_ROOT, TEMPLATES_DIR, USER_STYLES_DIR } from '../../core/paths.mjs';
 import { copyTemplate, NAME_RE } from '../../core/scaffold.mjs';
 import { initProject } from '../../core/project.mjs';
-import { recordProgress, staleVariants, listProductions, PRODUCTION_STEPS, LAST_STEP, flowDiagnostic } from '../../core/state.mjs';
+import { recordProgress, listProductions, PRODUCTION_STEPS, LAST_STEP, flowDiagnostic } from '../../core/state.mjs';
 import { recoveryStatus } from '../../core/operations.mjs';
 import { fail } from '../context.mjs';
 

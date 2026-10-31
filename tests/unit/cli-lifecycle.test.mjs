@@ -65,3 +65,33 @@ test('a refused lock preserves the other owner and the previous recovery command
   assert.equal(fs.readFileSync(f.lock, 'utf8'), owner);
   assert.equal(fs.readFileSync(f.active, 'utf8'), 'previous command');
 });
+
+test('a failing output callback still releases exactly one owned lock', t => {
+  const f = fixture(t);
+  fs.writeFileSync(path.join(f.film, 'film.json'), JSON.stringify({ title: 'Output error', style: 'ink-wash', size: [32, 18], fps: 10, seed: 1, shots: [{ id: 's01', file: 'missing.js', duration: 1 }] }));
+  const runner = new URL('../../plugin/engine/cli/run.mjs', import.meta.url).href;
+  const script = `import fs from 'node:fs'; import assert from 'node:assert/strict';
+    const {runCli}=await import(${JSON.stringify(runner)});
+    const remove=fs.rmSync; let removals=0;
+    fs.rmSync=(file,...args)=>{if(String(file)===${JSON.stringify(f.lock)})removals++;return remove(file,...args);};
+    const errors=[];
+    assert.equal(await runCli(['clean',${JSON.stringify(f.film)},'--render-cache'],{log(){throw new Error('output unavailable');},error:e=>errors.push(e)}),1);
+    assert.deepEqual(errors,['✗ output unavailable']); assert.equal(removals,1);`;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: f.root, encoding: 'utf8', env: { ...process.env, WUKONG_ANIMATION_HOME: path.join(f.root, 'home') },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.existsSync(f.lock), false); assert.ok(fs.existsSync(f.active));
+});
+
+test('delivery only obtains a lock for the final record operation', t => {
+  const f = fixture(t), owner = JSON.stringify({ pid: process.pid, host: os.hostname(), token: 'other-owner' });
+  fs.writeFileSync(f.lock, owner);
+  for (const options of [[], ['--final'], ['--record'], ['--final', '--record']]) {
+    const result = f.run(['delivery', f.film, ...options]);
+    assert.equal(result.status, 1);
+    if (options.length === 2) assert.match(result.stderr, /工程正在写入/);
+    else assert.doesNotMatch(result.stderr, /工程正在写入/);
+    assert.equal(fs.readFileSync(f.lock, 'utf8'), owner); assert.equal(fs.existsSync(f.active), false);
+  }
+});

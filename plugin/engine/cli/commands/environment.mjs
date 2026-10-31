@@ -8,6 +8,7 @@ import { hasFfmpeg } from '../../core/ffmpeg.mjs';
 import { detectTtsEngine } from '../../audio/tts.mjs';
 import { resolveStyle } from '../../core/resolver.mjs';
 import { fail } from '../context.mjs';
+import { installationDiagnostics } from '../../core/installation-diagnostics.mjs';
 
 const CATS = { dongfang: '东方神韵', shouhui: '手绘绘画', pingmian: '平面排版', katong: '卡通漫画', youxi: '游戏数字', dianying: '电影年代', caizhi: '材质 3D', xinxi: '信息叙事', custom: '自定义' };
 
@@ -92,6 +93,12 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
       return cmdSetup();
     },
     'check': async () => {
+      if(opt('upgrade')) {
+        const result=installationDiagnostics();
+        if(opt('json'))log(JSON.stringify(result,null,2));
+        else {log(`插件 ${result.plugin.version||'未知'} · 引擎 ${result.engine.version||'未知'}`);log(`路径 ${result.plugin.root} · 来源 ${result.installation.kind}`);log(`依赖 ${result.dependencies?.root||'未就绪'}（来源 ${result.dependencies?.source||'未知'} · 身份 ${result.dependencies?.identity?.slice(0,12)||'未知'}）`);for(const text of [...result.guidance,...result.warnings])log('  '+text);}
+        return result.exitCode;
+      }
       return (await cmdCheck()) ? 1 : 0;
     },
     'list': async () => {

@@ -1,0 +1,48 @@
+name: merge-gate
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: merge-gate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.classify.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - id: classify
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node tools/merge-gate.mjs classify "$BASE" "$HEAD" >> "$GITHUB_OUTPUT"
+  lint:
+    uses: ./.github/workflows/lint.yml
+  installation:
+    uses: ./.github/workflows/agent-installation.yml
+  jianying:
+    uses: ./.github/workflows/jianying.yml
+  smoke:
+    needs: changes
+    if: needs.changes.outputs.docs != 'true'
+    uses: ./.github/workflows/smoke.yml
+  merge-gate:
+    name: merge-gate
+    if: always()
+    needs: [changes, lint, installation, jianying, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - env:
+          GATE_NEEDS: ${{ toJSON(needs) }}
+        run: node tools/merge-gate.mjs verify

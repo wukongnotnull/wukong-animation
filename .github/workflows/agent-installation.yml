@@ -1,5 +1,5 @@
 name: agent-installation
-on: [push, pull_request, workflow_dispatch]
+on: [push, workflow_dispatch, workflow_call]
 concurrency:
   group: agent-installation-${{ github.ref }}
   cancel-in-progress: true
@@ -19,7 +19,7 @@ jobs:
       - name: 安装仓库开发检查依赖
         run: npm ci --no-audit --no-fund
       - name: 验证命令生命周期、兼容契约与架构约束
-        run: node --test tests/unit/cli-lifecycle.test.mjs tests/unit/cli-contracts.test.mjs tests/unit/module-boundaries.test.mjs
+        run: node --test tests/unit/cli-lifecycle.test.mjs tests/unit/cli-contracts.test.mjs tests/unit/module-boundaries.test.mjs tests/unit/merge-gate.test.mjs tests/unit/installation-diagnostics.test.mjs tests/integration/upgrade-diagnostics.test.mjs
       - run: node --test tests/integration/portable-installation.test.mjs
       - name: Verify bounded hashing and source observations
         run: node --test tests/unit/file-hash.test.mjs tests/unit/source-state.test.mjs

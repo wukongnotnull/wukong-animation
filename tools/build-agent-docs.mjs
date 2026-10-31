@@ -10,6 +10,12 @@ const text=`# Agent 安装指南
 
 正式发布包是 GitHub Release [v${version}](https://github.com/wukongnotnull/wukong-animation/releases/tag/v${version}) 的 \`wukong-animation-agent-skills-v${version}.zip\` 与同一次发布的 SHA256SUMS。源码也可运行 \`npm run build:portable\` 生成 dist。已有 Claude/Codex/ChatGPT 原生插件继续使用 README 原生安装方式。
 
+## 升级诊断
+
+v0.19.5 正式包不含这个新增入口，请使用包含第五批优化的安装包。
+
+可从当前安装的引擎入口执行 \`node <安装目录>/engine/bin/wka.mjs check --upgrade\`，机器读取追加 \`--json\`。诊断只读且离线，显示插件/引擎版本、包格式、依赖身份及对应升级指引；远端最新版本和宿主是否已加载新版显示未知。发现失效的其他 marketplace 时提示手动核对，不自动改写配置。
+
 ## 安装与开始制作
 
 需要 Node.js 20+。下载对应版本的 \`wukong-animation-agent-skills-v<版本>.zip\` 与 SHA256SUMS，核对校验和后用系统解压工具解压；进入包含 install-agent.mjs 的目录。以下命令不自动安装 Agent 客户端或渲染依赖：

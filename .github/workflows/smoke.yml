@@ -3,8 +3,7 @@ on:
   push:
     # 只改文档的提交不影响渲染，不必跑浏览器（lint 仍会检查文档）
     paths-ignore: ['**.md', 'docs/**', 'LICENSE*']
-  pull_request:
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE*']
+  workflow_call:
   workflow_dispatch:
     inputs:
       update:

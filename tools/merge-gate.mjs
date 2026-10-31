@@ -9,7 +9,7 @@ export function gatePassed(docs,results){
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv[2]==='classify'){
-  const files=execFileSync('git',['diff','--name-only','-z',process.argv[3],process.argv[4]],{encoding:'utf8'}).split('\0').filter(Boolean);
+  const files=execFileSync('git',['diff','--no-renames','--name-only','-z',process.argv[3],process.argv[4]],{encoding:'utf8'}).split('\0').filter(Boolean);
   console.log('docs='+documentationOnly(files));
  }else{
   const needs=JSON.parse(process.env.GATE_NEEDS||'{}');

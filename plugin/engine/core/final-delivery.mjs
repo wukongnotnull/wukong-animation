@@ -1,9 +1,10 @@
+import { qcSource } from './qc-source.mjs';
 // 最终交付：查询不执行制作代码、不迁移流程、不刷新阶段缓存。
 import fs from 'node:fs';
 import path from 'node:path';
 import { digest, atomicJson, treeEvidence, fileDigest } from './evidence.mjs';
-import { loadFilm } from './job.mjs';
-import { fileLink, readDecisions, decisionConflicts } from './delivery.mjs';
+import { loadFilm } from './film-context.mjs';
+import { fileLink, readDecisions, decisionConflicts } from './delivery-inputs.mjs';
 import { subtitleSettings, subtitleOutputs } from './subtitles.mjs';
 import { validate } from './validate.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
@@ -12,7 +13,7 @@ import crypto from 'node:crypto';
 import { migrateProgress, assertCompatibleProgress } from './state.mjs';
 import { outputsMatch } from './operations.mjs';
 import { qcReview, readReviewNotes, isSoftFinding } from './review-evidence.mjs';
-import { qcConfig } from './qc.mjs';
+import { qcConfig } from './qc-config.mjs';
 import { usedCueNames, pickCues } from './cues.mjs';
 import { spawnSync } from 'node:child_process';
 
@@ -147,18 +148,18 @@ function dependencies(dir,slot,fontFiles=[]) {
     const refs=[...(audio.tracks||[]),...(audio.voices||[])].map(t=>t.file).filter(Boolean);
     groups.audio={config:audio,files:files(refs),implementation:codeSource(path.join(ENGINE_ROOT,'audio'))};
     if(audio.build)unknown.push('audio.build 动态来源覆盖不足（旧阶段 signature 为 null）');
-    groups.renderer={pipeline:codeSource(ctx.pipeline.dir),kits:ctx.kits.map(k=>codeSource(k.dir)),runtime:codeSource(path.join(ENGINE_ROOT,'runtime')),core:engineFiles(['core/cache.mjs','core/word-sync.mjs','core/timing.mjs','core/fonts.mjs'])};
+    groups.renderer={pipeline:codeSource(ctx.pipeline.dir),kits:ctx.kits.map(k=>codeSource(k.dir)),runtime:codeSource(path.join(ENGINE_ROOT,'runtime')),core:engineFiles(['core/cache.mjs','core/film-context.mjs','core/word-sync.mjs','core/timing.mjs','core/fonts.mjs'])};
     if(ctx.style.libs?.length)unknown.push('外部风格库的实际加载来源未存档，待核实');
     groups.fonts={declared:ctx.style.fonts||[],files:files(fontFiles)};
     if(ctx.style.fonts?.length&&!fontFiles.length)unknown.push('实际画面字体来源缺失');
-    groups.encoding={files:[codeSource(path.join(ENGINE_ROOT,`exporters/${slot.format}`)),...engineFiles(['core/ffmpeg.mjs','core/job.mjs'])],settings:ctx.film.export?.[slot.format]||null};
+    groups.encoding={files:[codeSource(path.join(ENGINE_ROOT,`exporters/${slot.format}`)),...engineFiles(['core/ffmpeg.mjs','core/job.mjs','core/film-context.mjs'])],settings:ctx.film.export?.[slot.format]||null};
     if(slot.kind==='draft')groups.rawTracks={files:files(refs)};
   }
   if(sub||caption) {
     const zh=path.join(dir,settings.file),en=path.join(dir,settings.enFile);
     if(caption||slot.format==='zh'||slot.format==='en')groups.zh={source:sourceFile(zh)};
     if((caption&&settings.bilingual)||slot.format==='en')groups.en={source:sourceFile(en)};
-    groups.subtitleImplementation={files:engineFiles(['core/subtitles.mjs'])};
+    groups.subtitleImplementation={files:engineFiles(['core/subtitles.mjs','core/film-context.mjs'])};
   }
   if(caption) {
     const layout=json(path.join(dir,'subtitle-layout.json'),null);
@@ -289,9 +290,9 @@ function technicalStatus(dir,slot,artifact) {
   const base=artifact?.technical||{status:'unknown',checks:[],errors:[]};
   if(base.errors?.length)return {...base,status:'hard-error'};
   if(slot.kind!=='video')return base;
-  const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),video=path.join(ctx.variant.cacheDir,'video.mp4'),timing=path.join(ctx.variant.cacheDir,'timing.json');
+  const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect});
   const stage=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{}).find(s=>s.stage==='review:qc'&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
-  const signature=digest({video:fs.existsSync(video)?fileDigest(video):null,timing:fs.existsSync(timing)?fileDigest(timing):null,algorithm:fileDigest(path.join(ENGINE_ROOT,'core/qc.mjs'))});
+  const signature=qcSource(ctx.variant.cacheDir);
   if(!stage||stage.signature!==signature||!outputsMatch(stage.outputs))return base;
   const reportFile=stage.outputs.find(o=>o.file.endsWith('.json'))?.file;
   if(!reportFile)return base;

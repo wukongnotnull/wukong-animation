@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { parseArgs } from '../bin/args.mjs';
+import { parseArgs } from '../core/command-args.mjs';
 import { assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
 import { lockProduction } from '../core/operations.mjs';
 import { atomicJson } from '../core/evidence.mjs';

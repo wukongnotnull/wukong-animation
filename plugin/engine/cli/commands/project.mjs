@@ -33,7 +33,7 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
     log(`  风格文档：${path.join(st.dir, 'STYLE.md')}`);
     log(`  技术文档：${path.join(st.dir, 'TECH.md')}`);
   }
-  
+
   function cmdBrief(name, { dir = '.' }) {
     if (!name) fail('用法：wka brief <片名> [--dir 项目目录]');
     const filmDir = path.resolve(dir, 'films', name);
@@ -45,7 +45,7 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
     recordProgress(filmDir, { step: 1, note: '建立占位片目录' });
     log(`✓ 已创建 ${path.relative(process.cwd(), brief) || brief}`);
   }
-  
+
   function cmdNew(what, id, { name, category = 'custom', order = 101, dest = USER_STYLES_DIR }) {
     if (what !== 'style') fail('wka new 只支持 style（工具包、管线、导出器要在插件仓库里实现）');
     if (!id || !NAME_RE.test(id) || !name || name === true) fail('用法：wka new style <id> --name 名称 [--category 分类] [--order N] [--dest 目录]（id 只用小写字母、数字和连字符）');

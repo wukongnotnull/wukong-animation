@@ -33,7 +33,7 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
     if (!tools[0][1]) bad++;
     const tts = detectTtsEngine();
     log(`  ${tts.length ? '✓' : '·'} TTS                  ${tts.length ? tts.join(', ') : '未安装（可选：kokoro / edge-tts）'}`);
-  
+
     log('\n管线');
     for (const p of reg.pipelines.values()) {
       if (p.status === 'planned') {
@@ -60,7 +60,7 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
     log(bad ? `\n有 ${bad} 项需要处理。依赖缺失请运行 /wukong-animation:setup` : '\n一切就绪 ✓');
     return bad;
   }
-  
+
   function cmdSetup() {
     setupDependencies({ log });
     if (!hasFfmpeg()) log('! 还缺 ffmpeg：macOS 用 brew install ffmpeg，Ubuntu 用 sudo apt install ffmpeg');
@@ -70,7 +70,7 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
     }
     log('完成。运行 wka check 确认。');
   }
-  
+
   function cmdList(what = 'styles') {
     const reg = getRegistry();
     if (what === 'styles') {

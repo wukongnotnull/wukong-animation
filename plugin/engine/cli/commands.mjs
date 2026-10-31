@@ -2,12 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { ensureDir } from '../core/paths.mjs';
-import { render, preview, stills, animatic, encodeOutputs, loadFilm, outputSize, writeReview, shotHashes } from '../core/job.mjs';
-import { cleanRenderCache } from '../core/cache.mjs';
+import { render, preview, encodeOutputs, loadFilm, outputSize, shotHashes } from '../core/job.mjs';
 import { snapshotMain, checkMainUnchanged } from '../core/approval.mjs';
 import { listAspects } from '../core/variants.mjs';
 import { commitSnapshot } from '../core/project.mjs';
-import { generatedMixPadding } from '../core/ffmpeg.mjs';
 import { readProgress, variantStale, staleVariants, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../core/state.mjs';
 import { runQc } from '../core/qc.mjs';
 import { preflightSubtitles, requireSubtitlePreflight, preflightBase } from '../core/subtitle-preflight.mjs';
@@ -17,12 +15,14 @@ import { buildSubtitles, formatSrt, parseSrt, attachEnglish, checkSubtitles, sub
 import { burnSubtitles, subtitleStyle } from '../core/subtitle-layer.mjs';
 import { runStage, rememberArtifacts, implementationState } from '../core/operations.mjs';
 import { writeDelivery, readDecisions, decisionConflicts } from '../core/delivery.mjs';
-import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, finalFontUnknown, captureFinalProxy, withGenerationFonts, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
+import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, captureFinalGeneration, recordFinalArtifact, finalFontFiles, finalFontUnknown, prepareFinalApproval, commitFinalApproval } from '../core/final-delivery.mjs';
 import { draftAudioDifference } from '../core/review-evidence.mjs';
 import { digest, fileDigest, readJson, atomicJson, treeEvidence } from '../core/evidence.mjs';
 import { fail } from './context.mjs';
 import { environmentCommands } from './commands/environment.mjs';
 import { projectCommands } from './commands/project.mjs';
+import { mediaCommands } from './commands/media.mjs';
+import { audioCommands } from './commands/audio.mjs';
 
 const SHOT_SIZE_STEP = 5; // 第 5 道「分镜脚本」
 const SUBTITLES_STEP = 10; // 第 10 道「字幕制作」：还没有小样，版式预检即可
@@ -36,6 +36,8 @@ export function commandsFor(context) {
   const groups = {
     'environment': environmentCommands(context),
     'project': projectCommands(context),
+    'media': mediaCommands(context),
+    'audio': audioCommands(context),
   };
 
 // 插件外的风格（用户目录等）找不到插件里的 schema，编辑器改用仓库 main 分支上的这份
@@ -108,24 +110,6 @@ function writeVariantEnglish(ctx, settings, subs) {
 }
 
 /** 录音音效（第 7 道声轨制作用）：--list 只列来源与大小给用户确认，不带参数则下载并处理。 */
-async function cmdSfx(filmDir, { list }) {
-  if (!filmDir) fail('用法：wka sfx <片目录> [--list]');
-  const { style } = loadFilm(filmDir, { requireShots: false });
-  const { loadSfxLibrary, listSfx, fetchSfx } = await import('../audio/sfx.mjs');
-  const lib = loadSfxLibrary(style);
-  if (!lib) fail(`风格 ${style.id} 没有录音音效清单（style.json 的 sfx），音效请用 synth 合成`);
-  if (list) {
-    const rows = listSfx(lib);
-    for (const r of rows) log(`${r.name.padEnd(8)} ${r.role.padEnd(10)} ${r.title.padEnd(36)} ${r.url.padEnd(62)} ${r.bytes === null ? '   ? KB' : `${String(Math.round(r.bytes / 1024)).padStart(4)} KB`}`);
-    const total = rows.reduce((a, r) => a + (r.bytes || 0), 0);
-    log(`${rows.length} 个文件，共 ${(total / 1024 / 1024).toFixed(1)} MB → ${lib.dir}\n${lib.license}`);
-    return;
-  }
-  log(`下载并处理录音音效 → ${lib.dir}`);
-  const failed = (await fetchSfx(lib, { log })).filter((r) => !r.ok);
-  if (failed.length) fail(`${failed.length} 个音效没准备好：${failed.map((r) => r.name).join('、')}`);
-  log('完成 ✓');
-}
 
 /** 字幕制作（第 10 道）：生成或检查 subtitles.srt；--preflight 预检，还没有小样时只做版式预检；--preview 把字幕烧录到小样上审阅（第 11 道）。 */
 async function cmdSubtitles(filmDir, { force, preview, preflight, aspect }) {
@@ -353,83 +337,14 @@ function registerSubtitleEvidence(ctx,checked,proxy,layout=false){
       const r = await runQc(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });
       return r.ok ? 0 : 2;
     } },
-    'still': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0]) fail('用法：wka still <片目录>');
-      const at = opt('at')
-        ? String(opt('at')).split(',').map((x) => {
-            const [shot, t] = x.split(':');
-            return { shot, t: parseFloat(t) };
-          })
-        : null;
-      await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
-      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), log });
-      registerReview(pos[0],'stills',[...r.files,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
-      if (r.contactSheet) log(`接触表：${r.contactSheet}`);
-      return;
-    } },
-    'animatic': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0]) fail('用法：wka animatic <片目录> [--proxy]');
-      const r = await animatic(pos[0], { proxy: !!opt('proxy'), aspect: aspectOpt(), log });
-      registerReview(pos[0],'animatic',[r.file,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
-      if (r.contactSheet) log(`接触表：${r.contactSheet}`);
-      log(`动态分镜：${r.file}`);
-      return;
-    } },
-    'preview': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0]) fail('用法：wka preview <片目录> [--only s01,s03] [--native]');
-      return preview(pos[0], { only: opt('only') ? String(opt('only')).split(',') : null, proxy: !opt('native'), aspect: aspectOpt(), force: !!opt('force'), log });
-    } },
-    'clean': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0] || !opt('render-cache')) fail('用法：wka clean <片目录> --render-cache [--aspect 9:16]');
-      const ctx = loadFilm(pos[0], { requireShots: false, aspect: aspectOpt() });
-      const removed = cleanRenderCache(ctx.variant.cacheDir);
-      log(`已清理 ${removed.length} 项可再生渲染缓存；声音、素材、审阅文件、成片和签批快照保留`);
-      return;
-    } },
-    'render': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0]) fail('用法：wka render <片目录>');
-      const proxy = !!opt('proxy');
-      await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
-      let sourceGeneration=null;
-      if(proxy)try{sourceGeneration=captureFinalProxy(pos[0],{aspect:aspectOpt()});}catch(e){log(`  ! 小样来源未取证，保留渲染任务：${e.message}`);}
-      const { video, job } = await render(pos[0], { proxy, only: opt('only') ? String(opt('only')).split(',') : null, force: !!opt('force'), aspect: aspectOpt(), log });
-      if (!proxy) return;
-      // 小样配上声轨，放进 review/ 交给用户审阅
-      const mix = path.join(path.resolve(pos[0]), '.cache', 'mix.wav');
-      const hasMix = fs.existsSync(mix);
-      if (!hasMix) log('  ! 没有 .cache/mix.wav，小样不带声音（先运行 wka soundtrack）');
-      const args = hasMix ? ['-i', video, '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', ...generatedMixPadding(mix,job.timeline.duration,job.fps), '-shortest'] : ['-i', video, '-c', 'copy'];
-      const out = await writeReview(pos[0], job.variant.review('小样.mp4'), [...args, '-movflags', '+faststart']);
-      checkOutputTiming(job, out, { proxy, log });
-      if(sourceGeneration)try{recordFinalArtifact(pos[0],{generation:withGenerationFonts(pos[0],sourceGeneration,finalFontFiles(job.fonts),finalFontUnknown(job.fonts)),path:out,stage:'review:proxy',technical:{status:'passed',checks:['小样时间轴'],errors:[]}});}catch(e){log(`  ! 小样来源证据未存档：${e.message}`);}
-      registerReview(pos[0],'proxy',[out],aspectOpt(),true);
-      log(`小样：${out}`);
-      return;
-    } },
-    'soundtrack': { preflight: 'film', lock: 'film', active: true, run: async () => {
-      if (!pos[0]) fail('用法：wka soundtrack <片目录>');
-      loadFilm(pos[0], { requireShots: false });
-      const { mix } = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
-      // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/ 交给用户审听
-      if (mix) {const out=await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k']);registerReview(pos[0],'soundtrack',[out]);log(`声轨审听：${out}`);}
-      return;
-    } },
-    'sfx': { preflight: 'film-unless-list', lock: 'none', active: false, run: async () => {
-      return cmdSfx(pos[0], { list: !!opt('list') });
-    } },
-    'audition': { preflight: 'film', lock: 'none', active: false, run: async () => {
-      if (!pos[0]) fail('用法：wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]');
-      const ctx = loadFilm(pos[0], { requireShots: false });
-      const { auditionVoices, DEFAULT_AUDITION_VOICES } = await import('../audio/audition.mjs');
-      const voices = typeof opt('voices') === 'string' ? opt('voices').split(',').map((v) => v.trim()).filter(Boolean) : DEFAULT_AUDITION_VOICES;
-      const first = ctx.film.audio?.voices?.[0] || {};
-      const str = (name) => (typeof opt(name) === 'string' ? opt(name) : undefined);
-      // 没给参数时用第一条人声的文本和它已经调过的语速、音高
-      const text = str('text') ?? first.text;
-      const audition=auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
-      registerReview(pos[0],'audition',audition.map(a=>a.file));
-      return;
-    } },
+    'still': { preflight: 'film', lock: 'film', active: true, run: groups['media']['still'] },
+    'animatic': { preflight: 'film', lock: 'film', active: true, run: groups['media']['animatic'] },
+    'preview': { preflight: 'film', lock: 'film', active: true, run: groups['media']['preview'] },
+    'clean': { preflight: 'film', lock: 'film', active: true, run: groups['media']['clean'] },
+    'render': { preflight: 'film', lock: 'film', active: true, run: groups['media']['render'] },
+    'soundtrack': { preflight: 'film', lock: 'film', active: true, run: groups['audio']['soundtrack'] },
+    'sfx': { preflight: 'film-unless-list', lock: 'none', active: false, run: groups['audio']['sfx'] },
+    'audition': { preflight: 'film', lock: 'none', active: false, run: groups['audio']['audition'] },
     'subtitles': { preflight: 'film', lock: 'film', active: true, run: async () => {
       if (!pos[0]) fail('用法：wka subtitles <片目录> [--force] [--preview]');
       return cmdSubtitles(pos[0], { force: !!opt('force'), preview: !!opt('preview'), preflight: !!opt('preflight'), aspect: aspectOpt() });

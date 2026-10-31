@@ -144,3 +144,12 @@ codex plugin add wukong-animation@wukong-animation
 维护时同步 `plugin/plugin.json`、`plugin/.codex-plugin/plugin.json`、`plugin/.claude-plugin/plugin.json` 与 Claude marketplace 的版本；同步两个 OpenAI 清单的展示字段及 onboarding 路径。运行 `node --test tests/integration/desktop-plugin.test.mjs` 检查安装契约与复制后的路径独立性，再运行 `npm test` 和 `npm run lint`。真实桌面 UI 的技能发现、设置入口与音视频预览需要按上面步骤单独验收。
 
 官方格式参考：[插件打包与本地 marketplace](https://developers.openai.com/plugins/build/plugins)。
+
+
+## main 合并保护（第五批）
+
+PR 由 merge-gate 调用 lint、三平台安装、严格剪映与媒体回归。仅 README.md、LICENSE/其 md/txt 版本、docs 下 md/txt 文档允许跳过媒体；未知路径、混合变更与重命名代码均执行完整检查。缺少、失败、取消或意外跳过必要任务都会使汇总失败。
+
+启用保护前，必须先将 merge-gate.yml 和可复用工作流合并到 main，验证新建 PR 能得到同名 GitHub Actions 检查（App 15368）。否则旧 main 派生的 PR 会缺少必过结果。目标配置位于 tools/main-protection.json；先保存原保护和规则集并再次核对没有并发变更，再通过 GitHub branch protection API 应用。要求 PR、基线最新与 merge-gate 成功，管理员受约束，禁止强推和删除；审批人数为零。
+
+激活后读回全部字段，用故意失败的临时 PR 验证服务器拒绝合并，再恢复通过验证可合并状态，取证后关闭临时 PR。不要合入故障夹具。原配置无保护时，回退为删除本次 branch protection；若激活前已有其他保护，必须按保存的原字段恢复，不能直接删除。当前保护是否已激活以验收报告和 GitHub 实际读回为准。

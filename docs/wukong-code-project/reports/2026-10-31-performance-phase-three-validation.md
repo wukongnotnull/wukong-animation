@@ -1,11 +1,11 @@
 # 第三批性能优化实施与验收记录
 
-状态：P1/P2/P3 本地实施、完整配对测量和本地最终验证完成；当前提交的远端三平台 CI 待后续 PR。
+状态：P1/P2/P3、本地完整配对与 A12 远端 CI 均完成；PR #118 已合并，用户已授权发布 v0.19.4。
 
 - 基线：`5957b73e90f014011fb27d3e015d4987c39db6ba`（v0.19.3）。
 - 冻结候选：`dffa230ae896f66f8c982fd35e8d0e6cfebc50d9`；依赖、证据格式、FLOW、TIMING_VERSION 和插件版本未改。此后的报告提交不改变被测运行时代码。
 - 测量工具：`b8a4e2a` 的工具代码；每次运行保存准确源码快照和摘要，两引擎使用同一工具。
-- 范围：本地分步提交；本轮不推送、开 PR、合并、发布或更新已安装插件。跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。
+- 原测量轮范围：本地分步提交；其后用户已分别授权 PR、合并和补丁发布。原始测量与归档不改写，后续交付记录见下文。跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。
 
 大音轨无修改预览的中位耗时下降约 53%–54%，主 Node 峰值内存由约 617–620 MiB 降至 108 MiB；首次整片制作的收益小得多。所有 57 个配对场景均未触发批准的回退门槛，输出约束与校验工作量保持。不能由此宣称所有渲染场景或整套进程树内存均明显改善。
 
@@ -33,7 +33,7 @@ Apple M1 Pro、10 个逻辑 CPU、16 GiB RAM、macOS arm64（Darwin 27.0.0）、
 
 实现分为 `a4eb2d0`（原语）、`23e7312`（四处接入）、`dffa230`（状态观察与 CI 接线）。默认证据读取保持每次真实读取，只有单次同步 sourceState 共享摘要。路径声明、顺序、缺失项、树投影、生成音频排除语义和独立调用均有回归覆盖；签批文件在失败时保持原字节。
 
-文件版本使用 Node 20 已支持的 bigint 身份、大小及高精度修改信息；它只检测当前同步观察的变化，不代替下一次内容读取。时间精度取决于文件系统，三平台实际检查由 CI 补充。参见 [Node 20 文件状态文档](https://nodejs.org/docs/latest-v20.x/api/fs.html#stat-time-values)。
+文件版本使用 Node 20 已支持的 bigint 身份、大小及高精度修改信息；它只检测当前同步观察的变化，不代替下一次内容读取。时间精度取决于文件系统，三平台纯文件 I/O 检查已由 PR #118 的 CI 补充。参见 [Node 20 文件状态文档](https://nodejs.org/docs/latest-v20.x/api/fs.html#stat-time-values)。
 
 ## 哈希配对结果
 
@@ -147,7 +147,7 @@ Remotion 首次预览与首次整片小样并未普遍降低进程峰值内存�
 | A8–A9 | 双遍快照、链接拒绝、视频前后独立复读、来源/时间轴和报告边界定向回归通过；工作量计数保持 |
 | A10 | 完整回归通过，前两批流程保护、恢复、依赖身份与制作/签批保护保持 |
 | A11 | 57 个配对场景零超阈值回退，缓冲区与逻辑读取硬指标通过；内存增加/持平和元数据成本如实列出 |
-| A12 | 本地完整回归、严格剪映、9 张视觉样张、完整长片矩阵、Node 20 纯 I/O、lint、便携构建和 diff 检查通过；远端当前提交三平台 CI 待后续 PR，因此未宣称远端部分完成 |
+| A12 | 本地完整回归、严格剪映、9 张视觉样张、完整长片矩阵、Node 20 纯 I/O、lint、便携构建和 diff 检查通过；PR #118 最终 head 的三平台安装/纯文件 I/O、lint、smoke 与严格剪映 CI 均通过，远端部分完成 |
 
 ## 可复核证据与后续范围
 
@@ -157,3 +157,15 @@ Remotion 首次预览与首次整片小样并未普遍降低进程峰值内存�
 - 基线与候选均从冻结的干净 Git 副本运行；最终测试前再次确认工作区运行时/测试与候选一致。实际展开命令见归档 environment/options 和验证日志；通用复跑入口为 `node tools/bench-performance.mjs --engine <基线引擎> --candidate <候选引擎> --suite <hash|workflow> --rounds 5 --out <全新目录>`。
 
 本地实施与验证完成。后续按用户授权提交 PR，运行当前提交的 Linux/macOS/Windows Node 20 安装与纯文件 I/O CI，以及现有严格剪映、冒烟、lint 等任务；审核通过后再按后续授权合并和发布。已安装插件尚不包含本地候选。
+
+## 后续远端验收与交付
+
+[PR #118](https://github.com/wukongnotnull/wukong-animation/pull/118) 最终提交 `aa2d9dd9d199c6bed2d5941d333a01e03b892843` 的 push 与 pull_request 共 8 条工作流全部成功：
+
+- [三平台 Node 20](https://github.com/wukongnotnull/wukong-animation/actions/runs/41151104663)：Windows / Linux / macOS 各安装测试 6/6、纯文件 I/O 22/22，零跳过；便携构建及 ZIP 解包安装通过。
+- [完整回归和视觉样张](https://github.com/wukongnotnull/wukong-animation/actions/runs/41151104630)：506 项通过、0 失败；普通环境的 15 项剪映依赖测试由专项任务逐项覆盖。9/9 样张零像素差，未更新视觉基准。
+- [严格剪映](https://github.com/wukongnotnull/wukong-animation/actions/runs/41151104588)：19/19、零跳过；[lint](https://github.com/wukongnotnull/wukong-animation/actions/runs/41151104602) 通过。
+
+首次 Windows CI 暴露测试夹具的可移植性问题：直接覆盖仍打开的文件被拒绝，删除后 stat 可能返回 EPERM。`aa2d9dd` 仅修正测试：先移走旧路径再替换，仅针对 Windows 删除场景接受 stat EPERM，并确认变更实际完成、读取失败且描述符关闭。所有测试保留；运行时代码和基准工具与冻结候选 `dffa230` 完全相同。
+
+2026-10-31 08:49（Asia/Shanghai），用户授权后合并为 `0f5d2871dcf0f4deeb5aac7b5e8df8dd9c6ce776`，合并内容与上述最终 head 相同。用户随后授权发布补丁；[v0.19.4 说明](../../releases/v0.19.4.md)记录升级方式，正式产物与发布结果以 GitHub Release 和原 issue 为准。

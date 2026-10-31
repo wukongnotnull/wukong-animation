@@ -1,10 +1,10 @@
 # 第三批性能优化：测量基线、有界哈希与状态扫描去重
 
-Status: Approved — local implementation and validation complete; remote CI pending
+Status: Approved — implementation and local/remote validation complete; merged in PR #118
 Date: 2026-10-30 (Asia/Shanghai)
 Spec approval: Approved by user on 2026-10-30
 
-实施结果（2026-10-31 08:22，Asia/Shanghai）：P1/P2/P3 的本地实施、57 场景完整配对和本地最终验证已完成，见[实施与验收记录](../reports/2026-10-31-performance-phase-three-validation.md)。A12 的远端当前提交三平台 CI 待后续 PR；未合并、发布或更新已安装插件。以下正文保留批准时的设计和验收要求，初稿诊断段落为历史记录。
+实施结果（2026-10-31，Asia/Shanghai）：P1/P2/P3、本地完整配对及 A12 远端 CI 均完成；[PR #118](https://github.com/wukongnotnull/wukong-animation/pull/118) 已合并至 `0f5d287`。见[实施与验收记录](../reports/2026-10-31-performance-phase-three-validation.md)。用户随后授权发布补丁版本，版本说明见 [v0.19.4](../../releases/v0.19.4.md)。以下正文保留批准时的设计和验收要求，原始授权范围与诊断段落为历史记录。
 
 基线：`5957b73e90f014011fb27d3e015d4987c39db6ba` / 插件 v0.19.3。跟踪 [#113](https://github.com/wukongnotnull/wukong-animation/issues/113)。用户先要求整理规格与计划，随后明确回复“审阅并批准第三批规格与实施计划，从基准工具和真实场景测量开始实施”。已复核两份文件一致，按该授权开始实施 P1/P2/P3；合并、发布和安装升级仍不在本轮范围。
 

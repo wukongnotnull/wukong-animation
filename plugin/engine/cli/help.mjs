@@ -1,5 +1,6 @@
 // 原命令帮助正文；不再通过读取入口源文件生成。
 export const HELP = `wka —— wukong-animation 引擎命令行。
+  wka workbench [项目或片目录] [--open] [--port N] [--capture|--pending|--register 文件 --step N]  本地预览、批注与阶段审阅
   wka setup                         按锁文件安装依赖到用户目录（按版本和环境隔离）
   wka check                         检查环境与所有插槽
   wka list [styles|pipelines|kits|exporters]

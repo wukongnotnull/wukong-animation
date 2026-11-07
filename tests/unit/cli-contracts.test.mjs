@@ -52,21 +52,25 @@ test('consecutive runner calls return independent 1/0/2/0 outcomes with one erro
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 
-test('all 22 command policies match the independent v0.19.4 contract', async () => {
+test('all original 22 command policies match v0.19.4; workbench is an independent extension', async () => {
   const file = path.join(engine, 'cli/commands.mjs');
   assert.ok(fs.existsSync(file), 'the single command catalog is not yet implemented');
   const { commandsFor } = await import(pathToFileURL(file));
   const commands = commandsFor({ pos: [], opt: (_name, fallback = null) => fallback, log() {} });
-  assert.deepEqual(Object.entries(commands).map(([command, { preflight, lock, active, run }]) => {
+  assert.deepEqual(Object.entries(commands).filter(([name]) => name !== 'workbench').map(([command, { preflight, lock, active, run }]) => {
     assert.equal(typeof run, 'function', command);
     return { command, preflight, lock, active };
   }), baseline.policies);
+  const { run, ...policy } = commands.workbench;
+  assert.equal(typeof run, 'function'); assert.deepEqual(policy, { preflight: 'none', lock: 'none', active: false });
 });
 
 test('CLI output, help aliases, usage errors and streams match the frozen baseline', t => {
   const f = fixture(t);
   for (const expected of baseline.cases) {
     const r = spawnSync(process.execPath, [path.join(engine, 'bin/wka.mjs'), ...expected.argv], { cwd: f.root, env: f.env, encoding: 'utf8', timeout: 15000 });
-    assert.deepEqual({ status: r.status, stdout: r.stdout, stderr: r.stderr }, { status: expected.status, stdout: expected.stdout, stderr: expected.stderr }, expected.argv.join(' '));
+    // Preserve the frozen original help verbatim while allowing the new documented command line.
+    const withoutWorkbench = text => text.replace(/^  wka workbench.*\n/gm, '');
+    assert.deepEqual({ status: r.status, stdout: withoutWorkbench(r.stdout), stderr: withoutWorkbench(r.stderr) }, { status: expected.status, stdout: expected.stdout, stderr: expected.stderr }, expected.argv.join(' '));
   }
 });

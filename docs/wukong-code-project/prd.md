@@ -1,8 +1,8 @@
 # wukong-animation 产品需求文档
 
-Status: Draft
+Status: Confirmed
 Last updated: 2026-11-07
-本轮新增范围：全流程交付物预览与审阅工作台（FR-15～FR-26）。用户已在 grilling 访谈中逐轮确认全部产品决定；本次修订的 PRD 文件待审阅，尚未实现。既有 FR-1～FR-14 的批准及交付事实保持不变。
+本轮新增范围：全流程交付物预览与审阅工作台（FR-15～FR-26）。用户已逐轮确认产品决定，并于 2026-11-07 对 PRD 修订明确回复“批准，继续实现”。既有 FR-1～FR-14 的批准及交付事实保持不变。
 关联：[审阅工作台 #127](https://github.com/wukongnotnull/wukong-animation/issues/127)、[安装覆盖 #98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[体验优化 #93](https://github.com/wukongnotnull/wukong-animation/issues/93)
 
 ## 1. 背景与问题
@@ -77,7 +77,7 @@ wukong-animation 面向通过代码制作动画短片的创作者，已经具备
 
 覆盖目标详见调查报告中的 27 工具族矩阵。数量按有依据的适配入口统计，不能因为所有宿主都能读取一个文件就宣称全部制作功能兼容。
 
-### 全流程交付物预览与审阅工作台（访谈已确认，PRD 修订待审）
+### 全流程交付物预览与审阅工作台（已确认）
 
 | 编号 | 优先级 | 用户可见行为 |
 | --- | --- | --- |
@@ -185,7 +185,7 @@ FR-8 的建议验收：声轨提交记录包含开场与各段落的实际审听
 
 ### 2026-11-07 工作台
 
-产品选择已在访谈中全部确认，没有尚未选择的产品分支。当前仅待用户审阅本 PRD 新增的 FR-15～FR-26 及对应约束和验收标准；尚未实现工作台。
+产品选择已在访谈中全部确认，没有尚未选择的产品分支。用户已明确回复“批准，继续实现”，批准本 PRD 新增的 FR-15～FR-26 及对应约束和验收标准；进入 spec 与实施，完成情况以验证记录为准。
 
 用户 2026-11-01 的长期授权使新建和修订 spec 默认通过，后续编写、检查并记录 spec 后可直接实施，不再重复请求 spec 批准。该授权限定于 spec；项目技能对 PRD 文件的独立审阅要求仍按原规则处理。
 
@@ -210,6 +210,7 @@ PRD 已获批，首批 FR-1/FR-2 通过 PR #94、第二批 FR-3/FR-4 通过 PR #
 
 | 日期 | 修订 | 原因 | 跟踪 |
 | --- | --- | --- | --- |
+| 2026-11-07 | 批准 FR-15～FR-26 的 PRD 文件，进入 spec 和实施 | 用户明确回复“批准，继续实现” | [#127](https://github.com/wukongnotnull/wukong-animation/issues/127) |
 | 2026-11-07 | 新增 FR-15～FR-26：本地全流程审阅工作台、定位批注、阶段签批、版本与返修交接；访谈已确认，PRD 修订待审，既有批准不变 | 用户要求剪映式预览界面，并逐轮确认无剪辑、面向全部插件用户及各项边界 | [#127](https://github.com/wukongnotnull/wukong-animation/issues/127) |
 | 2026-10-29 | 以 v0.16.0 发布完整技能包；未把未实测宿主记为通过 | 用户明确要求发版 | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98) |
 | 2026-10-29 | 记录 FR-9～FR-14 已按批准 spec 实现，等待 PR #99 审阅；未发布 | 安装契约、发布包路径别名和完整测试已核对 | [#98](https://github.com/wukongnotnull/wukong-animation/issues/98)、[PR #99](https://github.com/wukongnotnull/wukong-animation/pull/99) |

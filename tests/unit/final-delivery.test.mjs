@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { qcSource } from '../../plugin/engine/core/qc-source.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ function fixture(t) {
   t.after(()=>{if(prior===undefined)delete process.env.WKA_JIANYING_PROCESS;else process.env.WKA_JIANYING_PROCESS=prior;});
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'最终交付 [中] #% '));
   t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
-  fs.mkdirSync(path.join(dir,'.wka'));fs.mkdirSync(path.join(dir,'shots'));
+  initializeProduction(dir);fs.mkdirSync(path.join(dir,'shots'));
   fs.writeFileSync(path.join(dir,'shots/s01.js'),'function draw() {}');
   fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}],export:{name:'影片',formats:['mp4','jianying']}}));
   fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify({version:1,...Object.fromEntries(Object.entries({delivery:'video-and-draft',aspects:['16:9'],subtitles:{mode:'none',bilingual:false}}).map(([k,value])=>[k,{status:'confirmed',value,source:'用户明确确认'}]))}));
@@ -50,24 +51,6 @@ test('A3 generated video remains linked while draft is missing; provenance is no
   assert.equal(video.openStatus,'not-tested');
 });
 
-test('A6 subtitle dependencies separate English and layout from Chinese SRT',t=>{
-  assert.equal(typeof final.captureFinalGeneration,'function');
-  const dir=fixture(t),film=JSON.parse(fs.readFileSync(path.join(dir,'film.json')));
-  film.subtitles={mode:'both',bilingual:true};fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
-  const decisions=JSON.parse(fs.readFileSync(path.join(dir,'.wka/decisions.json')));decisions.subtitles.value={mode:'both',bilingual:true};fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
-  fs.writeFileSync(path.join(dir,'subtitles.srt'),'1\n00:00:00,000 --> 00:00:01,000\n中文\n');
-  fs.writeFileSync(path.join(dir,'subtitles.en.json'),'[{"text":"English"}]');
-  for(const lang of ['zh','en']) {
-    const slot=`16:9/subtitle/${lang}`,generation=final.captureFinalGeneration(dir,{slot}),file=path.join(dir,lang+'.srt');fs.writeFileSync(file,'字幕');
-    final.recordFinalArtifact(dir,{generation,path:file,stage:'sidecar',technical:{status:'passed',checks:['subtitle-integrity'],errors:[]}});
-  }
-  fs.writeFileSync(path.join(dir,'subtitles.en.json'),'[{"text":"Changed"}]');
-  fs.writeFileSync(path.join(dir,'subtitle-layout.json'),'{"version":1,"aspects":{}}');
-  const report=final.finalDeliveryReport(dir);
-  assert.equal(report.items.find(i=>i.format==='zh').freshness,'current');
-  assert.equal(report.items.find(i=>i.format==='en').freshness,'changed');
-});
-
 test('A7/A10 corrupt ledger and special files never become success',t=>{
   assert.equal(typeof final.captureFinalGeneration,'function');
   const dir=fixture(t),file=path.join(dir,'.wka/final-delivery.json');
@@ -90,14 +73,14 @@ test('A4/A5/A10 revision rejects mutations and manual draft approval preserves o
   assert.equal(typeof final.prepareFinalApproval,'function');
   const dir=fixture(t),draft=draftArtifact(dir),file=path.join(draft,'draft_content.json');
   const before=fs.readFileSync(path.join(draft,'.wka-complete.json'));
-  const first=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
+  const first=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
   fs.writeFileSync(file,JSON.stringify({materials:{videos:[],audios:[]},tracks:[],name:'user edit'}));
-  assert.throws(()=>final.prepareFinalApproval(dir,{step:15,revision:first,source:'用户',note:'通过'}),/版本|变化/);
-  const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
-  const args={id:'user-approval-15',step:15,revision,source:'用户本轮明确回复',note:'已保存并退出，草稿已打开检查',openEvidence:{status:'opened',source:'用户明确报告'}};
+  assert.throws(()=>final.prepareFinalApproval(dir,{step:8,revision:first,source:'用户',note:'通过'}),/版本|变化/);
+  const revision=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
+  const args={id:'user-approval-15',step:8,revision,source:'用户本轮明确回复',note:'已保存并退出，草稿已打开检查',openEvidence:{status:'opened',source:'用户明确报告'}};
   const approval=final.prepareFinalApproval(dir,args);
   // 模拟既有流程签批已持久化，不通过新模块伪造 state。
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,step:15,history:[{step:15,approvalId:args.id,note:args.note}]}));
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:8,approvalId:args.id,note:args.note}]}));
   final.commitFinalApproval(dir,approval);final.commitFinalApproval(dir,approval);
   let report=final.finalDeliveryReport(dir),item=report.items.find(i=>i.kind==='draft');
   assert.equal(item.acceptance,'accepted');assert.equal(item.openStatus,'opened');assert.equal(item.freshness,'current');
@@ -109,12 +92,13 @@ test('A4/A5/A10 revision rejects mutations and manual draft approval preserves o
   assert.equal(item.openStatus,'not-tested');
 });
 
-test('A8 legacy step and vague note are history only, old flow bytes remain unchanged',t=>{
-  const dir=fixture(t),draft=draftArtifact(dir),state=path.join(dir,'.wka/state.json');void draft;
-  fs.writeFileSync(state,JSON.stringify({flow:3,step:14,history:[{step:14,note:'草稿通过',approvalId:'legacy'}]}));
-  const bytes=fs.readFileSync(state),report=final.finalDeliveryReport(dir),item=report.items.find(i=>i.kind==='draft');
-  assert.equal(item.acceptance,'historical-only');assert.match(item.reasons.join(' '),/历史已验收/);
-  assert.deepEqual(fs.readFileSync(state),bytes);
+test('A8 legacy final delivery cannot be adopted or written; state bytes remain unchanged',t=>{
+  const dir=fixture(t);draftArtifact(dir);const state=path.join(dir,'.wka/state.json');
+  fs.writeFileSync(state,JSON.stringify({flow:3,step:14,history:[{step:14,note:'草稿通过'}]}));
+  const before=fs.readFileSync(state);
+  assert.throws(()=>final.finalDeliveryReport(dir),{code:'WKA_LEGACY_READONLY'});
+  assert.throws(()=>final.recordFinalEvidence(dir),{code:'WKA_LEGACY_READONLY'});
+  assert.deepEqual(fs.readFileSync(state),before);
 });
 
 test('A5 native variant inherits only approved exact source, never claims native playback',t=>{
@@ -124,9 +108,9 @@ test('A5 native variant inherits only approved exact source, never claims native
   const proxy=path.join(dir,'review/小样-9x16.mp4');fs.writeFileSync(proxy,'proxy');
   const slot='9:16/source/proxy',projection={slot};
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot,fontFiles:[font],descriptor:{slot,aspect:'9:16',kind:'video',format:'mp4',flavor:'clean',projection,contractDigest:'source'}}),path:proxy,stage:'review:proxy',technical:{status:'passed',checks:['timing'],errors:[]}});
-  const revision=final.finalDeliveryReport(dir).reviewSets[14].deliveryRevision;
-  const prepared=final.prepareFinalApproval(dir,{id:'source-14',step:14,revision,source:'用户明确批准副版小样',note:'小样通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:14,approvalId:'source-14'}]}));final.commitFinalApproval(dir,prepared);
+  const revision=final.finalDeliveryReport(dir).reviewSets[7].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'source-14',step:7,revision,source:'用户明确批准副版小样',note:'小样通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:7,approvalId:'source-14'}]}));final.commitFinalApproval(dir,prepared);
   const native=path.join(dir,'影片-9x16.mp4');fs.writeFileSync(native,'native');
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'9:16/video/mp4/clean',fontFiles:[font]}),path:native,stage:'encode:mp4',technical:{status:'passed',checks:['timing'],errors:[]}});
   let item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.equal(item.acceptance,'accepted');assert.equal(item.approval.type,'inherited');assert.equal(item.openStatus,'not-tested');
@@ -149,9 +133,9 @@ test('A10 identical successful export reuses evidence identity and record retrie
   const dir=fixture(t),file=path.join(dir,'影片.mp4'),font=path.join(dir,'font.ttf');fs.writeFileSync(font,'font');
   const save=()=>{const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[font]});fs.writeFileSync(file,'same bytes');return final.recordFinalArtifact(dir,{generation,path:file,stage:'encode:mp4',technical:{status:'passed'}});};
   const first=save(),second=save();assert.equal(first.id,second.id);
-  const revision=final.finalDeliveryReport(dir).reviewSets[13].deliveryRevision;
-  const prepared=final.prepareFinalApproval(dir,{id:'same-13',step:13,revision,source:'用户',note:'通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:13,approvalId:'same-13'}]}));final.commitFinalApproval(dir,prepared);
+  const revision=final.finalDeliveryReport(dir).reviewSets[6].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'same-13',step:6,revision,source:'用户',note:'通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:6,approvalId:'same-13'}]}));final.commitFinalApproval(dir,prepared);
   save();assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
   final.recordFinalEvidence(dir);assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
 });
@@ -178,8 +162,8 @@ test('A10 unstable scan and a running native editor reject approval',t=>{
   assert.throws(()=>final.deliverySnapshot(draft),/扫描期间/);t.mock.restoreAll();
   if(process.platform==='darwin') {
     process.env.WKA_JIANYING_PROCESS=path.basename(process.execPath);
-    const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
-    assert.throws(()=>final.prepareFinalApproval(dir,{id:'running',step:15,revision,source:'用户',note:'通过'}),/仍在运行/);
+    const revision=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
+    assert.throws(()=>final.prepareFinalApproval(dir,{id:'running',step:8,revision,source:'用户',note:'通过'}),/仍在运行/);
   }
 });
 
@@ -196,9 +180,9 @@ test('deliverySnapshot keeps two independent complete passes with bounded file r
 
 test('A8 complete pending version proof can be recorded after state commit, never a vague note',t=>{
   const dir=fixture(t);draftArtifact(dir);
-  const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
-  const prepared=final.prepareFinalApproval(dir,{id:'recover-15',step:15,revision,source:'用户本次明确验收',note:'通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:5,history:[{step:15,approvalId:'recover-15'}]}));
+  const revision=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'recover-15',step:8,revision,source:'用户本次明确验收',note:'通过'});
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:8,approvalId:'recover-15'}]}));
   fs.writeFileSync(path.join(dir,'.wka/pending-approval.json'),JSON.stringify({id:'recover-15',deliveryApproval:prepared,status:'prepared'}));
   const state=fs.readFileSync(path.join(dir,'.wka/state.json'));final.recordFinalEvidence(dir);
   assert.equal(final.finalDeliveryReport(dir).items.find(i=>i.kind==='draft').acceptance,'accepted');
@@ -218,7 +202,7 @@ test('A5 known current QC hard errors cannot be bypassed by a final approval not
   const source=qcSource(path.join(dir,'.cache'));
   rememberArtifacts(dir,{stage:'review:qc',aspect:'16:9',signature:source,outputs:[qc],value:qc});
   const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');assert.equal(report.status,'incomplete');
-  assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:13,revision:report.reviewSets[13].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);
+  assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:6,revision:report.reviewSets[6].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);
 });
 
 test('A6 a word anchor actually referenced by the picture invalidates that picture',t=>{
@@ -242,24 +226,12 @@ test('A7 actual encoder identity is recorded and unknown tool changes do not pas
   const item=final.finalDeliveryReport(dir).items[0];assert.equal(item.freshness,'unknown');assert.match(item.reasons.join(' '),/工具/);
 });
 
-test('A8 legacy external draft stays visible and a new explicit review can adopt its current bytes',t=>{
-  const dir=fixture(t),draft=draftArtifact(dir);
-  rememberArtifacts(dir,{stage:'draft-export',aspect:'16:9',signature:'legacy',outputs:[draft],value:draft});
-  fs.rmSync(path.join(dir,'.wka/final-delivery.json'));fs.rmSync(path.join(dir,'.wka/final-delivery-receipts'),{recursive:true});
-  const state=path.join(dir,'.wka/state.json');fs.writeFileSync(state,JSON.stringify({flow:5,history:[{step:15,approvalId:'old',note:'草稿通过'}]}));
-  let report=final.finalDeliveryReport(dir),item=report.items.find(i=>i.kind==='draft');
-  assert.equal(item.path,draft);assert.equal(item.availability,'present');assert.equal(item.acceptance,'historical-only');assert.ok(item.link);
-  const prepared=final.prepareFinalApproval(dir,{id:'new-real-review',step:15,revision:report.reviewSets[15].deliveryRevision,source:'用户本次明确复核',note:'已保存退出，已打开检查当前历史草稿',openEvidence:{status:'opened',source:'用户实际打开反馈'}});
-  fs.writeFileSync(state,JSON.stringify({flow:5,history:[{step:15,approvalId:'old',note:'草稿通过'},{step:15,approvalId:'new-real-review'}]}));final.commitFinalApproval(dir,prepared);
-  report=final.finalDeliveryReport(dir);item=report.items.find(i=>i.kind==='draft');assert.equal(item.acceptance,'accepted');assert.equal(item.freshness,'current');
-});
-
 test('A10 macOS cannot treat a failed process probe as an exited editor',t=>{
   if(process.platform!=='darwin')return;
   const dir=fixture(t);draftArtifact(dir);const previous=process.env.PATH;
   try {
-    process.env.PATH='/wka-nonexistent-path';const revision=final.finalDeliveryReport(dir).reviewSets[15].deliveryRevision;
-    assert.throws(()=>final.prepareFinalApproval(dir,{id:'unknown-process',step:15,revision,source:'用户',note:'通过'}),/无法核实剪映进程/);
+    process.env.PATH='/wka-nonexistent-path';const revision=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
+    assert.throws(()=>final.prepareFinalApproval(dir,{id:'unknown-process',step:8,revision,source:'用户',note:'通过'}),/无法核实剪映进程/);
   }finally{process.env.PATH=previous;}
 });
 
@@ -268,24 +240,4 @@ test('A1 conflicting aspect decisions retain evidenced files without making them
   decisions.aspects.value=['1:1'];fs.writeFileSync(file,JSON.stringify(decisions));
   const report=final.finalDeliveryReport(dir);assert.equal(report.status,'needs-verification');assert.equal(report.ok,false);
   assert.ok(report.candidates?.some(i=>i.path===draft&&i.link&&i.section==='历史/待核实版本'));
-});
-
-test('主播字幕 MP4 没有成片核验证据时不能成为可交付产物',t=>{
-  const dir=fixture(t),config=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(config));
-  film.subtitles={mode:'burn',source:'presenter',file:'host.srt'};
-  fs.writeFileSync(config,JSON.stringify(film));
-  fs.writeFileSync(path.join(dir,'host.srt'),'1\n00:00:00,000 --> 00:00:00,500\n主播\n');
-  const slot='16:9/video/mp4/burned';
-  const file=path.join(dir,'影片_有字幕.mp4');
-  fs.writeFileSync(file,'fixture only');
-  const capture=()=>final.captureFinalGeneration(dir,{slot,fontFiles:[config]});
-  final.recordFinalArtifact(dir,{generation:capture(),path:file,stage:'encode:mp4_有字幕',technical:{status:'passed',checks:['timing'],errors:[]}});
-  const find=()=>final.finalDeliveryReport(dir).items.find(i=>i.slot===slot);
-  assert.equal(find().technical,'hard-error');
-  assert.match(find().reasons.join('\n'),/缺少主播字幕成片核验/);
-  final.recordFinalArtifact(dir,{generation:capture(),path:file,stage:'encode:mp4_有字幕',technical:{status:'passed',checks:['最终 MP4 主播字幕首中末帧核验'],errors:[]}});
-  assert.equal(find().technical,'passed');
-  film.subtitles.blank_ranges=[{start:.6,end:.8}];
-  fs.writeFileSync(config,JSON.stringify(film));
-  assert.equal(find().freshness,'changed');
 });

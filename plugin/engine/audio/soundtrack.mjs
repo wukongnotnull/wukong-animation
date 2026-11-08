@@ -1,11 +1,11 @@
+import { applyVoiceAlignment } from './voice-alignment.mjs';
 // 混音：执行片子的 audio/build.mjs（生成配乐 / 音效）→ 准备人声 → 按时间点混合 → 响度标准化。
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as synth from './synth.mjs';
-import { synthesizeVoiceOver } from './tts.mjs';
 import { run, probeDuration } from '../core/ffmpeg.mjs';
-import { loadFilm } from '../core/job.mjs';
+import { loadFilm } from '../core/film-context.mjs';
 import { writeVoiceSources } from '../core/word-sync.mjs';
 import { charCues, clearCharCues, orphanCharCues } from './char-cues.mjs';
 import { detectSoundRanges } from '../exporters/jianying/silence.mjs';
@@ -26,25 +26,13 @@ const SFX_TRACK = 'sfx.wav'; // 听感审计按这个文件名认音效轨
 // 逐字同步点找句中停顿：比剪映切配乐更灵敏，不留前后余量
 const CHAR_SILENCE = { noise: -40, minSilence: 0.15, pad: 0 };
 
-/**
- * 决定每条人声从哪来：via 'recording' 用挂接的录音，'tts' 走 AI 配音。
- * 同期声（kind: live）是现场原声，AI 配不出来，不管 voice_source 是什么都必须挂接录音。
- * @returns {{source: string, lines: object[]}} lines 与 voices 一一对应（source 为 none 时为空）
- */
+/** Each entry is one user recording. A whole recording is mixed only once. */
 export function planVoiceLines(audio) {
-  const raw = audio.voices || [];
-  const source = audio.voice_source || (raw.some((l) => l.file) ? 'user' : 'ai');
+  const raw = audio.voices || [], source = audio.voice_source || (raw.length ? 'user' : 'none');
+  if (source === 'ai') throw new Error('仅支持用户提供的录音，AI 人声已取消');
   if (source === 'none') return { source, lines: [] };
-  const lines = raw.map((l) => {
-    const kind = l.kind || 'vo';
-    return { ...l, kind, via: source === 'user' || kind === 'live' ? 'recording' : 'tts' };
-  });
-  const missing = lines.map((l, i) => (l.via === 'recording' && !l.file ? `第 ${i + 1} 条「${l.text}」` : null)).filter(Boolean);
-  if (missing.length) {
-    const why = source === 'user' ? '人声素材来源为"用户自供录音"' : '同期声只能用现场录音';
-    throw new Error(`${why}，但以下条目没有挂接音频文件（voices[].file）：\n  ${missing.join('\n  ')}`);
-  }
-  return { source, lines };
+  if (!raw.length || raw.some(l => !l.file)) throw new Error('需要用户人声录音；请先提供 voices[].file，不使用估算声音替代。');
+  return { source, lines: raw.map(l => ({ ...l, kind: l.kind || 'vo', via: 'recording' })) };
 }
 
 function probeRecording(ctx, l) {
@@ -52,36 +40,20 @@ function probeRecording(ctx, l) {
   if (!fs.existsSync(file)) throw new Error(`找不到人声录音：${l.file}`);
   const duration = probeDuration(file);
   if (!duration) throw new Error(`无法读取音频时长（格式不支持或文件损坏）：${l.file}`);
-  return { file, at: l.at, duration, text: l.text };
+  if (l.at + duration > ctx.totalDuration + 0.001) throw new Error(`录音 ${l.file} 超出已批准的影片时长，请先确认调整；不会截断或变速。`);
+  return { file, at: l.at, duration, text: l.text || '' };
 }
 
-/**
- * 人声素材：按 audio.voice_source（第 6 道工序审片节点⑤由用户签批）取用户自供录音或 AI 配音。
- * 返回与 voices 一一对应的数组：{file, at, duration} 或 null（无音频，同步点按字数估算）。
- */
-function prepareVoices(ctx, audio, outDir, log) {
-  if (!audio.voices?.length) return [];
+function prepareVoices(ctx, audio, log) {
   const { source, lines } = planVoiceLines(audio);
-  if (source === 'none') {
-    log('  · 人声素材来源：无人声');
-    return [];
-  }
-  const items = lines.map((l) => (l.via === 'recording' ? probeRecording(ctx, l) : null));
-  const recorded = items.filter(Boolean).length;
-  if (recorded) log(`  ✓ 人声 ${recorded} 条（录音）`);
-  const ttsIdx = lines.flatMap((l, i) => (l.via === 'tts' ? [i] : []));
-  if (!ttsIdx.length) return items;
-  const r = synthesizeVoiceOver(ttsIdx.map((i) => lines[i]), outDir, { log });
-  ttsIdx.forEach((i, j) => (items[i] = r ? r.items[j] : null));
+  if (source === 'none') return [];
+  const items = lines.map(l => probeRecording(ctx, l));
+  log(`  ✓ 用户录音 ${items.length} 段`);
   return items;
 }
-
-/**
- * 把人声的实测入出点写进 film.json 的 cues（声音同步点）。
- * 没有音频（未装 TTS）时按每秒约 3.6 个汉字估算，并标注为估算值。
- */
 function voiceDuration(line, item) {
-  return item?.duration || Math.max(0.6, [...line.text.replace(/[，。！？、；：,.!?\s]/g, '')].length / 3.6);
+  if (!item?.duration) throw new Error('缺少可用录音时长，不能估算人声');
+  return item.duration;
 }
 
 const cueName = (line, i) => line.cue || `vo${i + 1}`;
@@ -166,6 +138,7 @@ function writeVoiceCues(ctx, lines, vo, log) {
  *   tracks：未混的音轨 {role: voice|build|track, file, start, gain}，人声另带实测 duration；voices：人声 {text, at, duration, estimated}
  */
 export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
+  applyVoiceAlignment(filmDir);
   const ctx=loadFilm(filmDir,{requireShots:false}),audio=ctx.film.audio||{};
   const files=[...(audio.tracks||[]),...(audio.voices||[])].filter(t=>t.file).map(t=>path.resolve(ctx.filmDir,t.file));
   const signature=audio.build?null:digest({audio,shots:ctx.shots.map(s=>[s.id,s.duration]),style:ctx.style.loudness,files:files.map(file=>[file,fileDigest(file)]),engine:treeEvidence(path.join(ENGINE_ROOT,'audio'))});
@@ -183,11 +156,16 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
 }
 
 async function mixSoundtrackFresh(filmDir, { log = console.log } = {}) {
-  // 声轨在画镜头之前做（第 7 道），只用到镜头时长，不要求镜头文件已经写好
-  const ctx = loadFilm(filmDir, { requireShots: false });
+  // 制作小样先准备声轨，只用到镜头时长，不要求镜头文件已经写好
+  let ctx = loadFilm(filmDir, { requireShots: false });
   if (ctx.legacyFields.length) log(`  ! film.json 用了旧字段名，已按新名读取，建议改过来：${ctx.legacyFields.join('，')}`);
   const audio = ctx.film.audio || {};
   checkCueNames(audio.voices || []);
+  const vo = prepareVoices(ctx, audio, log);
+  const hasVoices = vo.length > 0;
+  if (hasVoices) writeVoiceCues(ctx, audio.voices, vo, log);
+  else clearAllCharCues(ctx, log);
+  ctx = loadFilm(filmDir, { requireShots: false });
   const genDir = path.join(ctx.filmDir, 'audio', 'generated');
   fs.mkdirSync(genDir, { recursive: true });
   const tracks = [];
@@ -204,11 +182,7 @@ async function mixSoundtrackFresh(filmDir, { log = console.log } = {}) {
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
     for (const w of sfx ? densityWarnings(sfx.placements, ctx.shots) : []) log(`  ! 音效太密：${w}`);
   }
-  const vo = prepareVoices(ctx, audio, path.join(genDir, 'vo'), log);
-  for (const it of vo) if (it?.file) tracks.push({ role: 'voice', file: it.file, start: it.at, duration: it.duration, gain: 2 });
-  const hasVoices = audio.voices?.length && audio.voice_source !== 'none';
-  if (hasVoices) writeVoiceCues(ctx, audio.voices, vo, log);
-  else clearAllCharCues(ctx, log);
+  for (const it of vo) tracks.push({ role: 'voice', file: it.file, start: it.at, duration: it.duration, gain: 2 });
   const voices = hasVoices ? audio.voices.map((l, i) => ({ text: l.text, at: l.at, duration: voiceDuration(l, vo[i]), estimated: !vo[i]?.duration })) : [];
   for (const t of audio.tracks || []) tracks.push({ start: 0, gain: 0, ...t, role: 'track', file: path.join(ctx.filmDir, t.file) });
 
@@ -243,11 +217,9 @@ async function mixTracks(tracks, D, out) {
     const ms = Math.round((t.start || 0) * 1000);
     return `[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo,adelay=${ms}|${ms},volume=${t.gain || 0}dB[a${i}]`;
   });
-  const fadeOut = Math.min(1.2, D * 0.1);
   const filter =
     chains.join(';') +
-    `;${tracks.map((_, i) => `[a${i}]`).join('')}amix=inputs=${tracks.length}:normalize=0,apad,atrim=0:${D},` +
-    `afade=t=out:st=${(D - fadeOut).toFixed(3)}:d=${fadeOut.toFixed(3)}[out]`;
+    `;${tracks.map((_, i) => `[a${i}]`).join('')}amix=inputs=${tracks.length}:normalize=0,apad,atrim=0:${D}[out]`;
   // 32 位浮点：多轨叠加会超过 0 dBFS，16 位会在测响度之前就削波
   await run([...inputs, '-filter_complex', filter, '-map', '[out]', '-ar', '48000', '-c:a', 'pcm_f32le', out]).catch((e) => {
     throw new Error(`混音失败：${e.message}`);

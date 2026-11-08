@@ -7,7 +7,6 @@ import { snapshotMain, checkMainUnchanged } from '../../core/approval.mjs';
 import { commitSnapshot } from '../../core/project.mjs';
 import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, assertActiveProduction } from '../../core/state.mjs';
 import { runQc } from '../../core/qc.mjs';
-import { requireSubtitlePreflight } from '../../core/subtitle-preflight.mjs';
 import { requireTiming } from '../../core/timing.mjs';
 import { checkShotSizes } from '../../core/shot-sizes.mjs';
 import { implementationState } from '../../core/operations.mjs';
@@ -16,11 +15,10 @@ import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, prepareFi
 import { digest, readJson, atomicJson, treeEvidence } from '../../core/evidence.mjs';
 import { fail } from '../context.mjs';
 
-const SHOT_SIZE_STEP = 5;
-const SUBTITLES_STEP = 10;
-const PROXY_STEP = 11;
-const FINAL_REVIEW_STEP = 13;
-const VARIANT_STEP = 14;
+const SHOT_SIZE_STEP = 4;
+const PROXY_STEP = 5;
+const FINAL_REVIEW_STEP = 6;
+const VARIANT_STEP = 7;
 
 export function reviewCommands({ pos, opt, log, aspectOpt }) {
   return {
@@ -38,7 +36,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       const step = opt('step') ? Number(opt('step')) : null;
       if (step && !PRODUCTION_STEPS[step]) fail(`--step 取 1–${LAST_STEP}`);
       let note = pos[1];
-      // 第 5 道分镜签批前检查景别；确实要这样拍可以 --force，问题会附在签批记录里
+      // 第 4 道分镜签批前检查景别；确实要这样拍可以 --force，问题会附在签批记录里
       if (step === SHOT_SIZE_STEP) {
         const problems = checkShotSizes(loadFilm(pos[0], { requireShots: false }).film.shots);
         if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
@@ -49,21 +47,16 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       const revision=opt('delivery-revision');
       if(revision===true)throw new Error('--delivery-revision 需要完整摘要');
       const deliveryApproval=revision?prepareFinalApproval(pos[0],{id,step,revision,source:'用户明确签批（signoff）',note,openEvidence:opt('open-status')?{status:opt('open-status'),source:note}:null}):null;
-      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===13||step===14?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
+      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===6||step===7?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
       if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
       const deliveryProof=deliveryApproval?{deliveryApproval:deliveryApproval.existing&&pending?.deliveryApproval?.review?pending.deliveryApproval:deliveryApproval}:{};
       atomicJson(pendingFile,{id,step,note,signature,status:'prepared',...deliveryProof});
       if (step === FINAL_REVIEW_STEP) {
-        const ctx=loadFilm(pos[0]);requireTiming(ctx,{fresh:true,log});await requireSubtitlePreflight(ctx,{proxy:false});
-      }
-      if (step === SUBTITLES_STEP) {
-        const ctx=loadFilm(pos[0]);
-        try { await requireSubtitlePreflight(ctx,{proxy:true}); } catch { await requireSubtitlePreflight(ctx,{proxy:true,layout:true}); }
+        const ctx=loadFilm(pos[0]);requireTiming(ctx,{fresh:true,log});
       }
       if (step === PROXY_STEP) {
         const ctx=loadFilm(pos[0]);
         requireTiming(ctx,{proxy:true,fresh:true,log});
-        await requireSubtitlePreflight(ctx,{proxy:true});
       }
       if (step === VARIANT_STEP) {
         const { film } = loadFilm(pos[0]);
@@ -73,7 +66,6 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
           if (checked && !checked.ok) fail('主版不变检查未通过，不能签批副版；先完成主版复核');
           const proxy = fs.existsSync(path.join(ctx.variant.cacheDir, 'timing-proxy.json'));
           requireTiming(ctx, { proxy, fresh: true, log });
-          await requireSubtitlePreflight(ctx,{proxy});
         }
       }
       const prior=readProgress(pos[0]).history.find(h=>h.approvalId===id);

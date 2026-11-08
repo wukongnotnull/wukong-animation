@@ -2,7 +2,7 @@
 // edge-tts 对中文只按短语给时间，录音更没有时间信息，所以统一这样近似：
 // 静音检测找出这句里有声音的几段，和按标点切出的分句一一对上；每段里按字数均分。
 // 段数和分句数对不上时，整句（第一段声音开头到最后一段结尾）按字数均分。
-import { countChars } from '../core/subtitles.mjs';
+import { countChars } from '../core/spoken-text.mjs';
 
 const PAUSE = /[，。！？、；：,.!?;:…—\s]/u;
 const r3 = (x) => +x.toFixed(3);

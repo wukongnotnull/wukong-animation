@@ -5,13 +5,11 @@ import path from 'node:path';
 import { digest, atomicJson, treeEvidence, fileDigest } from './evidence.mjs';
 import { loadFilm } from './film-context.mjs';
 import { fileLink, readDecisions, decisionConflicts } from './delivery-inputs.mjs';
-import { subtitleSettings, subtitleOutputs } from './subtitles.mjs';
-import { PRESENTER_CHECK } from './presenter-subtitles.mjs';
 import { validate } from './validate.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { migrateProgress, assertCompatibleProgress } from './state.mjs';
+import { migrateProgress, assertActiveProduction, FLOW } from './state.mjs';
 import { outputsMatch } from './operations.mjs';
 import { qcReview, readReviewNotes, isSoftFinding } from './review-evidence.mjs';
 import { qcConfig } from './qc-config.mjs';
@@ -55,7 +53,7 @@ export function deliverySnapshot(file) {
 export function finalContract(dir,{aspect=null}={}) {
   dir=path.resolve(dir);
   const main=loadFilm(dir,{requireShots:false}),decisions=readDecisions(dir),errors=decisionConflicts(main,decisions);
-  for(const k of ['delivery','aspects','subtitles'])if(decisions[k]?.status!=='confirmed')errors.push(`缺少明确制作决定：${k}`);
+  for(const k of ['delivery','aspects'])if(decisions[k]?.status!=='confirmed')errors.push(`缺少明确制作决定：${k}`);
   const configured=[main.variant.aspect,...Object.keys(main.film.variants||{})];
   const all=decisions.aspects?.status==='confirmed'?decisions.aspects.value:configured;
   const selected=[...new Set(aspect&&aspect!=='all'?[aspect]:all)];
@@ -63,26 +61,23 @@ export function finalContract(dir,{aspect=null}={}) {
   const slots=[];
   for(const a of selected) {
     if(!configured.includes(a))continue;
-    const ctx=loadFilm(dir,{requireShots:false,aspect:a}),settings=subtitleSettings(ctx.film,ctx.variant),names=subtitleOutputs(settings.mode,settings.bilingual);
+    const ctx=loadFilm(dir,{requireShots:false,aspect:a});
     const formats=[...new Set((ctx.film.export?.formats||['mp4']).filter(f=>f!=='jianying'))];
     // 草稿命令/格式不能取消视频承诺；未声明视频格式时沿用既有 mp4 默认值。
     if(!formats.length)formats.push('mp4');
     const add=(kind,format,flavor,suffix)=>{
       const slot=[a,kind,format,...(flavor?[flavor]:[])].join('/');
-      const ext=kind==='subtitle'?'srt':ctx.registry.exporters.get(format)?.ext;
+      const ext=ctx.registry.exporters.get(format)?.ext;
       if(kind==='video'&&!ext)errors.push(`未注册的导出格式：${format}`);
       const file=kind==='draft'||!ext?null:path.join(dir,ctx.variant.exportName+suffix+'.'+ext);
-      const projection={slot,name:ctx.variant.exportName,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{}),...(flavor==='burned'?{bilingual:settings.bilingual}:{})};
-      const stage=kind==='draft'?'draft-export':kind==='subtitle'?'review:sidecar-'+(format==='zh'?'srt':'en'):`encode:${format}${suffix}`;
+      const projection={slot,name:ctx.variant.exportName,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{})};
+      const stage=kind==='draft'?'draft-export':`encode:${format}${suffix}`;
       slots.push({slot,aspect:a,kind,format,flavor:flavor||null,path:file,stage,projection,contractDigest:digest(projection)});
     };
-    if(names.burned!==null)for(const f of formats)add('video',f,'burned',names.burned);
-    if(names.clean!==null)for(const f of names.burned===null?formats:['mp4'])add('video',f,'clean',names.clean);
-    if(names.srt!==null)add('subtitle','zh',null,names.srt);
-    if(names.srtEn)add('subtitle','en',null,names.srtEn);
+    for(const f of formats)add('video',f,'clean','');
     if(decisions.delivery?.value==='video-and-draft')add('draft','jianying',null,'');
   }
-  return {id:digest({slots:slots.map(s=>s.projection),decisions}),scope:aspect&&aspect!=='all'?aspect:'all',mainAspect:main.variant.aspect,decisions,slots,errors};
+  return {id:digest({flow:FLOW,slots:slots.map(s=>s.projection),decisions}),scope:aspect&&aspect!=='all'?aspect:'all',mainAspect:main.variant.aspect,decisions,slots,errors};
 }
 
 function observed(file) {
@@ -116,7 +111,7 @@ function executable(name) {
   return {name,path:null,sha256:null};
 }
 function generationTools(slot) {
-  const executables=slot.kind==='subtitle'?[]:[executable('ffmpeg'),...(slot.kind==='draft'?[executable('python3')]:[])],packages=[];
+  const executables=[executable('ffmpeg'),...(slot.kind==='draft'?[executable('python3')]:[])],packages=[];
   if(slot.kind==='draft') {
     const result=spawnSync('python3',['-c','import json, importlib.util, importlib.metadata, pathlib; print(json.dumps({"version": importlib.metadata.version("pyJianYingDraft"), "root": str(pathlib.Path(importlib.util.find_spec("pyJianYingDraft").origin).parent)}))'],{encoding:'utf8'});
     try{const value=JSON.parse(result.stdout);packages.push({name:'pyJianYingDraft',version:value.version,source:codeSource(value.root)});}catch{packages.push({name:'pyJianYingDraft',version:null,source:null});}
@@ -129,10 +124,9 @@ export const finalFontUnknown=(...styles)=>styles.flatMap(s=>s?.report||s?.fontR
 
 // 分组投影独立于全局 operations 签名；只观察声明输入，未知外部执行明确阻塞。
 function dependencies(dir,slot,fontFiles=[]) {
-  const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),settings=subtitleSettings(ctx.film,ctx.variant),groups={},unknown=[];
-  const sub=slot.kind==='subtitle',visual=!sub,caption=settings.mode!=='none'&&(slot.kind==='draft'||slot.flavor==='burned');
+  const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),groups={},unknown=[];
   const files=names=>names.map(f=>sourceFile(path.resolve(dir,f)));
-  if(visual) {
+  {
     const scripts=[...ctx.shots.map(s=>s.path),...ctx.styleScripts,...ctx.filmScripts];
     groups.picture={files:files(scripts),assets:[sourceFile(path.join(ctx.style.dir,'assets'))].filter(x=>x.snapshot),config:{size:ctx.film.size,fps:ctx.film.fps,seed:ctx.film.seed,title:ctx.film.title,shots:ctx.shots.map(({id,duration})=>({id,duration})),cues:pickCues(ctx.film.cues||{},scripts),style:ctx.film.style}};
     const names=usedCueNames(scripts.filter(f=>fs.existsSync(f)).map(f=>fs.readFileSync(f,'utf8')));
@@ -147,7 +141,7 @@ function dependencies(dir,slot,fontFiles=[]) {
     for(const file of scripts)if(fs.existsSync(file)&&/\b(?:fetch|XMLHttpRequest|WebSocket|require|import|process|readFile|Deno|Bun|eval)\b|https?:\/\/|new\s+(?:Image|Audio|Function)\b/.test(fs.readFileSync(file,'utf8')))unknown.push(`动态/外部来源覆盖不足：${file}`);
     const audio=ctx.film.audio||{};
     const refs=[...(audio.tracks||[]),...(audio.voices||[])].map(t=>t.file).filter(Boolean);
-    groups.audio={config:audio,files:files(refs),implementation:codeSource(path.join(ENGINE_ROOT,'audio'))};
+    groups.audio={config:audio,alignment:json(path.join(dir,'.wka/voice-alignment.json'),null),files:files(refs),implementation:codeSource(path.join(ENGINE_ROOT,'audio'))};
     if(audio.build)unknown.push('audio.build 动态来源覆盖不足（旧阶段 signature 为 null）');
     groups.renderer={pipeline:codeSource(ctx.pipeline.dir),kits:ctx.kits.map(k=>codeSource(k.dir)),runtime:codeSource(path.join(ENGINE_ROOT,'runtime')),core:engineFiles(['core/cache.mjs','core/film-context.mjs','core/word-sync.mjs','core/timing.mjs','core/fonts.mjs'])};
     if(ctx.style.libs?.length)unknown.push('外部风格库的实际加载来源未存档，待核实');
@@ -155,18 +149,6 @@ function dependencies(dir,slot,fontFiles=[]) {
     if(ctx.style.fonts?.length&&!fontFiles.length)unknown.push('实际画面字体来源缺失');
     groups.encoding={files:[codeSource(path.join(ENGINE_ROOT,`exporters/${slot.format}`)),...engineFiles(['core/ffmpeg.mjs','core/job.mjs','core/film-context.mjs'])],settings:ctx.film.export?.[slot.format]||null};
     if(slot.kind==='draft')groups.rawTracks={files:files(refs)};
-  }
-  if(sub||caption) {
-    const zh=path.join(dir,settings.file),en=path.join(dir,settings.enFile);
-    if(caption||slot.format==='zh'||slot.format==='en')groups.zh={source:sourceFile(zh)};
-    if((caption&&settings.bilingual)||slot.format==='en')groups.en={source:sourceFile(en)};
-    groups.subtitleImplementation={files:engineFiles(['core/subtitles.mjs','core/film-context.mjs'])};
-    if(settings.presenter) groups.presenterSubtitles={blankRanges:settings.blankRanges,files:engineFiles(['core/presenter-subtitles.mjs'])};
-  }
-  if(caption) {
-    const layout=json(path.join(dir,'subtitle-layout.json'),null);
-    groups.layout={style:ctx.style.subtitles,regions:layout?.aspects?.[slot.aspect]||null,files:engineFiles(['core/subtitle-layer.mjs','core/subtitle-layer.html','core/subtitle-preflight.mjs'])};
-    if(!fontFiles.length)unknown.push('实际字幕字体来源缺失');
   }
   for(const [name,value] of Object.entries(groups)) {
     const walk=v=>{if(!v||typeof v!=='object')return;if(v.error)unknown.push(`${name} 来源无法读取：${v.path}（${v.error}）`);for(const child of Object.values(v))if(typeof child==='object')walk(child);};walk(value);
@@ -229,7 +211,7 @@ function appendArtifact(dir,data,artifact) {
 
 // 仅由成功导出/字幕写入边界调用。回执先存，账本写入失败仍可 --record 安全重试。
 export function recordFinalArtifact(dir,{generation,path:file,stage,technical={status:'unknown',checks:[],errors:[]}}) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const contract=finalContract(dir),slot=contract.slots.find(s=>s.slot===generation.slot)||generation.descriptor;
   if(!slot)throw new Error('生成后交付要求已取消，保留产物，待核实');
   const artifact={id:generation.id,slot:generation.slot,path:path.resolve(file),aspect:slot.aspect,format:slot.format,flavor:slot.flavor,generatedAt:new Date().toISOString(),snapshot:deliverySnapshot(file),contractDigest:generation.contractDigest,dependencies:generation.dependencies,tool:generation.tool,stage,provenance:'generated',technical,openStatus:'not-tested'};
@@ -243,7 +225,7 @@ export function recordFinalArtifact(dir,{generation,path:file,stage,technical={s
 }
 
 export function recordFinalEvidence(dir) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const root=path.join(path.resolve(dir),'.wka/final-delivery-receipts'),data=ledger(dir),recorded=[];
   if(fs.existsSync(root))for(const name of fs.readdirSync(root).sort()) {
     if(!name.endsWith('.json'))continue;
@@ -293,10 +275,6 @@ function technicalStatus(dir,slot,artifact) {
   if(base.errors?.length)return {...base,status:'hard-error'};
   if(slot.kind!=='video')return base;
   const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect});
-  if(slot.format==='mp4'&&slot.flavor==='burned'&&ctx.film.subtitles?.source==='presenter'&&
-    !base.checks?.some(check=>check.startsWith(PRESENTER_CHECK))) {
-    return {...base,status:'hard-error',errors:['当前 MP4 缺少主播字幕成片核验']};
-  }
   const stage=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{}).find(s=>s.stage==='review:qc'&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
   const signature=qcSource(ctx.variant.cacheDir);
   if(!stage||stage.signature!==signature||!outputsMatch(stage.outputs))return base;
@@ -312,30 +290,28 @@ function technicalStatus(dir,slot,artifact) {
 
 function reviewSets(dir,contract,items,data) {
   const result={};
-  for(const step of [13,15]) {
-    const chosen=items.filter(i=>step===13?i.aspect===contract.mainAspect&&i.kind!=='draft':i.kind==='draft');
+  for(const step of [6,8]) {
+    const chosen=items.filter(i=>step===6?i.aspect===contract.mainAspect&&i.kind!=='draft':i.kind==='draft');
     const bindings=chosen.map(i=>({slot:i.slot,path:i.path,artifactId:i.artifactId,snapshot:i.snapshot,contractDigest:i.contractDigest,source:sourceStatus(dir,i,data.artifacts.find(a=>a.id===i.artifactId)),dependencies:dependencies(dir,i,data.artifacts.find(a=>a.id===i.artifactId)?.dependencies?.fontFiles||[])}));
-    result[step]={step,bindings,deliveryRevision:digest({step,bindings})};
+    result[step]={step,bindings,deliveryRevision:digest({flow:FLOW,step,bindings})};
   }
-  // 14 仍先审小样。来源和实际小样字节一并绑定，高清生成后才可继承。
+  // 调整画幅仍先审小样。来源和实际小样字节一并绑定，高清生成后才可继承。
   const operations=json(path.join(dir,'.cache/operations.json'),{stages:{}}),bindings=[];
   for(const aspect of [...new Set(contract.slots.map(s=>s.aspect))].filter(a=>a!==contract.mainAspect)) {
     const ctx=loadFilm(dir,{requireShots:false,aspect}),stage=Object.values(operations.stages||{}).find(s=>s.aspect===aspect&&s.proxy&&s.stage==='review:proxy'&&s.status==='completed');
     const source=latestArtifact(data,`${aspect}/source/proxy`);
     const file=source?.path||stage?.outputs?.[0]?.file||path.join(dir,'review',ctx.variant.review('小样.mp4'));
     const obs=observed(file),target=contract.slots.find(s=>s.aspect===aspect&&s.kind==='video');
-    const preflight=json(path.join(dir,'review',ctx.variant.review('字幕预检-proxy.json')),null);
-    const deps=target?dependencies(dir,target,source?.dependencies?.fontFiles||finalFontFiles(preflight)):null;
-    for(const sub of contract.slots.filter(s=>s.aspect===aspect&&s.kind==='subtitle'))Object.assign(deps.groups,dependencies(dir,sub).groups);
+    const deps=target?dependencies(dir,target,source?.dependencies?.fontFiles||[]):null;
     const generated=source&&digest(source.snapshot)===digest(obs.snapshot)&&['picture','audio','renderer','fonts'].every(g=>digest(source.dependencies?.groups[g]||null)===digest(deps?.groups[g]||null));
     bindings.push({slot:`${aspect}/source/proxy`,aspect,path:file,snapshot:obs.snapshot,stageId:generated?source.id:null,contract:contract.slots.filter(s=>s.aspect===aspect&&s.kind!=='draft').map(s=>s.projection),dependencies:deps});
   }
-  result[14]={step:14,bindings,deliveryRevision:digest({step:14,bindings})};
+  result[7]={step:7,bindings,deliveryRevision:digest({flow:FLOW,step:7,bindings})};
   return result;
 }
 
 export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvidence=null}={}) {
-  if(![13,14,15].includes(step))throw new Error('交付版本绑定只用于既有 13/14/15 节点');
+  if(![6,7,8].includes(step))throw new Error('交付版本绑定只用于6/7/8 节点');
   dir=path.resolve(dir);const report=finalDeliveryReport(dir),set=report.reviewSets[step],data=ledger(dir);
   const old=data.approvals.find(a=>a.id===id);
   if(old){if(old.revision!==revision||old.step!==step)throw new Error('同一 approval-id 不能绑定不同交付版本');return {existing:old};}
@@ -343,20 +319,20 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
   if(!source?.trim()||!note?.trim()||!id)throw new Error('交付批准需要实际用户来源、结论及 approval-id');
   if(report.errors.length)throw new Error(`交付决定待核实：${report.errors.join('；')}`);
   if(!set.bindings.length)throw new Error('本节点没有实际产物，沿用既有无产物签批，不制造逐文件验收');
-  if(step===15)requireEditorClosed();
+  if(step===8)requireEditorClosed();
   const artifacts=[],bindings=[];
   for(const binding of set.bindings) {
     if(!binding.snapshot||!binding.path)throw new Error(`审阅产物缺失或不可读：${binding.slot}`);
-    if(step===14){if(!binding.stageId)throw new Error('副版小样缺少成功生成依据');bindings.push(binding);continue;}
+    if(step===7){if(!binding.stageId)throw new Error('副版小样缺少成功生成依据');bindings.push(binding);continue;}
     let artifact=data.artifacts.find(a=>a.id===binding.artifactId);
-    if(!artifact&&step===15) {
+    if(!artifact&&step===8) {
       const item=report.items.find(i=>i.slot===binding.slot);
       artifact={id:null,slot:binding.slot,path:binding.path,aspect:item.aspect,format:item.format,flavor:item.flavor,contractDigest:binding.contractDigest,technical:{status:'unknown'}};
     }
     if(!artifact)throw new Error(`产物缺少生成来源：${binding.slot}`);
     const changed=!artifact.id||digest(artifact.snapshot)!==digest(binding.snapshot);
     let current=artifact;
-    if(changed&&step!==15)throw new Error(`产物在生成后变化，须重新核实：${binding.path}`);
+    if(changed&&step!==8)throw new Error(`产物在生成后变化，须重新核实：${binding.path}`);
     if(changed) {
       if(!['opened','playback-confirmed'].includes(openEvidence?.status)||!openEvidence.source?.trim())throw new Error('手改草稿需要实际打开/播放检查的明确来源');
       const technical=nativeCheck(binding.path);
@@ -368,18 +344,18 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
     bindings.push({slot:binding.slot,artifactId:current.id,path:binding.path,snapshot:binding.snapshot,contractDigest:binding.contractDigest});
   }
   if(openEvidence&&!['opened','playback-confirmed'].includes(openEvidence.status))throw new Error('打开依据仅支持 opened / playback-confirmed');
-  return {artifacts,approval:{id,step,revision,bindings,source,note,openEvidence,at:new Date().toISOString(),type:step===14?'source':'direct'},review:set};
+  return {artifacts,approval:{id,step,revision,bindings,source,note,openEvidence,at:new Date().toISOString(),type:step===7?'source':'direct'},review:set};
 }
 
 export function commitFinalApproval(dir,prepared) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const data=ledger(dir),approval=prepared.existing||prepared.approval,old=data.approvals.find(a=>a.id===approval.id);
   if(old){if(digest(old)!==digest(approval))throw new Error('批准记录冲突，未覆盖原记录');return old;}
-  if(!prepared.review||digest({step:approval.step,bindings:prepared.review.bindings})!==approval.revision)throw new Error('交付批准缺少完整审阅版本证明');
+  if(!prepared.review||digest({flow:FLOW,step:approval.step,bindings:prepared.review.bindings})!==approval.revision)throw new Error('交付批准缺少完整审阅版本证明');
   if(!progress(dir).history?.some(h=>h.approvalId===approval.id&&h.step===approval.step))throw new Error('既有流程批准尚未成功存档，不能追加交付验收');
   const current=finalDeliveryReport(dir).reviewSets[approval.step];
   if(current.deliveryRevision!==approval.revision)throw new Error('批准存档期间交付版本变化，未绑定旧审阅');
-  if(approval.step===15)requireEditorClosed();
+  if(approval.step===8)requireEditorClosed();
   for(const a of prepared.artifacts||[])if(!data.artifacts.some(old=>old.id===a.id))data.artifacts.push(a);
   const contract=finalContract(dir);if(!data.contracts.some(c=>c.id===contract.id))data.contracts.push(contract);
   data.approvals.push(approval);
@@ -398,14 +374,14 @@ function acceptance(dir,item,artifact,data,history) {
   }
   // 高清只继承实际批准的小样来源；生成证据与相关契约必须逐组匹配。
   if(artifact?.provenance==='generated'&&item.aspect!==finalContract(dir).mainAspect&&item.kind!=='draft'&&item.freshness==='current'&&artifact.technical.status==='passed') {
-    for(const approval of [...data.approvals].reverse().filter(a=>a.step===14)) {
+    for(const approval of [...data.approvals].reverse().filter(a=>a.step===7)) {
       const binding=approval.bindings.find(b=>b.aspect===item.aspect);
-      if(!binding||binding.dependencies?.unknown.length||!history.some(h=>h.approvalId===approval.id&&h.step===14)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
-      const groups=item.kind==='subtitle'?['zh',...(item.format==='en'?['en']:[])]:['picture','audio',...(item.flavor==='burned'?['zh','en','layout']:[])];
+      if(!binding||binding.dependencies?.unknown.length||!history.some(h=>h.approvalId===approval.id&&h.step===7)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
+      const groups=['picture','audio'];
       if(groups.every(g=>digest(binding.dependencies?.groups[g]||null)===digest(artifact.dependencies?.groups[g]||null)))return {acceptance:'accepted',approval:{id:approval.id,type:'inherited',source:approval.source,at:approval.at},openStatus:'not-tested',reason:'来源已批准，高清生成核验通过'};
     }
   }
-  const step=item.kind==='draft'?15:item.aspect===finalContract(dir).mainAspect?13:14;
+  const step=item.kind==='draft'?8:item.aspect===finalContract(dir).mainAspect?6:7;
   return history.some(h=>h.step===step)?{acceptance:'historical-only',reason:'历史已验收，当前版本待核实：缺少确切产物绑定链'}:{acceptance:'pending'};
 }
 
@@ -423,7 +399,7 @@ function evidencedCandidates(dir,data,items,host) {
 }
 
 export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   if(!['codex','claude','generic'].includes(host))throw new Error('host 应为 codex、claude 或 generic');
   dir=path.resolve(dir);const contract=finalContract(dir,{aspect}),data=ledger(dir),history=progress(dir).history||[];
   const items=contract.slots.map(s=>{
@@ -484,7 +460,7 @@ export function formatFinalDelivery(report) {
 }
 
 export function writeFinalDelivery(dir,options={}) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const report=finalDeliveryReport(dir,options),suffix=report.scope==='all'?'':'-'+report.scope.replace(':','x');
   const base=path.join(path.resolve(dir),'review','最终交付清单'+suffix),audit=path.join(path.resolve(dir),'review','最终交付审计'+suffix);
   report.appendix={json:audit+'.json',markdown:audit+'.md'};

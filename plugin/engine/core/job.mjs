@@ -126,6 +126,7 @@ async function pipelineModule(job) {
 
 /** 渲染所有（或指定）镜头并拼接成一条无声视频，返回其路径。 */
 export async function render(filmDir, { proxy = false, only = null, selected = null, daily = false, force = false, aspect = null, segmentsOnly = false, log = console.log } = {}) {
+  await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
   const ctx = loadFilm(filmDir, { aspect });
   for (const id of selected || only || []) if (!ctx.shots.some(s => s.id === id)) throw new Error(`没有镜头 ${id}`);
   renderWorkers({ proxy, daily }); // 在准备字体或启动浏览器之前校验并发设置
@@ -345,7 +346,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     let generation=null;
     if(!proxy)try {
       const kind=name==='jianying'?'draft':'video',flavor=kind==='video'?(suffix.includes('有字幕')?'burned':'clean'):null;
-      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{}),...(flavor==='burned'?{bilingual:!!ctx.film.subtitles?.bilingual}:{})};
+      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{})};
       generation=captureFinalGeneration(ctx.filmDir,{slot,fontFiles,unknownReasons,inputFiles:[audio,...(timeline?[...timeline.shots,...timeline.tracks].map(t=>t.file):[])].filter(Boolean),descriptor:{slot,aspect:ctx.variant.aspect,kind,format:name,flavor,projection,contractDigest:digest(projection)}});
     }catch(e){log(`  ! 交付来源未取证，保留导出任务：${e.message}`);}
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）

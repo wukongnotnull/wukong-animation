@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>悟空 · 审阅工作台</title><link rel="stylesheet" href="/app.css"><script type="module" src="/app.js"></script></head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">悟</span><div><strong>悟空动画</strong><span>审阅工作台</span></div></div>
+    <div class="project-select"><label for="films">当前影片</label><select id="films" aria-label="切换影片"></select></div>
+    <button id="overview-button" class="quiet">待审总览</button><span class="local-badge"><i></i> 本地工作台</span>
+    <button id="refresh" class="quiet">↻ 刷新交付物</button><button id="pending" class="quiet">查看返修待办</button>
+  </header>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <div class="statusbar"><span id="connection" role="status">正在连接本机工程…</span><span id="last-sync"></span><button id="apply-update" hidden>查看更新</button><span id="draft-status" role="status"></span><button id="retry-drafts" hidden>重试保存草稿</button></div>
+  <nav class="panelbar" aria-label="工作区面板"><button data-panel="files">文件</button><button data-panel="preview" aria-pressed="true">预览</button><button data-panel="notes">意见</button><button data-panel="checks">检查</button><button id="toggle-library">收起文件栏</button><button id="toggle-inspector">收起审阅栏</button><details class="layout-controls"><summary>调整栏宽</summary><label>文件栏宽度<input id="library-width" type="range" min="180" max="340" value="220"></label><label>审阅栏宽度<input id="inspector-width" type="range" min="260" max="460" value="320"></label></details></nav>
+  <section id="overview" aria-label="待审总览" hidden><div class="overview-heading"><div><span class="eyebrow">继续你的审阅</span><h1>待审总览</h1><p>找到问题，查看对应版本，再确认处理结果。</p></div><div id="overview-counts"></div></div><div class="overview-filters"><input id="search" type="search" aria-label="搜索交付物与意见" placeholder="搜索文件、阶段或意见…"><select id="queue-filter" aria-label="筛选审阅状态"><option value="all">全部状态</option><option value="blocking">阻塞意见</option><option value="verification">待复验</option><option value="review">需要复核</option><option value="unchecked">尚未检查</option></select><select id="queue-category" aria-label="筛选交付物类别"><option value="all">全部类别</option><option value="formal">正式交付物</option><option value="reference">参考资料</option><option value="history">历史交付物</option></select></div><div id="overview-list"></div></section>
+  <main class="workspace" data-panel="preview" hidden>
+    <aside class="library">
+      <div class="section-heading"><span>制作流程</span><span id="progress" class="muted"></span></div>
+      <nav id="stages" aria-label="制作阶段"></nav>
+      <div class="section-heading file-heading"><span>本阶段交付物</span><span id="file-count" class="muted"></span></div>
+      <div id="files" aria-label="交付物列表"></div>
+      <div class="library-foot">每一步成果，都有据可查</div>
+    </aside>
+    <section class="center">
+      <div class="viewer-toolbar"><div><span id="stage-name" class="eyebrow">制作审阅</span><h1 id="file-name">选择影片开始审阅</h1></div><div class="viewer-actions"><span id="view-state" class="tag"></span><button id="read-mode" hidden>查看原文</button><select id="shot-jump" aria-label="定位分镜" hidden></select><button id="fullscreen" title="全屏预览" aria-label="全屏预览">⛶</button></div></div>
+      <div id="viewer" tabindex="0"><div class="empty"><span class="empty-symbol">◈</span><h2>所有交付物，在这里相遇</h2><p>从左侧选择一个阶段，开始查看和审阅。</p></div></div>
+      <div id="timeline" hidden>
+        <div class="timeline-head"><strong>播放时间轴</strong><span id="play-time">00:00 / 00:00</span><label>速度 <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><button id="mark-time" class="quiet">标注当前时间</button></div>
+        <input id="seek" type="range" min="0" max="1" step="0.01" value="0" aria-label="播放位置">
+        <div class="track-row"><span class="track-label">镜头</span><div id="shot-track"></div></div>
+        <div class="timeline-note">点击镜头定位 · 时间轴仅用于查看</div>
+      </div>
+      <footer class="viewer-foot"><span id="file-path">本地素材 · 只读预览</span><button id="next-item" class="quiet">下一待审项</button><button id="locate" class="quiet">定位原文件 ↗</button></footer>
+    </section>
+    <aside class="inspector">
+      <div class="inspector-scroll">
+        <section class="inspector-section checks-section"><div class="section-heading"><span>版本与检查</span><span id="kind-label" class="muted"></span></div><label class="field-label" for="versions">查看版本</label><select id="versions"></select><div id="version-detail" class="meta"></div><div id="checks"></div><button id="checked" class="wide">标记此版本已检查</button></section>
+        <section class="inspector-section notes-section"><div class="section-heading"><span>审阅意见</span><span id="note-count" class="muted"></span></div><label class="field-label" for="note-filter">显示意见</label><select id="note-filter"><option value="open">未关闭意见</option><option value="all">全部意见与历史</option><option value="verification">待复验</option></select><div id="notes"></div>
+          <form id="note-form"><div class="anchor-row"><span id="anchor-label">整份交付物</span><button id="clear-anchor" type="button" class="quiet">清除定位</button></div>
+            <div id="time-anchor" hidden><label>起点（秒）<input id="time-start" type="number" min="0" step="0.01"></label><label>终点（秒）<input id="time-end" type="number" min="0" step="0.01"></label></div>
+            <textarea id="note-text" rows="3" maxlength="10000" placeholder="写下具体意见…" aria-label="审阅意见" required></textarea>
+            <div class="note-options"><label><input id="blocking" type="checkbox" checked> 通过前必须解决</label><button type="submit" class="primary">保存意见</button></div>
+          </form><p class="hint">选中文字、点击图片，或标记播放时间，即可定位问题。保存意见后，回到对话说“处理工作台里的待办”。</p>
+        </section>
+        <section class="inspector-section checks-section"><div class="section-heading"><span>阶段审阅 · 当前成果</span><span id="stage-status" class="tag"></span></div><div id="stage-blocks"></div><textarea id="decision-note" rows="2" maxlength="10000" placeholder="本阶段的审阅结论" aria-label="阶段审阅结论"></textarea><label id="draft-confirm" hidden><input id="draft-opened" type="checkbox"> 我已在专用软件中打开并检查当前草稿</label><div class="decision-actions"><button id="request-changes">需要修改</button><button id="approve" class="primary">通过本阶段</button></div><p class="hint">通过绑定当前版本；返修由对话发起。</p><details><summary>其他依据下的结论草稿</summary><div id="stage-drafts"></div></details><details><summary>历史审阅结论</summary><div id="decision-history"></div></details></section>
+      </div>
+    </aside>
+  </main>
+  <dialog id="pending-dialog"><div class="dialog-head"><h2>返修待办</h2><button id="close-pending" aria-label="关闭待办">×</button></div><p class="hint">回到对话说“处理工作台里的待办”，插件会读取这些意见。此页面不会启动生成。</p><div id="pending-list"></div></dialog>
+  <dialog id="resolution-dialog"><form id="resolution-form"><h2 id="resolution-title">处置意见</h2><label for="resolution-reason">说明理由</label><textarea id="resolution-reason" rows="4" maxlength="10000" required></textarea><div class="decision-actions"><button id="cancel-resolution" type="button">取消</button><button type="submit" class="primary">确认处置</button></div></form></dialog>
+</body></html>

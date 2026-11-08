@@ -4,6 +4,7 @@ import { reviewCommands } from './commands/review.mjs';
 import { mediaCommands } from './commands/media.mjs';
 import { audioCommands } from './commands/audio.mjs';
 import { subtitlesFinalCommands } from './commands/subtitles-final.mjs';
+import { workbenchCommands } from './commands/workbench.mjs';
 
 // 唯一命令目录：处理器与保护策略一起维护。
 export function commandsFor(context) {
@@ -17,6 +18,7 @@ export function commandsFor(context) {
   };
 
   return {
+    'workbench': { preflight: 'none', lock: 'none', active: false, run: workbenchCommands(context).workbench },
     'delivery': { preflight: 'film', lock: 'final-record', active: false, run: groups['review']['delivery'] },
     'resume': { preflight: 'none', lock: 'none', active: false, run: groups['project']['resume'] },
     'setup': { preflight: 'none', lock: 'none', active: false, run: groups['environment']['setup'] },

@@ -10,6 +10,7 @@ import { preflightSubtitles } from '../../core/subtitle-preflight.mjs';
 import { checkTiming, checkOutputTiming } from '../../core/timing.mjs';
 import { buildSubtitles, formatSrt, attachEnglish, subtitleSettings, subtitleOutputs, checkEnglish, englishSrt } from '../../core/subtitles.mjs';
 import { burnSubtitles, subtitleStyle } from '../../core/subtitle-layer.mjs';
+import { preparePresenterReview, requirePresenterConfirmation, verifyPresenterExport, PRESENTER_CHECK } from '../../core/presenter-subtitles.mjs';
 import { runStage } from '../../core/operations.mjs';
 import { readDecisions, decisionConflicts } from '../../core/delivery.mjs';
 import { captureFinalGeneration, finalFontFiles, finalFontUnknown } from '../../core/final-delivery.mjs';
@@ -26,9 +27,15 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     if (settings.mode === 'none') return log('本片 subtitles.mode 为 none，不出字幕');
     const file = path.join(ctx.filmDir, settings.file);
     const existed = fs.existsSync(file);
-    if (preflight && !existed) fail(`还没有 ${settings.file}，请先生成字幕再预检`);
+    if (preflight && !existed && !settings.presenter) fail(`还没有 ${settings.file}，请先生成字幕再预检`);
     let subs;
-    if (fs.existsSync(file) && !force) {
+    let presenter;
+    if (settings.presenter) {
+      presenter=preparePresenterReview(ctx,settings,{proxy:preview||preflight});
+      subs=presenter.subs;
+      registerReview(filmDir,'presenter-subtitle-map',presenter.files,aspect,preview||preflight);
+      log(`✓ 读取已校对的主播字幕 ${subs.length} 条 → ${presenter.files[0]}`);
+    } else if (fs.existsSync(file) && !force) {
       subs = (preview || preflight) ? null : readSubtitles(ctx, settings, {});
       log(`· 已存在 ${settings.file}（${subs?.length ?? "待预检"} 条，可能手改过断句），未覆盖。声音返修后要重新生成，请加 --force，会覆盖手改`);
     } else {
@@ -58,7 +65,7 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     const mix = path.join(ctx.filmDir, '.cache', 'mix.wav');
     const out = path.join(ensureDir(path.join(ctx.filmDir, 'review')), ctx.variant.review('字幕预览.mp4'));
     const { W, H } = outputSize(ctx.film, true);
-    await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.variant.cacheDir, 'work'), proxy: true, fps: outputSize(ctx.film,true).fps, prepared: checked.layers, audio: fs.existsSync(mix) ? mix : null, log });
+    await burnSubtitles(video, subs, out, { W, H, style: ctx.style, workDir: path.join(ctx.variant.cacheDir, 'work'), proxy: true, fps: outputSize(ctx.film,true).fps, prepared: checked.layers, presenterFrames:presenter?.data.totalFrames ?? null, audio: fs.existsSync(mix) ? mix : null, log });
     checkOutputTiming(ctx, out, { proxy: true, log });
     registerReview(filmDir,'subtitle-preview',[out],aspect,true);
     log(`字幕预览：${out}`);
@@ -66,6 +73,7 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
 
   async function cmdFinalAll(filmDir, o) {
     if (o.aspect !== 'all') return cmdFinal(filmDir, o);
+    if (o.confirmation) fail('字幕复核只能确认一个画幅的当前输出，请指定画幅');
     const { film } = loadFilm(filmDir);
     const stale = staleVariants(readProgress(filmDir));
     if (stale.length) fail(`${stale.join('、')} 副版已过期：主版在第 13 道重新签批过，先重做第 14 道「改版」并签批，再出全部画幅`);
@@ -87,8 +95,13 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     }
     const settings = subtitleSettings(ctx.film, ctx.variant);
     const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
+    if (o.confirmation && (!settings.presenter || !['burn','both'].includes(settings.mode) || !formats.includes('mp4') || o.force || o.only))
+      fail('字幕复核需要主播字幕 MP4，且不能同时强制重导或只渲染部分镜头');
     const draftOnly=formats.every(f=>f==='jianying');
     let subs = settings.mode === 'none' ? null : [];
+    const presenter=settings.presenter && subs ? preparePresenterReview(ctx,settings,{proxy:!!o.proxy}) : null;
+    if (presenter) registerReview(filmDir,'presenter-subtitle-map',presenter.files,o.aspect,!!o.proxy);
+    if (o.confirmation) requirePresenterConfirmation(ctx,presenter,o.confirmation,!!o.proxy);
     // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
     const { mix: audio, tracks, voices,loudness } = await (await import('../../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
     ctx=loadFilm(filmDir,{aspect:o.aspect});
@@ -112,10 +125,16 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     const outs = [];
     if (visual.length && names.burned !== null) {
       const out = path.join(ctx.variant.cacheDir, o.proxy ? 'video-subtitled-proxy.mp4' : 'video-subtitled.mp4');
-      const burned = await runStage(ctx.filmDir,{stage:'subtitle-burn',aspect:ctx.variant.aspect,proxy:!!o.proxy,force:o.force,signature:digest({video:fileDigest(video),subs,style:ctx.style.subtitles,layers:checked?.report?.signature}),log,run:async()=>{
-        const value=await burnSubtitles(video,subs,out,{W:job.W,H:job.H,style:ctx.style,workDir:job.workDir,proxy:o.proxy,prepared:checked?.layers,log});return {value,outputs:[value]};}});
+      const burned = await runStage(ctx.filmDir,{stage:'subtitle-burn',aspect:ctx.variant.aspect,proxy:!!o.proxy,force:o.force,reuseOnly:!!o.confirmation,signature:digest({video:fileDigest(video),subs,style:ctx.style.subtitles,layers:checked?.report?.signature}),log,run:async()=>{
+        const value=await burnSubtitles(video,subs,out,{W:job.W,H:job.H,style:ctx.style,workDir:job.workDir,proxy:o.proxy,prepared:checked?.layers,fps:job.timeline.fps,presenterFrames:presenter?.data.totalFrames ?? null,log});return {value,outputs:[value]};}});
       checkOutputTiming(ctx, burned, { proxy: o.proxy, log });
-      outs.push(...(await encodeOutputs(filmDir, { video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),unknownReasons:finalFontUnknown(job.fonts,checked?.report),log })));
+      const verifyMp4=presenter ? async (file,exportId)=>{
+        const result=await verifyPresenterExport(ctx,{clean:video,file,prepared:presenter,layers:checked.layers.files,W:job.W,H:job.H,exportId,proxy:!!o.proxy,confirmation:o.confirmation});
+        registerReview(filmDir,'presenter-subtitle-output',result.files,o.aspect,!!o.proxy);
+        log(`主播字幕成片核验 → ${result.files[0]}`);
+        return {error:result.error,check:result.verdict==='confirmed'?`${PRESENTER_CHECK}（人工复核 ${result.proof}）`:PRESENTER_CHECK};
+      } : null;
+      outs.push(...(await encodeOutputs(filmDir, { verifyMp4, reuseOnly:!!o.confirmation, video: burned, audio, proxy: o.proxy, formats: visual, suffix: names.burned, aspect: o.aspect, force:o.force,fontFiles:finalFontFiles(job.fonts,checked?.report),unknownReasons:finalFontUnknown(job.fonts,checked?.report),log })));
     }
     // 已有烧录版时，无字幕版只多出一个 mp4
     if (visual.length && names.clean !== null) {
@@ -133,7 +152,8 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     if (names.srt !== null && !o.proxy && !draftOnly) {
       const srt = path.join(ctx.filmDir, `${ctx.variant.exportName}${names.srt}.srt`);
       const generation=captureFinalGeneration(ctx.filmDir,{slot:`${ctx.variant.aspect}/subtitle/zh`});
-      fs.copyFileSync(path.join(ctx.filmDir, settings.file), srt);
+      const source=path.join(ctx.filmDir,settings.file);
+      if (source!==srt) fs.copyFileSync(source,srt);
       registerReview(filmDir,'sidecar-srt',[srt],o.aspect);
       saveFinalSubtitle(ctx,generation,srt,'review:sidecar-srt');
       log(`  导出 srt → ${path.basename(srt)}`);
@@ -157,7 +177,10 @@ export function subtitlesFinalCommands({ pos, opt, log, aspectOpt }) {
     },
     'final': async () => {
       if (!pos[0]) fail('用法：wka final <片目录> [--aspect 9:16|all]');
+      const confirmation=opt('confirm-subtitles');
+      if (confirmation && !/^[a-f0-9]{64}$/.test(String(confirmation))) fail('请提供当前成片核验报告里的完整复核摘要');
       return cmdFinalAll(pos[0], {
+        confirmation,
         proxy: !!opt('proxy'),
         only: opt('only') ? String(opt('only')).split(',') : null,
         force: !!opt('force'),

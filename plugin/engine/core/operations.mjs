@@ -53,7 +53,8 @@ export function sourceState(dir) {
   const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','subtitle-layout.json','review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,source(path.join(dir,rel))]);
   const film=readJson(path.join(dir,'film.json'),{});
-  const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
+  const presenterFiles=film.subtitles?.source==='presenter'?[film.subtitles.file||'subtitles.srt',...Object.values(film.variants||{}).map(v=>v.subtitles?.file)]:[];
+  const references=[...presenterFiles,...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
   for(const rel of references)data.push([rel,source(path.resolve(dir,rel))]);
   data.push(['shots',tree(path.join(dir,'shots'))],['audio',tree(path.join(dir,'audio'),(rel,ent)=>ent.isDirectory()&&ent.name==='generated')]);
   const subtitleNames=()=>fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>/^subtitles.*\.(srt|json)$/.test(f)):[];
@@ -75,14 +76,15 @@ export function rememberArtifacts(dir,{stage,aspect,proxy=false,signature,value,
   data.stages[key]={id:crypto.randomUUID(),stage,aspect,proxy,signature,implementation:implementationState(),sourceState:sourceState(dir),status:'completed',startedAt:new Date().toISOString(),completedAt:new Date().toISOString(),value,outputs:outputs.map(capture)};
   atomicJson(ledgerFile(dir),data); return data.stages[key];
 }
-export async function runStage(dir,{stage,aspect,proxy=false,signature,force=false,log=console.log,run,validate=()=>true,onReuse=()=>{}}) {
+export async function runStage(dir,{stage,aspect,proxy=false,signature,force=false,log=console.log,run,validate=()=>true,onReuse=()=>{},reuseOnly=false}) {
   assertCompatibleProgress(dir);
   const key=keyOf({stage,aspect,proxy}),data=load(dir),old=data.stages[key];
   const label=`[${aspect} ${proxy?'小样':'高清'} · ${stage}]`;
   if(!force&&signature&&old?.signature===signature&&old.implementation===implementationState()&&old.status==='completed'&&outputsMatch(old.outputs)&&await validate(old.value)){
     data.stages[key]={...old,sourceState:sourceState(dir),checkedAt:new Date().toISOString()};atomicJson(ledgerFile(dir),data);
-    log(`${label} 复用完成产物`);onReuse();return old.value;
+    log(`${label} 复用完成产物`);onReuse(old);return old.value;
   }
+  if(reuseOnly)throw new Error(`${label} 当前产物不能复用，请按正常导出流程重新核验`);
   const entry={id:crypto.randomUUID(),stage,aspect,proxy,signature,status:'running',command:readJson(path.join(dir,'.cache/active-command.json'))?.argv||null,pid:process.pid,host:os.hostname(),startedAt:new Date().toISOString()};
   data.stages[key]=entry;atomicJson(ledgerFile(dir),data);log(`${label} 开始`);
   try {

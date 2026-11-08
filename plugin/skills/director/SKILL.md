@@ -409,6 +409,8 @@ edge-tts 的中文普通话音色：
 
 **不出字幕**：`subtitles.mode` 为 `none`（或没有 `subtitles` 字段）时，停下请用户确认"本片不出字幕"，签批后继续。
 
+**主播实录字幕**：已有按成片时间校对的单行 SRT 时，在 `film.json` 的 `subtitles` 里设 `source: "presenter"`，用 `file` 指定源字幕。用 `blank_ranges` 的 `{start,end,label}` 标记要留空的区间（单位为秒，标签可省略）。`wka subtitles <片>` 读取并生成分镜定位表，返修由剪辑者改源 SRT。该模式沿用下方版式预检步骤，终版 MP4 另看 `review/主播字幕成片核验*.md`。有缺字先修复，待人工核对按报告逐项看当前文件，再使用报告里的复核摘要。复核摘要只适用于当前导出，不能替代终审签批。详细配置见仓库 README 的「主播实录字幕」。
+
 **生成**：`wka subtitles <片>` 从人声原文和 `cues` 里的实测入出点生成 `subtitles.srt`，断句规则：
 
 | 规则 | 说明 |

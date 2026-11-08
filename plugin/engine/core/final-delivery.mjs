@@ -6,6 +6,7 @@ import { digest, atomicJson, treeEvidence, fileDigest } from './evidence.mjs';
 import { loadFilm } from './film-context.mjs';
 import { fileLink, readDecisions, decisionConflicts } from './delivery-inputs.mjs';
 import { subtitleSettings, subtitleOutputs } from './subtitles.mjs';
+import { PRESENTER_CHECK } from './presenter-subtitles.mjs';
 import { validate } from './validate.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
@@ -160,6 +161,7 @@ function dependencies(dir,slot,fontFiles=[]) {
     if(caption||slot.format==='zh'||slot.format==='en')groups.zh={source:sourceFile(zh)};
     if((caption&&settings.bilingual)||slot.format==='en')groups.en={source:sourceFile(en)};
     groups.subtitleImplementation={files:engineFiles(['core/subtitles.mjs','core/film-context.mjs'])};
+    if(settings.presenter) groups.presenterSubtitles={blankRanges:settings.blankRanges,files:engineFiles(['core/presenter-subtitles.mjs'])};
   }
   if(caption) {
     const layout=json(path.join(dir,'subtitle-layout.json'),null);
@@ -291,6 +293,10 @@ function technicalStatus(dir,slot,artifact) {
   if(base.errors?.length)return {...base,status:'hard-error'};
   if(slot.kind!=='video')return base;
   const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect});
+  if(slot.format==='mp4'&&slot.flavor==='burned'&&ctx.film.subtitles?.source==='presenter'&&
+    !base.checks?.some(check=>check.startsWith(PRESENTER_CHECK))) {
+    return {...base,status:'hard-error',errors:['当前 MP4 缺少主播字幕成片核验']};
+  }
   const stage=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{}).find(s=>s.stage==='review:qc'&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
   const signature=qcSource(ctx.variant.cacheDir);
   if(!stage||stage.signature!==signature||!outputsMatch(stage.outputs))return base;

@@ -127,6 +127,30 @@ Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完�
 
 所有作品都存在你当前所在目录下的 `films/<片名>/` 文件夹里，成片是其中的 `.mp4` 文件。有字幕时文件名会标明：`_有字幕.mp4` 是字幕画在画面上的版本，`_无字幕.mp4` 是干净画面，`_字幕.srt` 是单独的字幕文件。制作过程中请你审听、审看的文件都放在 `review/` 文件夹里：声轨、音色试听、接触表、动态分镜、小样、字幕预览，Claude 每次都会给出完整路径。
 
+### 主播实录字幕
+
+已有按成片时间校对的单行 SRT 时，在片目录的 `film.json` 中启用主播实录模式。例如：
+
+```json
+{
+  "subtitles": {
+    "mode": "burn",
+    "source": "presenter",
+    "file": "主播实录.srt",
+    "blank_ranges": [{ "start": 12.2, "end": 15.4, "label": "原片插播" }]
+  },
+  "variants": {
+    "9:16": {
+      "subtitles": { "file": "主播实录-竖版.srt" }
+    }
+  }
+}
+```
+
+- `start` 和 `end` 用成片秒数表示，`label` 可省略。副版可以覆盖 `file` 和 `blank_ranges`，省略时继承主版，空数组表示该画幅没有留空区间。
+- `wka subtitles <片目录> [--aspect 9:16]` 读取源字幕并生成 `review/主播字幕定位*.md`。一句可以跨镜，报告列出覆盖的镜号。遇到多行、时间重叠或与留空区间冲突，修改源 SRT 后重查。
+- `wka final` 检查每条字幕在最终烧录 MP4 里的首、中、末帧，证据在 `review/主播字幕成片核验*.md` 和同名 JSON 中。发现缺失时保留文件供排查。待人工核对时，看片确认后按报告把 `--confirm-subtitles <摘要>` 加到原导出命令。摘要绑定当前文件和导出批次，复核只确认字幕显示，仍需正常终审。
+
 ### 做到一半关掉了怎么办
 
 没关系。下次在**同一个目录**里说「用 wukong-animation 继续制作」（Claude Code 也可输入 `/wukong-animation:film`），助手会发现在制的片子，问你是接着做还是新开一支。

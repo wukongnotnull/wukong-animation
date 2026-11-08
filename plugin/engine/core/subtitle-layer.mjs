@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { requireDep } from './deps.mjs';
-import { run,generatedMixPadding,probeDuration } from './ffmpeg.mjs';
+import { run,openImagePipe,generatedMixPadding,probeDuration } from './ffmpeg.mjs';
 import { prepareFonts } from './fonts.mjs';
 import { fileURLToPath } from 'node:url';
 import { ensureDir } from './paths.mjs';
 import { hashParts, fontCssParts } from './cache.mjs';
+import { subtitleFrame } from './subtitles.mjs';
 
 const DEFAULTS = {
   font: { family: 'Noto Sans SC', fallback: ['PingFang SC', 'Noto Sans CJK SC', 'sans-serif'] },
@@ -97,9 +98,35 @@ export async function renderSubtitleLayers({ W, H, style, subs, workDir, log = (
  * 把字幕烧录到 video 上，写到 out。
  * @param {object} o { W, H, style（style.json）, workDir, proxy, audio?（同时混入的声轨）, log }
  */
-export async function burnSubtitles(video, subs, out, { W, H, style, workDir, proxy = false, audio = null, prepared = null, fps = 30, log = console.log }) {
+export async function burnSubtitles(video, subs, out, { W, H, style, workDir, proxy = false, audio = null, prepared = null, fps = 30, presenterFrames = null, log = console.log }) {
   const layers = prepared || (subs.length ? await renderSubtitleLayers({ W, H, style: subtitleStyle(style), subs, workDir, log }) : {files:[]});
   const pngs = layers.files;
+  if (presenterFrames !== null && pngs.length) {
+    const blankFile=path.join(ensureDir(workDir),'presenter-blank.png');
+    await run(['-i',pngs[0],'-vf','format=rgba,colorchannelmixer=aa=0','-frames:v','1','-update','1',blankFile]);
+    const blank=fs.readFileSync(blankFile);
+    const audioArgs=audio ? ['-map','2:a:0','-c:a','aac','-b:a','192k',...generatedMixPadding(audio,probeDuration(video),fps),'-shortest'] : [];
+    const pipe=openImagePipe(['-i',video,'-f','image2pipe','-framerate',String(fps),'-c:v','png','-i','pipe:0',
+      ...(audio?['-i',audio]:[]),'-filter_complex','[0:v][1:v]overlay=eof_action=pass:repeatlast=0[v]','-map','[v]',...audioArgs,
+      '-c:v','libx264','-preset',proxy?'veryfast':'fast','-crf',proxy?'23':'16','-pix_fmt','yuv420p','-movflags','+faststart',out]);
+    let i=0, png=fs.readFileSync(pngs[0]);
+    try {
+      for (let frame=0;frame<presenterFrames;frame++) {
+        if (i<subs.length && frame>=subtitleFrame(subs[i].end,fps)) {
+          i++;
+          png=i<subs.length?fs.readFileSync(pngs[i]):blank;
+        }
+        await pipe.write(i<subs.length && frame>=subtitleFrame(subs[i].start,fps)?png:blank);
+      }
+      await pipe.end();
+    } catch (error) {
+      await pipe.abort();
+      throw error;
+    }
+    log(`  ✓ 已烧录主播实录字幕 ${subs.length} 条 → ${path.basename(out)}`);
+    return out;
+  }
+
   const inputs = ['-i', video, ...pngs.flatMap((f) => ['-i', f]), ...(audio ? ['-i', audio] : [])];
   const chain = pngs.map((_, i) => `[${i ? `v${i}` : '0:v'}][${i + 1}:v]overlay=0:0:enable='between(t,${subs[i].start},${subs[i].end})'[v${i + 1}]`);
   const videoMap = pngs.length ? ['-filter_complex', chain.join(';'), '-map', `[v${pngs.length}]`] : ['-map', '0:v'];

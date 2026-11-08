@@ -6,7 +6,7 @@ import {renderSubtitleLayers,subtitleStyle,prepareSubtitleFonts,subtitleFontSign
 import {subtitleSettings,parseSrt,attachEnglish,checkSubtitles} from './subtitles.mjs';
 import {validate} from './validate.mjs';
 import {requireTiming,buildFrameTimeline} from './timing.mjs';
-import { outputFps } from './render-profile.mjs';
+import { outputFps, outputSize } from './render-profile.mjs';
 import {hashParts} from './cache.mjs';
 import {run} from './ffmpeg.mjs';
 
@@ -77,18 +77,24 @@ function inputs(ctx,{proxy,subs=null,layout=false}) {
  const style=subtitleStyle(ctx.style), workDir=path.join(ctx.variant.cacheDir,'work');
  const fonts=prepareSubtitleFonts({style,subs,workDir});
  const scale=proxy?0.5:1;
- const [W,H]=ctx.film.size.map(n=>Math.round(n*scale/2)*2);
- const signature=hashParts([srt,settings.bilingual?{file:path.join(ctx.filmDir,settings.enFile)}:'',style,settings.protectedTerms || [],{W,H,fps:timing.fps,aspect:ctx.variant.aspect},
+ const size=outputSize(ctx.film,proxy);
+ const [W,H]=settings.presenter?[size.W,size.H]:ctx.film.size.map(n=>Math.round(n*scale/2)*2);
+ const signature=hashParts([srt,...(settings.presenter?[settings.blankRanges]:[]),settings.bilingual?{file:path.join(ctx.filmDir,settings.enFile)}:'',style,settings.protectedTerms || [],{W,H,fps:timing.fps,aspect:ctx.variant.aspect},
   {file:path.join(ctx.filmDir,'subtitle-layout.json')},subtitleFontSignature(fonts),{file:fileURLToPath(new URL('./subtitle-layer.html',import.meta.url))},{file:fileURLToPath(new URL('./subtitle-layer.mjs',import.meta.url))},{file:fileURLToPath(new URL('./subtitle-preflight.mjs',import.meta.url))},
   layout?{layout:ctx.shots.map(s=>[s.id,s.duration])}:{file:path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4')}]);
  return {signature,settings,style,subs,W,H,workDir,timing,fonts};
 }
 
-async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy,layout}) {
+async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy,layout,presenter}) {
  const dir=path.join(ctx.filmDir,'review',stem(ctx,proxy,layout));fs.mkdirSync(dir,{recursive:true});
  const images=[];
- const rate=proxy?Math.max(1,Math.round(ctx.film.fps/2)):ctx.film.fps;
- if(video) for(const [i,sub] of subs.entries()) for(const [part,t] of [['起',sub.start],['中',(sub.start+sub.end)/2],['末',Math.max(sub.start,sub.end-1/rate)]]) {
+ const rate=presenter?outputFps(ctx.film,proxy):proxy?Math.max(1,Math.round(ctx.film.fps/2)):ctx.film.fps;
+ const byWidth=layers.measurements.map((m,i)=>({i,width:Math.max(...m.rects.map(r=>r.w),0),height:m.rects.reduce((a,r)=>a+r.h,0)}));
+ const targets=presenter ? new Set([
+  ...Array.from({length:5},(_,i)=>Math.round((subs.length-1)*i/4)),
+  ...[...byWidth].sort((a,b)=>b.width-a.width).slice(0,2).map(m=>m.i),
+ ]) : null;
+ if(video) for(const [i,sub] of subs.entries()) if(!targets||targets.has(i)) for(const [part,t] of [['起',sub.start],['中',(sub.start+sub.end)/2],['末',Math.max(sub.start,sub.end-1/rate)]]) {
   const out=path.join(dir,`${i+1}-${part}.png`);
   await run(['-ss',String(t),'-i',video,'-i',layers.files[i],'-filter_complex','[0:v][1:v]overlay=0:0','-frames:v','1',out]);
   const gray=spawnSync('ffmpeg',['-v','error','-i',out,'-vf','scale=8:8','-pix_fmt','gray','-f','rawvideo','-']);
@@ -96,9 +102,9 @@ async function samples(ctx,{subs,W,H,video,layers,style,regions,proxy,layout}) {
   const brightness=[...gray.stdout].reduce((a,b)=>a+b,0)/Math.max(1,gray.stdout.length);
   images.push({file:out,index:sub.index,time:t,kind:'实际画面',brightness});
  }
- // 代表样张涵盖长文字、字号缩小和最亮/最暗场景；全部起中末帧仍逐一保留。
+ // 代表样张涵盖长文字、字号缩小和样张里最亮/最暗的画面。
  const selected=new Set();
- const byWidth=layers.measurements.map((m,i)=>({i,width:Math.max(...m.rects.map(r=>r.w),0),height:m.rects.reduce((a,r)=>a+r.h,0)}));
+
  for(const key of ['width','height']) for(const p of [...byWidth].sort((a,b)=>b[key]-a[key]).slice(0,2)) selected.add(images.find(i=>i.index===subs[p.i].index));
  if(images.length) {selected.add([...images].sort((a,b)=>a.brightness-b.brightness)[0]);selected.add([...images].sort((a,b)=>b.brightness-a.brightness)[0]);}
  for(const item of [...selected].filter(Boolean)) {
@@ -154,7 +160,7 @@ export async function preflightSubtitles(ctx,{proxy=true,video,subs=null,layout=
   report={...report,...geometry,errors:[...check.errors,...geometry.errors],warnings:[...check.warnings,...geometry.warnings],measurements:layers.measurements};
   if(layout) report.manual_required.push('还没有小样，未在实际画面上核对；第 11 道渲染小样后用 --preview 复查遮挡与可读性');
   const actualVideo=layout?null:video || path.join(ctx.variant.cacheDir,proxy?'video-proxy.mp4':'video.mp4');
-  report={...report,...await samples(ctx,{subs,W,H,video:actualVideo,layers,style,regions,proxy,layout})};
+  report={...report,...await samples(ctx,{subs,W,H,video:actualVideo,layers,style,regions,proxy,layout,presenter:settings.presenter})};
  } catch(e) {report.errors.push(e.message);}
  save(ctx,proxy,layout,report);
  log(`字幕预检：${fileOf(ctx,proxy,layout).replace(/\.json$/,'.md')}`);

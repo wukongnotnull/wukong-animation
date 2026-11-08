@@ -325,7 +325,7 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], unknownReasons = [], log = console.log }) {
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], unknownReasons = [], verifyMp4 = null, reuseOnly = false, log = console.log }) {
   const ctx = loadFilm(filmDir, { aspect });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   if(wanted.some(f=>f!=='jianying')) requireTiming(ctx,{proxy});
@@ -350,10 +350,23 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     }catch(e){log(`  ! 交付来源未取证，保留导出任务：${e.message}`);}
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const signature=digest({target,draftRoot:name==='jianying'?(process.env.WKA_JIANYING_DRAFTS||path.join(os.homedir(),'Movies/JianyingPro/User Data/Projects/com.lveditor.draft')):null,video:video&&fileDigest(video),audio:audio&&fileDigest(audio),timeline,inputs:timeline?[...timeline.shots,...timeline.tracks].map(t=>[t.file,fileDigest(t.file)]):[],exporter:treeEvidence(exp.dir),name,suffix,proxy,settings:ctx.film.export});
-    const out=await runStage(ctx.filmDir,{stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,aspect:ctx.variant.aspect,proxy,signature,force,log,
-      run:async()=>{const out=(await mod.encodeOutput({video,audio,out:target,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
+    let exportId;
+    const out=await runStage(ctx.filmDir,{stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,aspect:ctx.variant.aspect,proxy,signature,force,log,reuseOnly:name==='mp4'&&reuseOnly,
+      onReuse:entry=>{exportId=entry.id;},
+      run:async entry=>{exportId=entry.id;const out=(await mod.encodeOutput({video,audio,out:target,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
     if (name === 'mp4') checkOutputTiming(ctx, out, { proxy, log });
-    if(generation)try{recordFinalArtifact(ctx.filmDir,{generation,path:out,stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,technical:{status:['mp4','jianying'].includes(name)?'passed':'unknown',checks:name==='jianying'?['native writer 时间线及素材校验']:name==='mp4'?['实际输出时间轴校验']:[],errors:[]}});}catch(e){log(`  ! 产物已生成，交付证据未存档，待核实；可 delivery --final --record 重试：${e.message}`);}
+    const technical={status:['mp4','jianying'].includes(name)?'passed':'unknown',
+      checks:name==='jianying'?['native writer 时间线及素材校验']:name==='mp4'?['实际输出时间轴校验']:[],errors:[]};
+    if(name==='mp4'&&verifyMp4) {
+      try {
+        const result=await verifyMp4(out,exportId);
+        if(result.error)technical.errors.push(result.error);
+        else technical.checks.push(result.check);
+      } catch(error) { technical.errors.push(`成片字幕核验失败，已保留成片：${error.message}`); }
+      if(technical.errors.length)technical.status='hard-error';
+    }
+    if(generation)try{recordFinalArtifact(ctx.filmDir,{generation,path:out,stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,technical});}catch(e){log(`  ! 产物已生成，交付证据未存档，待核实；可 delivery --final --record 重试：${e.message}`);}
+    if(technical.errors.length)throw new Error(technical.errors.join('；'));
     log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);
     outputs.push(out);
   }

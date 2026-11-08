@@ -233,6 +233,36 @@
           ],
           "description": "none 不出字幕 / srt 只外挂 / burn 只烧录 / both 两者"
         },
+        "source": {
+          "type": "string",
+          "enum": ["presenter"],
+          "description": "显式使用已按主播实录校对的 SRT"
+        },
+        "blank_ranges": {
+          "type": "array",
+          "description": "成片时钟上的无主播字幕区间，单位为秒",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end"
+            ],
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          }
+        },
         "file": {
           "type": "string",
           "description": "字幕文件，相对片目录，缺省 subtitles.srt"
@@ -364,6 +394,36 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "description": "主播实录字幕的副版 SRT，缺省继承主版文件"
+              },
+              "blank_ranges": {
+                "type": "array",
+                "description": "成片时钟上的无主播字幕区间，单位为秒",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "properties": {
+                    "start": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "end": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "style": {
                 "type": "object",
                 "additionalProperties": false,

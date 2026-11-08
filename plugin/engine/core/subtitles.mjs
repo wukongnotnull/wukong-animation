@@ -32,9 +32,12 @@ export function subtitleSettings(film, variant = null) {
   const [W, H] = film.size;
   const aspect = W > H ? 'landscape' : W < H ? 'portrait' : 'square';
   const own = !variant || variant.isMain;
+  const presenter = s.source === 'presenter';
+  const override = variant?.overrides?.subtitles;
   return {
+    ...(presenter ? { presenter, blankRanges: override?.blank_ranges ?? s.blank_ranges ?? [] } : {}),
     mode: s.mode || 'none',
-    file: variant ? variant.subtitlesFile : s.file || 'subtitles.srt',
+    file: presenter ? override?.file ?? s.file ?? 'subtitles.srt' : variant ? variant.subtitlesFile : s.file || 'subtitles.srt',
     maxChars: (own && s.max_chars) || MAX_CHARS_BY_ASPECT[aspect],
     ...(s.protected_terms ? { protectedTerms: s.protected_terms } : {}),
     bilingual: !!s.bilingual,
@@ -287,4 +290,48 @@ export function checkSubtitles(subs, { duration, maxChars, protectedTerms = [] }
     }
   }
   return { errors, warnings };
+}
+
+
+/** 首个 PTS 不早于该时间的帧；SRT 出点不包含在显示区间内。 */
+export const subtitleFrame = (seconds, fps) => Math.ceil(seconds * fps - 1e-8);
+
+export function planPresenterSubtitles(subs, timeline, blankRanges) {
+  const {fps, totalFrames, duration, shots} = timeline;
+  const errors = [];
+  const locate = (start, end) => shots.flatMap(shot => {
+    const from = Math.max(start, shot.startFrame / fps);
+    const to = Math.min(end, shot.endFrame / fps);
+    return from < to ? [{id:shot.id,start:from,end:to}] : [];
+  });
+  const limit = Math.max(duration, timeline.shots.at(-1)?.plannedStart + timeline.shots.at(-1)?.plannedDuration || 0);
+  if (!subs.length) errors.push('主播实录 SRT 没有字幕条目');
+  const ranges = blankRanges.filter(({start,end,label}, i) => {
+    if (start >= 0 && start < end && end <= limit + 1e-8) return true;
+    errors.push(`留空区间 ${label || i + 1} 的入出点无效（${start}–${end}s）`);
+    return false;
+  });
+  let previous = null;
+  const indices = new Set();
+  const rows = subs.map(sub => {
+    const {index,start,end,text} = sub;
+    const location = locate(start,end);
+    const label = `第 ${index} 条「${text.replace(/\s+/gu,' ')}」${start}–${end}s（${location.map(s=>s.id).join('、') || '无对应镜头'}）`;
+    if (indices.has(index)) errors.push(`${label} 序号重复`);
+    indices.add(index);
+    if (!text.trim() || /[\r\n]/u.test(text)) errors.push(`${label} 必须是单行非空字幕`);
+    if (start < 0 || end <= start || end > limit + 1e-8) errors.push(`${label} 入出点超出成片或无效`);
+    if (previous && start < previous.end) errors.push(`${label} 与第 ${previous.index} 条重叠或时序倒置`);
+    if (!previous || end >= previous.end) previous = sub;
+    for (const range of ranges) {
+      const from = Math.max(start,range.start), to = Math.min(end,range.end);
+      if (from < to) errors.push(`${label} 进入留空区间「${range.label || '原片插播'}」${from}–${to}s（${locate(from,to).map(s=>s.id).join('、') || '无对应镜头'}）`);
+    }
+    const first = Math.max(0,subtitleFrame(start,fps));
+    const last = Math.min(totalFrames,subtitleFrame(end,fps))-1;
+    if (first > last) errors.push(`${label} 没有可显示帧（${fps} fps）`);
+    const middle = Math.floor((first + last + 1)/2);
+    return {...sub,shots:location,frames:first <= last ? [...new Set([first,middle,last])] : []};
+  });
+  return {fps,totalFrames,rows,blankRanges,errors};
 }

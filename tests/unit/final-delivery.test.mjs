@@ -269,3 +269,23 @@ test('A1 conflicting aspect decisions retain evidenced files without making them
   const report=final.finalDeliveryReport(dir);assert.equal(report.status,'needs-verification');assert.equal(report.ok,false);
   assert.ok(report.candidates?.some(i=>i.path===draft&&i.link&&i.section==='历史/待核实版本'));
 });
+
+test('主播字幕 MP4 没有成片核验证据时不能成为可交付产物',t=>{
+  const dir=fixture(t),config=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(config));
+  film.subtitles={mode:'burn',source:'presenter',file:'host.srt'};
+  fs.writeFileSync(config,JSON.stringify(film));
+  fs.writeFileSync(path.join(dir,'host.srt'),'1\n00:00:00,000 --> 00:00:00,500\n主播\n');
+  const slot='16:9/video/mp4/burned';
+  const file=path.join(dir,'影片_有字幕.mp4');
+  fs.writeFileSync(file,'fixture only');
+  const capture=()=>final.captureFinalGeneration(dir,{slot,fontFiles:[config]});
+  final.recordFinalArtifact(dir,{generation:capture(),path:file,stage:'encode:mp4_有字幕',technical:{status:'passed',checks:['timing'],errors:[]}});
+  const find=()=>final.finalDeliveryReport(dir).items.find(i=>i.slot===slot);
+  assert.equal(find().technical,'hard-error');
+  assert.match(find().reasons.join('\n'),/缺少主播字幕成片核验/);
+  final.recordFinalArtifact(dir,{generation:capture(),path:file,stage:'encode:mp4_有字幕',technical:{status:'passed',checks:['最终 MP4 主播字幕首中末帧核验'],errors:[]}});
+  assert.equal(find().technical,'passed');
+  film.subtitles.blank_ranges=[{start:.6,end:.8}];
+  fs.writeFileSync(config,JSON.stringify(film));
+  assert.equal(find().freshness,'changed');
+});

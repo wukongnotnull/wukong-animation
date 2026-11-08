@@ -60,3 +60,9 @@
 本轮实现与上述验收完成，提交留在 `codex/simplified-production-flow`；尚未合并远程 main、推送或发版。发布版本未变。平台与录音准确率限制如上；后续推送所触发的新媒体 CI 仍需独立批次授权。
 
 2026-11-08 核对：本地只有 `main` 与当前进行中的 `codex/simplified-production-flow`；远程只有 `main`（`44892d6`），只有当前根 worktree。没有已合并闲置分支/worktree 可清理。原有未跟踪 `outputs/`、`tmp/` 与本轮模型、录音、界面证据保留；不将这些目录并入功能提交。
+
+## 后续发布检查记录
+
+用户随后明确要求发版，并批准插件 0.21.0、导演文档 1.19.0（引擎仍 0.2.0）与分支推送、PR、main、标签的 4 批 CI。该授权替代实施阶段“不发布、不升版”的边界，发布过程由 [#134](https://github.com/wukongnotnull/wukong-animation/issues/134) 跟踪。
+
+第 1 批针对发布提交 `24d6dae`：三平台安装和 lint 通过；完整回归 536 项，524 通过、0 失败、12 项缺少剪映依赖跳过由严格专项 27/27、零跳过覆盖。随后画面基准入口因 `tests/smoke/run.mjs` 的 shebang 位于导入语句之后而语法失败，尚未运行静帧比对。已将导入放回普通 import 区，使 shebang 恢复首行；仅语法检查完成前后验证，不据此声称基准检查通过。原始 CI 日志保留在 `tmp/release-v021-ci/push-smoke.log`，静态复现记录在 `smoke-syntax-before.log`。失败后的新推送会触发额外一批 CI，须另行确认；剩余三批原授权继续有效。后续实际结果以 #134 与正式 Release 为准。

@@ -1,4 +1,3 @@
-import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 #!/usr/bin/env node
 // 冒烟测试：每个风格的示范片，用固定种子在 3 个时间点渲染预览静帧，
 //   1) 同一帧渲染两次必须一致（确定性）：允许个别像素的抗锯齿抖动（CI 上的 Chromium 偶尔会有），
@@ -12,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WK = path.join(ROOT, 'plugin/engine/bin/wka.mjs');

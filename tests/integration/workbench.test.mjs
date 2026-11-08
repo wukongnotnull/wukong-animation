@@ -72,3 +72,32 @@ test('an archive failure prevents an enrolled CLI command from signing off', asy
   assert.equal(fs.existsSync(path.join(f.film, '.wka/state.json')), false);
   assert.equal(fs.existsSync(path.join(f.film, '.cache/operation.lock')), false);
 });
+
+test('UI drafts and status use authenticated routes and restore across server instances', async t => {
+  const f = await fixture(t);
+  let r = await f.request('/api/ui'); assert.equal(r.status, 200, '缺少本机草稿读取路由');
+  r = await f.request('/api/ui', { key: 'note:test:a:v1', expected: 0, value: { text: '未提交草稿' } });
+  assert.equal(r.status, 200); assert.equal((await r.json()).revision, 1);
+  assert.equal((await f.request('/api/ui', { key: 'note:test:a:v1', expected: 0, value: null })).status, 400);
+  assert.equal((await fetch(f.server.origin + '/api/ui')).status, 401);
+  const { startWorkbench } = await import(serverUrl), second = await startWorkbench(f.root); t.after(() => second.close());
+  const value = await (await fetch(second.origin + '/api/ui', { headers: { Authorization: 'Bearer ' + second.token } })).json();
+  assert.equal(value.entries['note:test:a:v1'].value.text, '未提交草稿');
+  const status = await (await f.request('/api/status?film=' + f.id)).json();
+  assert.equal(status.busy, false); assert.equal(typeof status.revision, 'string');
+  assert.equal(fs.existsSync(path.join(f.film, '.wka/state.json')), false);
+});
+
+test('CLI repair records an existing new version and HTTP user verification closes it', async t => {
+  const f = await fixture(t), initial = await (await f.request('/api/report?film=' + f.id)).json();
+  let item = initial.stages.find(s => s.step === 2).items[0];
+  const note = await (await f.request('/api/note', { film: f.id, artifactId: item.id, versionId: item.current.id, text: '补全受众', requestId: 'http-repair-note' })).json();
+  fs.writeFileSync(path.join(f.film, 'brief.md'), '面向初次制作的创作者');
+  item = (await (await f.request('/api/report?film=' + f.id)).json()).stages.find(s => s.step === 2).items[0];
+  const cli = fileURLToPath(new URL('../../plugin/engine/bin/wka.mjs', import.meta.url));
+  const r = spawnSync(process.execPath, [cli, 'workbench', f.film, '--repair', note.id, '--version', item.current.id, '--summary', '补全受众', '--verification', '已逐字核对'], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(r.status, 0, r.stderr); const repaired = JSON.parse(r.stdout); assert.equal(repaired.status, 'awaiting-review');
+  const response = await f.request('/api/resolve', { film: f.id, id: note.id, action: 'verified', repairId: repaired.repair.id });
+  assert.equal(response.status, 200, await response.text());
+  assert.equal((await (await f.request('/api/pending?film=' + f.id)).json()).notes.length, 0);
+});

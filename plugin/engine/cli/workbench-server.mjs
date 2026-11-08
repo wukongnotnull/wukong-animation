@@ -11,7 +11,8 @@ import { reviewCommands } from './commands/review.mjs';
 import { commitSnapshot } from '../core/project.mjs';
 import { finalDeliveryReport } from '../core/final-delivery.mjs';
 import { scopedPath } from '../core/workbench-catalog.mjs';
-import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
+import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, recordWorkbenchRepair, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
+import { readWorkbenchUI, writeWorkbenchUI, workbenchStatus } from '../core/workbench-ui.mjs';
 
 const assets = fileURLToPath(new URL('../workbench/', import.meta.url));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.flac': 'audio/flac', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.srt': 'text/plain; charset=utf-8', '.vtt': 'text/plain; charset=utf-8' };
@@ -47,7 +48,7 @@ function filmsAt(root) {
     ? fs.readdirSync(films, { withFileTypes: true }).filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => scopedPath(root, path.join('films', e.name)))
     : [root];
   return dirs.filter(dir => ['film.json', 'brief.md', '.wka/state.json'].some(f => fs.existsSync(scopedPath(dir, f))))
-    .map(dir => ({ id: digest(dir).slice(0, 24), name: path.basename(dir), dir }));
+    .map(dir => ({ id: digest(path.relative(root, dir).split(path.sep).join('/') || '.').slice(0, 24), name: path.basename(dir), dir }));
 }
 function runOpen(command, args) {
   return new Promise((resolve, reject) => {
@@ -87,18 +88,20 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
     try {
       if (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
       const url = new URL(req.url, origin), route = url.pathname;
-      if (['/', '/app.js', '/app.css'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
+      if (['/', '/app.js', '/app.css', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
-        streamFile(req, res, file, file, fs.statSync(file).size); return;
+        streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }
       const supplied = req.headers.authorization === 'Bearer ' + token || (route === '/api/file' && url.searchParams.get('token') === token);
       if (!supplied) { send(res, 401, { error: '工作台连接已失效，请使用启动时提供的完整链接重新打开' }); return; }
       const films = filmsAt(root);
-      if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films }); return; }
+      if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films, workspaceId: digest(root).slice(0, 24) }); return; }
       const body = req.method === 'POST' ? await bodyOf(req) : {};
+      if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(root) : writeWorkbenchUI(root, body)); return; }
       const film = films.find(f => f.id === (body.film || url.searchParams.get('film')));
       if (!film) throw new Error('影片不在本次工作台授权范围内');
       if (route === '/api/report' && req.method === 'GET') { send(res, 200, captureWorkbench(film.dir)); return; }
+      if (route === '/api/status' && req.method === 'GET') { send(res, 200, workbenchStatus(film.dir)); return; }
       if (route === '/api/pending' && req.method === 'GET') { send(res, 200, workbenchPending(film.dir)); return; }
       if (route === '/api/file' && ['GET', 'HEAD'].includes(req.method)) {
         const file = workbenchFile(film.dir, url.searchParams.get('artifact'), url.searchParams.get('version'), url.searchParams.get('entry'));
@@ -108,13 +111,14 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
       if (req.method !== 'POST') { send(res, 404, { error: '未找到工作台入口' }); return; }
       let result;
       if (route === '/api/note') result = addWorkbenchNote(film.dir, body);
+      else if (route === '/api/repair') result = recordWorkbenchRepair(film.dir, body);
       else if (route === '/api/resolve') result = resolveWorkbenchNote(film.dir, body);
       else if (route === '/api/check') result = checkWorkbenchArtifact(film.dir, body);
       else if (route === '/api/decision') result = await decideWorkbenchStage(film.dir, body, signoff);
       else if (route === '/api/locate') { const file = workbenchOriginal(film.dir, body.artifactId); await locate(file); result = { located: true, path: file, message: '已请求系统定位文件，未登记专用软件打开或验收' }; }
       else { send(res, 404, { error: '未找到工作台操作' }); return; }
       send(res, 200, result);
-    } catch (error) { if (!res.headersSent) send(res, 400, { error: error.message }); else res.destroy(); }
+    } catch (error) { if (!res.headersSent) send(res, /工程正在写入|工程忙/.test(error.message) ? 423 : 400, { error: error.message }); else res.destroy(); }
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = 'http://127.0.0.1:' + server.address().port;

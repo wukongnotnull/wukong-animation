@@ -7,7 +7,7 @@ const token = location.hash.slice(1) || sessionStorage.getItem('workbench-token'
 if (token) { sessionStorage.setItem('workbench-token', token); history.replaceState(null, '', '/'); }
 const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, overview: true, panel: 'preview', raw: false, mediaStates: new Map(), pendingReport: null, fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, resolving, pollTimer, openedContext = null;
-const labels = { pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
+const labels = { archived: '历史档案 · 只读', pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
 const categories = { formal: '正式交付物', reference: '参考资料', history: '历史交付物' };
 const noteLabels = { pending: '待处理', 'awaiting-review': '已返修，待复验', resolved: '已解决', dismissed: '无需修改，已关闭' };
 const kinds = { text: '文档', image: '图片', audio: '音频', video: '视频', directory: '专用软件工程', file: '附件' };
@@ -56,9 +56,9 @@ function showImageAnchor(anchor, review = false) {
   pin.style.left = anchor.x * 100 + '%'; pin.style.top = anchor.y * 100 + '%'; wrap.append(pin);
 }
 function scheduleDrafts() { clearTimeout(draftTimer); draftTimer = setTimeout(() => session?.flush(), 500); }
-function storeValue(key, value) { session?.set(key, value); scheduleDrafts(); }
+function storeValue(key, value) { if (ui.report?.readonly) return; session?.set(key, value); scheduleDrafts(); }
 function captureDrafts() {
-  if (!session || !ui.report || ui.overview) return;
+  if (!session || !ui.report || ui.report.readonly || ui.overview) return;
   if (ui.noteDraftKey) {
     const text = $('note-text').value, old = session.get(ui.noteDraftKey);
     const value = text || ui.anchor.type !== 'general' ? { text, anchor: ui.anchor, blocking: $('blocking').checked } : null;
@@ -131,7 +131,7 @@ function renderOverview() {
 }
 function renderStages() {
   $('stages').replaceChildren(); const gates = ui.report.stages.filter(s => s.gate && s.status !== 'not-applicable');
-  $('progress').textContent = gates.filter(s => s.status === 'approved').length + '/' + gates.length + ' 已通过';
+  $('progress').textContent = ui.report.readonly ? '历史档案 · 只读' : gates.filter(s => s.status === 'approved').length + '/' + gates.length + ' 已通过';
   for (const row of ui.report.stages) {
     const node = button('', () => chooseStage(row), 'stage ' + row.status + (row.step === ui.step ? ' active' : ''));
     node.title = row.label + ' · ' + labels[row.status]; node.setAttribute('aria-current', row.step === ui.step ? 'step' : 'false');
@@ -229,7 +229,7 @@ function noteCard(note) {
     }
   }
   const footer = el('footer');
-  if (!note.resolved) { footer.append(button('无需修改关闭', () => requestResolution(note, 'dismissed'))); if (noteStatus(note) === 'awaiting-review') footer.append(button('退回继续处理', () => requestResolution(note, 'reopen'))); }
+  if (!note.resolved && !ui.report.readonly) { footer.append(button('无需修改关闭', () => requestResolution(note, 'dismissed'))); if (noteStatus(note) === 'awaiting-review') footer.append(button('退回继续处理', () => requestResolution(note, 'reopen'))); }
   else footer.append(button('重新打开', async () => { await api('/api/resolve', { id: note.id, action: 'reopen' }); await loadReport(); }));
   card.append(footer);
   if (note.history?.length) { const details = el('details'); details.append(el('summary', '处置记录')); for (const h of note.history) details.append(el('p', date(h.at) + ' · ' + ({ repair: '提交返修结果', verified: '用户复验通过', dismissed: '无需修改关闭', reopen: '重新处理' }[h.action] || h.action) + (h.reason ? ' · ' + h.reason : ''))); card.append(details); }
@@ -246,9 +246,9 @@ function renderInspector() {
   }
   else if (v) $('checks').append(el('p', '正在查看历史内容；当前阶段的检查与通过不会自动转移到此版本。', 'hint'));
   if (file?.category === 'reference') $('checks').append(el('p', '参考资料不作为本阶段必检项。', 'hint'));
-  $('checked').disabled = !file || !v || !current() || file.availability !== 'present' || file.checked;
+  $('checked').disabled = ui.report.readonly || !file || !v || !current() || file.availability !== 'present' || file.checked;
   $('checked').textContent = file?.checked && current() ? '当前版本已检查' : '标记此版本已检查';
-  $('note-form').hidden = !v; $('notes').replaceChildren();
+  $('note-form').hidden = ui.report.readonly || !v; $('notes').replaceChildren();
   let notes = [...file?.notes || []]; const selected = ui.report.notes.find(n => n.id === ui.reviewNote);
   if (selected && !notes.some(n => n.id === selected.id)) notes.unshift(selected);
   $('note-count').textContent = notes.filter(n => !n.resolved).length + ' 条未关闭';
@@ -257,10 +257,10 @@ function renderInspector() {
   if (!notes.length) $('notes').append(el('p', '没有匹配的意见。', 'empty-notes'));
   $('stage-status').textContent = labels[s.status]; $('stage-status').className = 'tag ' + (s.status === 'approved' ? 'good' : s.status === 'needs-review' ? 'warn' : '');
   $('stage-blocks').replaceChildren();
-  if (!s.gate) $('stage-blocks').append(el('p', '此工序不单独签批，检查结果保留到相关节点。'));
+  if (!s.gate) $('stage-blocks').append(el('p', ui.report.readonly ? '旧项目只读留档；继续制作请新建项目并复用素材。' : '此工序不单独签批，检查结果保留到相关节点。'));
   for (const block of s.blocks) $('stage-blocks').append(el('p', '· ' + block));
   $('approve').disabled = !s.gate || s.blocks.length > 0 || s.status === 'approved' || !current(); $('request-changes').disabled = !s.gate; $('decision-note').disabled = !s.gate;
-  $('draft-confirm').hidden = ui.step !== 15; $('decision-history').replaceChildren();
+  $('draft-confirm').hidden = ui.report.readonly || ui.step !== 8; $('decision-history').replaceChildren();
   for (const d of [...s.decisions].reverse()) { const row = el('div'); row.append(el('p', date(d.at) + ' · ' + labels[d.decision] + (d.revision !== s.revision ? ' · 历史依据' : '') + '\n' + d.note)); if (d.repair) row.append(el('p', d.repair.summary + '\n' + d.repair.verification), button('查看阶段返修版本', () => goToRepair(d))); $('decision-history').append(row); }
   const lastApproval = s.decisions.findLastIndex(d => d.decision === 'approved');
   for (const d of s.decisions.slice(lastApproval + 1).filter(d => d.decision === 'changes-requested')) {
@@ -329,7 +329,7 @@ async function decision(value) {
   if (!note) throw new Error('请填写需要修改的内容');
   $('approve').disabled = true; $('request-changes').disabled = true;
   try {
-    const result = await api('/api/decision', { film, step: s.step, revision: s.revision, decision: value, note, ...(ui.step === 15 && $('draft-opened').checked ? { openStatus: 'opened' } : {}) });
+    const result = await api('/api/decision', { film, step: s.step, revision: s.revision, decision: value, note, ...(ui.step === 8 && $('draft-opened').checked ? { openStatus: 'opened' } : {}) });
     if (session.get(key)?.text === input) { storeValue(key, null); if (ui.stageDraftKey === key) $('decision-note').value = ''; }
     if (film === ui.film) await loadReport();
     notice(value === 'approved' ? result.archive?.git === 'not-confirmed' ? '批准已记录；Git 存档未确认，请在对话中核实。' : '阶段已通过，结论已同步。' : '返修要求已保存，回到对话后发起处理。');

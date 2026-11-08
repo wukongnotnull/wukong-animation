@@ -7,14 +7,14 @@ import { validate } from './validate.mjs';
 import { migrateFilm } from './compat.mjs';
 import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 import { resolveVariant, overrideShotPath } from './variants.mjs';
-import { assertCompatibleProgress } from './state.mjs';
+import { assertActiveProduction } from './state.mjs';
 
 /**
  * @param {{requireShots?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
  *   aspect: 要处理的画幅，缺省为主版。副版换成副版尺寸、优先用覆盖镜头文件 sNN.<后缀>.<扩展名>
  */
 export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
-  assertCompatibleProgress(filmDir);
+  assertActiveProduction(filmDir);
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);

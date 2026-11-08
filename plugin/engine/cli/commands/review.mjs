@@ -5,7 +5,7 @@ import { shotHashes } from '../../core/job.mjs';
 import { loadFilm } from '../../core/film-context.mjs';
 import { snapshotMain, checkMainUnchanged } from '../../core/approval.mjs';
 import { commitSnapshot } from '../../core/project.mjs';
-import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff } from '../../core/state.mjs';
+import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, assertActiveProduction } from '../../core/state.mjs';
 import { runQc } from '../../core/qc.mjs';
 import { requireSubtitlePreflight } from '../../core/subtitle-preflight.mjs';
 import { requireTiming } from '../../core/timing.mjs';
@@ -34,6 +34,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
     },
     'signoff': async () => {
       if (!pos[0] || !pos[1]) fail('用法：wka signoff <片目录> "<审片结论>" [--step N]');
+      assertActiveProduction(pos[0]);
       const step = opt('step') ? Number(opt('step')) : null;
       if (step && !PRODUCTION_STEPS[step]) fail(`--step 取 1–${LAST_STEP}`);
       let note = pos[1];

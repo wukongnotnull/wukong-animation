@@ -3,6 +3,8 @@ import { parseArgs } from '../core/command-args.mjs';
 import { assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
 import { lockProduction } from '../core/operations.mjs';
 import { atomicJson } from '../core/evidence.mjs';
+import { hasWorkbench, captureWorkbenchLocked, assertWorkbenchScope } from '../core/workbench.mjs';
+import { workbenchJson } from '../core/workbench-catalog.mjs';
 import { commandContext } from './context.mjs';
 import { commandsFor } from './commands.mjs';
 import { HELP } from './help.mjs';
@@ -27,11 +29,22 @@ export async function runCli(argv, { log: write = console.log, error = console.e
     else if (pos[0] && command.preflight === 'new-film') assertCompatibleProgress(path.resolve(opt('dir', '.'), 'films', pos[0]));
     else if (pos[0] && (command.preflight === 'film' || (command.preflight === 'film-unless-list' && !opt('list')))) assertCompatibleProgress(pos[0]);
 
-    const needsLock = command.lock === 'film' || (command.lock === 'final-record' && opt('final') && opt('record'));
+    const observe = pos[0] && ['signoff', 'qc', 'still', 'animatic', 'preview', 'render', 'soundtrack', 'audition', 'subtitles', 'final'].includes(cmd) && hasWorkbench(pos[0]);
+    if (observe) assertWorkbenchScope(pos[0]);
+    const needsLock = observe || command.lock === 'film' || (command.lock === 'final-record' && opt('final') && opt('record'));
     const unlock = needsLock && pos[0] ? lockProduction(pos[0]) : () => {};
     try {
       if (command.active && pos[0]) atomicJson(path.join(path.resolve(pos[0]), '.cache/active-command.json'), { argv });
+      const operationsFile = pos[0] ? path.join(path.resolve(pos[0]), '.cache/operations.json') : null;
+      const before = observe ? workbenchJson(operationsFile, { stages: {} }).stages : null;
+      if (observe) captureWorkbenchLocked(pos[0]);
       const code = await command.run();
+      if (observe) {
+        const after = workbenchJson(operationsFile, { stages: {} }).stages;
+        const producedPaths = Object.entries(after || {}).filter(([key, value]) => value.status === 'completed' &&
+          (value.id !== before?.[key]?.id || value.checkedAt !== before?.[key]?.checkedAt)).flatMap(([, value]) => (value.outputs || []).map(o => o.file));
+        captureWorkbenchLocked(pos[0], { producedPaths });
+      }
       return Number.isInteger(code) ? code : 0;
     } finally {
       unlock();

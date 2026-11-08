@@ -16,7 +16,7 @@
 - **写脚本、画分镜**：先给你看文字脚本和分镜，你满意了再往下做；
 - **配声音**：可以用你自己录的旁白，也可以用 AI 配音，再配上音乐；
 - **出成片**：输出 MP4 视频（也可以导出 GIF）。
-- **集中审阅**：本地工作台按阶段预览交付物、定位批注、切换历史版本并签批；支持从对话集中处理返修意见，见[工作台说明](docs/WORKBENCH.md)（当前开发功能，尚未随发布包更新）。
+- **集中审阅**：本地工作台按阶段预览交付物、定位批注、切换历史版本并签批；支持从对话集中处理返修意见，见[工作台说明](docs/WORKBENCH.md)。
 
 每到关键环节，Claude 都会**停下来请你过目**，你说"可以"才继续；不满意就直接说哪里要改。
 
@@ -91,7 +91,7 @@ codex plugin add wukong-animation@wukong-animation
 
 ### 其他 Agent 工具
 
-Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.19.6 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.19.6) 里的 `wukong-animation-agent-skills-v0.19.6.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.20.0 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.20.0) 里的 `wukong-animation-agent-skills-v0.20.0.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
 
 ## 拍你的第一支片
 

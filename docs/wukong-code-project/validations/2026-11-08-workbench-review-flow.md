@@ -50,4 +50,4 @@
 
 ## 收尾
 
-已拉取远程引用核对：本地仅 `main` 与未合并的 `codex/review-workbench`，远程仅 `origin/main`；仅当前一个 worktree，无闲置已合并分支或 worktree 可清理。保留开发分支用于后续审阅/合并，保留 `outputs/`、`tmp/` 和验收证据，不触碰无关工作。未推送、未创建会触发远程媒体生成的 CI 批次，不同步 GitHub Projects。
+已拉取远程引用核对：远程仅 `origin/main`；`main` 为基础分支，`codex/review-workbench` 尚未合并。收尾再次检查时，新出现 `codex/production-retro` 及 `/Users/wukong/Documents/wukong-animation-production-retro` 工作区，位于已合并基础提交 `85ecf71`，工作区干净但已检出占用，未确认闲置，因此保留以免干扰其他工作。当前共两个 worktree，无已确认闲置且可清理的分支或 worktree。保留工作台开发分支用于后续审阅/合并，保留 `outputs/`、`tmp/` 和验收证据，不触碰无关工作。旧版验收预览服务已停止，新版示例服务保留用于用户检查。未推送、未创建会触发远程媒体生成的 CI 批次，不同步 GitHub Projects。

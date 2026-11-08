@@ -86,9 +86,21 @@ export function workbenchCatalog(dir, registrations = []) {
   for (const file of [...walk(dir, 'review'), ...walk(dir, 'stills')]) {
     if (!['text', 'image', 'audio', 'video'].includes(workbenchKind(file))) continue;
     if (/交付清单|交付审计/.test(file)) continue;
-    add(file, inferredStep(file), { required: true });
+    // A directory may also contain user references; discovery alone is not a review contract.
+    if (!items.has(scopedPath(dir, file))) {
+      const formal = /^(?:stills\/s[\w-]+[-.]|review\/(?:局部小样|局部原画质)\/|review\/(?:试听|声轨|接触表|动态分镜|小样|字幕预览|字幕预检|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
+      add(file, inferredStep(file), { required: formal });
+    }
   }
-  for (const file of fs.readdirSync(dir)) if (/\.(mp4|webm|gif|srt)$/.test(file) && !/^subtitles/.test(file)) add(file, /-\d+x\d+/.test(file) ? 14 : 13);
+  for (const file of fs.readdirSync(dir)) if (/\.(mp4|webm|gif|srt)$/.test(file) && !/^subtitles/.test(file)) add(file, /-\d+x\d+/.test(file) ? 14 : 13, { required: false });
+  for (const operation of Object.values(stages).filter(s => s.status === 'completed')) {
+    for (const output of operation.outputs || []) {
+      if (!output.file) continue;
+      const rel = path.relative(dir, path.resolve(dir, output.file));
+      if (rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).some(p => p.startsWith('.'))) continue;
+      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: true });
+    }
+  }
   let contract = null;
   if (film.style && film.shots) {
     try {
@@ -98,7 +110,7 @@ export function workbenchCatalog(dir, registrations = []) {
         const operation = Object.values(stages).find(s => s.stage === slot.stage && s.aspect === slot.aspect && !s.proxy && s.status === 'completed');
         const file = artifact?.path || operation?.outputs?.[0]?.file || slot.path;
         if (file) add(file, slot.kind === 'draft' ? 15 : slot.aspect === contract.mainAspect ? 13 : 14,
-          { external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
+          { required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
       }
       warnings.push(...contract.errors);
     } catch (error) { warnings.push(`最终交付要求待核实：${error.message}`); }

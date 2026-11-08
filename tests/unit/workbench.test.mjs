@@ -63,7 +63,7 @@ test('stage acceptance requires checked files and no open blocking note, and rej
   const comment = api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '必须改', blocking: true, anchor: { type: 'general' } });
   stage = at(api.captureWorkbench(dir), 2);
   await assert.rejects(api.decideWorkbenchStage(dir, request(), signoff), /阻塞/);
-  api.resolveWorkbenchNote(dir, { id: comment.id, resolved: true });
+  api.resolveWorkbenchNote(dir, { id: comment.id, action: 'dismissed', reason: '审阅后确认此项无需修改' });
   stage = at(api.captureWorkbench(dir), 2);
   await api.decideWorkbenchStage(dir, request(), signoff);
   assert.equal(calls, 1); assert.equal(at(api.captureWorkbench(dir), 2).status, 'approved');

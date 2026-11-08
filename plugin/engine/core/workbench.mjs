@@ -77,7 +77,8 @@ function capture(dir, { producedPaths = [] } = {}) {
       const produced = producedPaths.some(file => path.resolve(dir, file) === item.path);
       if (!old || old.snapshot.digest !== snap.digest || (produced && old.dependencies !== artifact.dependencies)) {
         artifact.versions.push({ id: crypto.randomUUID(), number: artifact.versions.length + 1, at: now(), snapshot: snap,
-          dependencies: artifact.dependencies, duration: mediaDuration(item), provenance: produced ? 'produced' : 'observed' });
+          dependencies: artifact.dependencies, duration: mediaDuration(item), provenance: produced ? 'produced' : 'observed',
+          context: { shots: catalog.shots, duration: catalog.duration, step: item.step, required: item.required, technical: item.technical || null } });
       }
       artifact.availability = 'present';
     } catch (error) {
@@ -91,39 +92,41 @@ function capture(dir, { producedPaths = [] } = {}) {
   return report(dir, data, catalog);
 }
 
+function normalizedNote(note) { return { ...note, status: note.status || (note.resolved ? 'resolved' : 'pending'), history: note.history || [] }; }
 function report(dir, data, catalog) {
   const items = data.artifacts.map(a => {
     const current = a.versions.at(-1) || null;
     const revision = digest({ id: a.id, version: current?.id, dependencies: a.dependencies, availability: a.availability });
     const checked = data.checks.some(c => c.artifactId === a.id && c.revision === revision);
-    const notes = data.notes.filter(n => n.artifactId === a.id);
+    const notes = data.notes.filter(n => n.artifactId === a.id).map(normalizedNote);
     let problem = a.error;
     if (a.technical?.status === 'hard-error') problem = (a.technical.errors || ['技术检查失败']).join('；');
     if (a.availability === 'present' && /(?:QC报告|字幕预检).*\.json$/.test(a.path)) {
       const result = workbenchJson(a.path, {});
       if ((result.unresolved?.length || result.needsFix?.length) || (result.ok === false && !Array.isArray(result.accepted))) problem = '检查报告存在未解决问题，请回到对话处理';
     }
-    return { ...a, current, revision, checked, notes, problem,
-      freshness: current && current.dependencies !== a.dependencies ? 'needs-review' : 'current' };
+    return { ...a, current, revision, checked, notes, problem, category: a.availability === 'historical' ? 'history' : a.required ? 'formal' : 'reference',
+      freshness: current && current.dependencies !== a.dependencies && !checked ? 'needs-review' : 'current' };
   });
   const stages = Object.entries(PRODUCTION_STEPS).map(([number, label]) => {
-    const step = Number(number), chosen = items.filter(i => i.availability !== 'historical' && (i.step === step || (step === 12 && i.step === 13)));
-    const revision = digest({ step, items: chosen.map(i => i.revision), contract: step >= 13 ? catalog.contract?.id : null,
-      blockingNotes: chosen.flatMap(i => i.notes.filter(n => n.blocking && n.versionId === i.current?.id).map(n => [n.id, n.resolved])) });
+    const step = Number(number), chosen = items.filter(i => i.step === step || (step === 12 && i.step === 13));
+    const formal = chosen.filter(i => i.required), active = formal.filter(i => i.availability !== 'historical');
+    const revision = digest({ step, items: active.map(i => i.revision), contract: step >= 13 ? catalog.contract?.id : null,
+      blockingNotes: formal.flatMap(i => i.notes.filter(n => n.blocking).map(n => [n.id, n.status, n.repair?.id || null])) });
     const decisions = data.decisions.filter(d => d.step === step), latest = decisions.at(-1);
     const blocks = [];
-    for (const item of chosen.filter(i => i.required)) {
+    for (const item of active) {
       if (item.availability !== 'present') blocks.push(`${item.label}：${item.error || '交付物尚未生成或已缺失'}`);
       else if (!item.checked) blocks.push(`${item.label}：尚未检查当前版本`);
       if (item.problem) blocks.push(`${item.label}：${item.problem}`);
-      if (item.notes.some(n => n.versionId === item.current?.id && n.blocking && !n.resolved)) blocks.push(`${item.label}：有未解决的阻塞意见`);
     }
-    if (!chosen.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的交付物，请在对话中补齐或登记');
+    for (const item of formal) if (item.notes.some(n => n.blocking && !n.resolved)) blocks.push(`${item.label}：有未解决或待复验的阻塞意见`);
+    if (!active.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的正式交付物，请在对话中补齐或登记');
     if (step >= 13 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
-    let status = catalog.notApplicable.has(step) && !chosen.length ? 'not-applicable' : 'pending';
+    let status = catalog.notApplicable.has(step) && !active.length && !blocks.length ? 'not-applicable' : 'pending';
     if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length ? 'approved' : 'needs-review';
     else if (latest?.decision === 'changes-requested' && latest.revision === revision) status = 'changes-requested';
-    if (status === 'pending' && chosen.some(i => i.freshness === 'needs-review')) status = 'needs-review';
+    if (status === 'pending' && active.some(i => i.freshness === 'needs-review')) status = 'needs-review';
     return { step, label, gate: REVIEW_GATES[step] || null, revision, status, items: chosen, blocks, decisions };
   });
   return { version: 1, ok: !items.some(i => i.availability === 'unreadable'), dir, title: catalog.film.title || path.basename(dir), stages, shots: catalog.shots,
@@ -198,19 +201,53 @@ function validateAnchor(root, artifact, version, anchor) {
   }
   throw new Error('批注定位与交付物类型不匹配');
 }
-export function addWorkbenchNote(dir, { artifactId, versionId, text, anchor, blocking = true }) {
+export function addWorkbenchNote(dir, { artifactId, versionId, text, anchor, blocking = true, requestId }) {
   return locked(dir, root => {
     const data = ledger(root), { artifact, version } = versionFor(data, artifactId, versionId);
     if (typeof text !== 'string' || !text.trim() || text.length > 10000) throw new Error('请填写 1–10000 字的审阅意见');
-    const note = { id: crypto.randomUUID(), artifactId, versionId, text: text.trim(), anchor: validateAnchor(root, artifact, version, anchor), blocking: !!blocking, resolved: false, at: now() };
+    const values = { artifactId, versionId, text: text.trim(), anchor: validateAnchor(root, artifact, version, anchor), blocking: !!blocking };
+    if (requestId !== undefined && (typeof requestId !== 'string' || !/^[\w-]{1,100}$/.test(requestId))) throw new Error('请求编号无效');
+    const previous = requestId && data.notes.find(n => n.requestId === requestId);
+    if (previous) {
+      if (previous.requestDigest !== digest(values)) throw new Error('重复请求编号对应不同意见');
+      return normalizedNote(previous);
+    }
+    const note = { id: crypto.randomUUID(), ...values, ...(requestId ? { requestId, requestDigest: digest(values) } : {}), status: 'pending', resolved: false, history: [], at: now() };
     data.notes.push(note); save(root, data); return note;
   });
 }
-export function resolveWorkbenchNote(dir, { id, resolved }) {
+export function recordWorkbenchRepair(dir, { id, artifactId, versionId, summary, verification }) {
   return locked(dir, root => {
-    const data = ledger(root), note = data.notes.find(n => n.id === id);
-    if (!note || typeof resolved !== 'boolean') throw new Error('意见不存在或状态无效');
-    note.resolved = resolved; note.updatedAt = now(); save(root, data); return note;
+    const view = capture(root), data = ledger(root);
+    const note = data.notes.find(n => n.id === id) || data.decisions.find(d => d.id === id && d.decision === 'changes-requested');
+    if (!note || note.resolved) throw new Error('待返修意见不存在或已关闭');
+    if (![summary, verification].every(s => typeof s === 'string' && s.trim() && s.length <= 10000)) throw new Error('请填写修改说明和实际验证结果');
+    const target = view.stages.flatMap(s => s.items).find(i => i.id === (artifactId || note.artifactId));
+    if (!target || target.current?.id !== versionId || target.availability !== 'present') throw new Error('返修目标必须是已登记且存在的当前版本');
+    if (note.step && !view.stages.find(s => s.step === note.step)?.items.some(i => i.id === target.id)) throw new Error('返修目标不属于该阶段');
+    const repair = { id: crypto.randomUUID(), artifactId: target.id, versionId, revision: target.revision, summary: summary.trim(), verification: verification.trim(), at: now() };
+    note.history ||= []; note.history.push({ action: 'repair', ...repair });
+    note.repair = repair; note.status = 'awaiting-review'; note.resolved = false; note.updatedAt = now();
+    save(root, data); return normalizedNote(note);
+  });
+}
+export function resolveWorkbenchNote(dir, { id, resolved, action, repairId, reason }) {
+  return locked(dir, root => {
+    const view = capture(root), data = ledger(root), note = data.notes.find(n => n.id === id);
+    if (!note) throw new Error('意见不存在');
+    action ||= resolved === false ? 'reopen' : '';
+    if (!['verified', 'reopen', 'dismissed'].includes(action)) throw new Error('请指定返修结果复验或填写无需修改理由');
+    if (reason !== undefined && (typeof reason !== 'string' || reason.length > 10000)) throw new Error('处置理由无效');
+    if (action === 'dismissed' && !reason?.trim()) throw new Error('无需修改关闭必须填写理由');
+    if (action === 'verified') {
+      if (!note.repair || !repairId || note.repair.id !== repairId || note.status !== 'awaiting-review') throw new Error('请查看当前返修结果后再确认复验');
+      const target = view.stages.flatMap(s => s.items).find(i => i.id === note.repair.artifactId);
+      if (!target || target.current?.id !== note.repair.versionId || target.revision !== note.repair.revision || target.availability !== 'present') throw new Error('返修版本或来源已变化，请查看新版并重新返修复验');
+    }
+    note.status = action === 'verified' ? 'resolved' : action === 'dismissed' ? 'dismissed' : 'pending';
+    note.resolved = action !== 'reopen'; note.updatedAt = now(); note.history ||= [];
+    note.history.push({ action, reason: reason?.trim() || '', repairId: note.repair?.id || null, at: note.updatedAt });
+    save(root, data); return normalizedNote(note);
   });
 }
 export function checkWorkbenchArtifact(dir, { artifactId, versionId, revision }) {
@@ -218,7 +255,7 @@ export function checkWorkbenchArtifact(dir, { artifactId, versionId, revision })
     const view = capture(root), item = view.stages.flatMap(s => s.items).find(i => i.id === artifactId);
     if (!item || item.current?.id !== versionId || item.revision !== revision || item.availability !== 'present') throw new Error('交付版本已变化，请重新打开并检查');
     const data = ledger(root);
-    if (!data.checks.some(c => c.artifactId === artifactId && c.revision === revision)) data.checks.push({ artifactId, versionId, revision, at: now() });
+    if (!data.checks.some(c => c.artifactId === artifactId && c.revision === revision)) data.checks.push({ artifactId, versionId, revision, dependencies: item.dependencies, at: now() });
     save(root, data); return { checked: true };
   });
 }
@@ -249,7 +286,7 @@ export function workbenchPending(dir) {
   return { dir, instruction: '仅为待办，收到用户在对话中的执行要求后处理；视频生成每批另行确认。',
     notes: data.notes.filter(n => !n.resolved).map(n => {
       const { artifact, version } = versionFor(data, n.artifactId, n.versionId);
-      return { ...n, path: artifact.path, step: artifact.step, version: version.number, historical: artifact.versions.at(-1).id !== version.id };
+      return { ...normalizedNote(n), path: artifact.path, step: artifact.step, version: version.number, historical: artifact.availability === 'historical' || artifact.versions.at(-1).id !== version.id };
     }),
     decisions: data.decisions.filter((d, i) => d.decision === 'changes-requested' && !data.decisions.slice(i + 1).some(later => later.step === d.step && later.decision === 'approved')) };
 }

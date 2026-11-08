@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,6 +8,7 @@ const moduleUrl = new URL('../../plugin/engine/core/workbench.mjs', import.meta.
 async function setup(t) {
   assert.ok(fs.existsSync(moduleUrl), '全流程审阅账本尚未实现');
   const api = await import(moduleUrl), dir = fs.mkdtempSync(path.join(os.tmpdir(), '工作台 test-'));
+  initializeProduction(dir);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const put = (name, text) => { const file = path.join(dir, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
   put('brief.md', '# 简报\n第一版'); put('story.md', '故事第一段');
@@ -14,14 +16,10 @@ async function setup(t) {
 }
 const at = (report, step) => report.stages.find(s => s.step === step);
 
-test('all 15 stages are visible before film.json exists; source state is not migrated', async t => {
-  const { api, dir, put } = await setup(t);
-  put('.wka/state.json', '{"flow":1,"step":1,"history":[]}');
-  const report = api.captureWorkbench(dir);
-  assert.equal(report.stages.length, 15); assert.equal(report.stages.filter(s => s.gate).length, 12);
-  assert.equal(at(report, 2).items[0].availability, 'present');
-  assert.equal(at(report, 5).items[0].availability, 'not-generated');
-  assert.equal(fs.readFileSync(path.join(dir, '.wka/state.json'), 'utf8'), '{"flow":1,"step":1,"history":[]}');
+test('all 8 active stages are visible before film.json exists', async t => {
+ const {api,dir}=await setup(t);const report=api.captureWorkbench(dir);
+ assert.equal(report.stages.length,8);assert.equal(report.stages.filter(s=>s.gate).length,7);
+ assert.equal(at(report,2).items[0].availability,'present');assert.equal(at(report,4).items[0].availability,'not-generated');
 });
 
 test('overwriting a deliverable preserves immutable bytes and does not duplicate unchanged versions', async t => {
@@ -36,7 +34,7 @@ test('overwriting a deliverable preserves immutable bytes and does not duplicate
 
 test('text, image and time annotations validate anchors and survive reopening', async t => {
   const { api, dir, put } = await setup(t);
-  let item = at(api.captureWorkbench(dir), 4).items[0];
+  let item = at(api.captureWorkbench(dir), 3).items[0];
   api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '改开场', anchor: { type: 'text', start: 0, end: 2, quote: '故事' } });
   assert.throws(() => api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '错位', anchor: { type: 'text', start: 0, end: 2, quote: '别的' } }), /选段/);
   put('review/test.png', 'image fixture');
@@ -45,8 +43,8 @@ test('text, image and time annotations validate anchors and survive reopening', 
   api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '这里', anchor: { type: 'image', x: 0.5, y: 0.2 } });
   assert.throws(() => api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '越界', anchor: { type: 'image', x: 2, y: 0 } }), /位置/);
   put('review/test.mp4', 'video fixture');
-  api.registerWorkbenchArtifact(dir, { file: 'review/test.mp4', step: 9 });
-  item = at(api.captureWorkbench(dir), 9).items.find(i => i.path.endsWith('test.mp4'));
+  api.registerWorkbenchArtifact(dir, { file: 'review/test.mp4', step: 5 });
+  item = at(api.captureWorkbench(dir), 5).items.find(i => i.path.endsWith('test.mp4'));
   api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '放慢', anchor: { type: 'time', start: 1, end: 2 } });
   assert.throws(() => api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '倒序', anchor: { type: 'time', start: 2, end: 1 } }), /时间/);
   assert.equal(api.workbenchPending(dir).notes.length, 3);
@@ -80,7 +78,7 @@ test('changing one local shot leaves unrelated local previews current', async t 
   put('shots/s01.js', 'one'); put('shots/s02.js', 'two');
   put('review/局部小样/s01.mp4', 'first'); put('review/局部小样/s02.mp4', 'second');
   api.captureWorkbench(dir); put('shots/s01.js', 'changed');
-  const items = at(api.captureWorkbench(dir), 9).items;
+  const items = at(api.captureWorkbench(dir), 5).items;
   assert.equal(items.find(i => i.path.endsWith('s01.mp4')).freshness, 'needs-review');
   assert.equal(items.find(i => i.path.endsWith('s02.mp4')).freshness, 'current');
 });
@@ -98,10 +96,10 @@ test('moving a project preserves local artifact identity, versions and notes', a
   const { api, dir, put } = await setup(t);
   put('review/方案.txt', '方案一');
   api.registerWorkbenchArtifact(dir, { file: 'review/方案.txt', step: 3 });
-  const item = at(api.captureWorkbench(dir), 3).items[0];
+  const item = at(api.captureWorkbench(dir), 3).items.find(i => i.relativePath === 'review/方案.txt');
   api.addWorkbenchNote(dir, { artifactId: item.id, versionId: item.current.id, text: '移动后仍保留', anchor: { type: 'general' } });
   const moved = dir + '-moved'; fs.renameSync(dir, moved); t.after(() => fs.rmSync(moved, { recursive: true, force: true }));
-  const next = at(api.captureWorkbench(moved), 3).items[0];
+  const next = at(api.captureWorkbench(moved), 3).items.find(i => i.id === item.id);
   assert.equal(next.id, item.id); assert.equal(next.current.id, item.current.id);
   assert.equal(next.notes[0].text, '移动后仍保留');
   assert.equal(next.path, path.join(fs.realpathSync(moved), 'review/方案.txt'));
@@ -123,7 +121,7 @@ test('changes requested create a readable handoff without calling generation or 
   const stage = at(api.captureWorkbench(dir), 2);
   await api.decideWorkbenchStage(dir, { step: 2, revision: stage.revision, decision: 'changes-requested', note: '突出主题' }, () => { throw new Error('不应执行'); });
   assert.equal(api.workbenchPending(dir).decisions[0].note, '突出主题');
-  assert.equal(fs.existsSync(path.join(dir, '.wka/state.json')), false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.wka/state.json'))).step, 0);
 });
 
 test('missing current files preserve history and damaged/newer ledgers are never replaced', async t => {
@@ -140,9 +138,9 @@ test('missing current files preserve history and damaged/newer ledgers are never
 test('symlinked project storage and undeclared external source cannot escape project scope', async t => {
   const { api, dir, put } = await setup(t);
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'outside-')); t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
-  fs.symlinkSync(outside, path.join(dir, '.wka'));
+  fs.rmSync(path.join(dir,'.wka'),{recursive:true});fs.symlinkSync(outside, path.join(dir, '.wka'));
   assert.throws(() => api.captureWorkbench(dir), /链接|范围/); assert.deepEqual(fs.readdirSync(outside), []);
-  fs.unlinkSync(path.join(dir, '.wka')); put('brief.md', 'safe');
+  fs.unlinkSync(path.join(dir, '.wka')); put('.wka/state.json', JSON.stringify({flow:6,step:0,history:[]})); put('brief.md', 'safe');
   fs.symlinkSync(outside, path.join(dir, 'review'));
   assert.throws(() => api.captureWorkbench(dir), /链接|范围/);
 });

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,12 +10,14 @@ import { rememberArtifacts } from '../../plugin/engine/core/operations.mjs';
 test('特殊路径链接可解析回真实文件，缺失/替换/改源不交作当前文件',t=>{
   assert.equal(typeof delivery.deliveryReport,'function');
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'动画 (项目) #%-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
-  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}]}));
-  const file=path.join(dir,'对白 [中] #%.srt');fs.writeFileSync(file,'字幕');
-  rememberArtifacts(dir,{stage:'review:subtitles',aspect:'16:9',signature:'sig',outputs:[file],value:file});
+  initializeProduction(dir);
+  initializeProduction(dir);
+ fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}]}));
+  const file=path.join(dir,'对白 [中] #%.md');fs.writeFileSync(file,'检查结果');
+  rememberArtifacts(dir,{stage:'review:notes',aspect:'16:9',signature:'sig',outputs:[file],value:file});
   let report=delivery.deliveryReport(dir,{host:'codex'});
   const item=report.items.find(i=>i.path===file);assert.equal(item.status,'current');
-  const target=/<([^>]+)>/.exec(item.link)[1];assert.equal(fs.readFileSync(decodeURIComponent(target),'utf8'),'字幕');
+  const target=/<([^>]+)>/.exec(item.link)[1];assert.equal(fs.readFileSync(decodeURIComponent(target),'utf8'),'检查结果');
   assert.equal(item.openStatus,'not-tested');
   fs.writeFileSync(path.join(dir,'.cache/active-command.json'),JSON.stringify({argv:['final',dir]}));
   const incomplete=delivery.deliveryReport(dir,{host:'codex'});
@@ -38,9 +41,10 @@ test('明确制作决定校验与实际配置冲突，不推断缺省选择',t=>
 
 test('generic delivery returns a real path and explicit unverified preview without inventing a link',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka generic 中 #% '));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ initializeProduction(dir);
  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}]}));
- const file=path.join(dir,'字幕 #%.srt');fs.writeFileSync(file,'字幕');
- rememberArtifacts(dir,{stage:'review:subtitles',aspect:'16:9',signature:'sig',outputs:[file],value:file});
+ const file=path.join(dir,'检查结果 #%.md');fs.writeFileSync(file,'检查结果');
+ rememberArtifacts(dir,{stage:'review:notes',aspect:'16:9',signature:'sig',outputs:[file],value:file});
  const report=delivery.deliveryReport(dir,{host:'generic'}),item=report.items.find(i=>i.path===file);
  assert.equal(item.previewStatus,'unverified');assert.equal(item.path,file);assert.equal(item.link,undefined);assert.deepEqual(report.links,[]);
  fs.unlinkSync(file);assert.equal(delivery.deliveryReport(dir,{host:'generic',required:[file]}).ok,false);

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,7 @@ import { recordApproval } from '../../plugin/engine/core/state.mjs';
 process.env.WKA_NO_FONT_DOWNLOAD = '1';
 process.env.WKA_WORKERS = '2';
 for (const style of ['ink-wash', 'keynote']) test(`${style} 主版证明复用，缺失快照、片段替换与镜头集合变化失效`, async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-main-proof-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-main-proof-'));initializeProduction(dir);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.mkdirSync(path.join(dir, 'shots'));
   const browser = style === 'ink-wash', ext = browser ? 'js' : 'jsx';

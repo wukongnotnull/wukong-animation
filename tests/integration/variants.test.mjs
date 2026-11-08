@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // 横竖双版：同一部片按画幅出主版和副版。需要真实的 Chromium + ffmpeg（wka setup）；缺依赖时跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +21,7 @@ const BRANCHED = SHOT(`${FILL('#FFFFFF')} if (s.orientation === 'portrait') { ${
 
 /** 主版 320×180、副版 9:16 的最小片子；s01 有竖版覆盖文件（红）。 */
 function makeFilm(extra = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#F2EDE3')));
   fs.writeFileSync(path.join(dir, 'shots', 's01.9x16.js'), SHOT(FILL('#FF0000')));
@@ -96,48 +97,6 @@ test('an aspect the film does not declare fails with the usable ones', () => {
   assert.match(bad.stderr + bad.stdout, /variants/);
 });
 
-test('wka subtitles --aspect writes the variant\'s own srt and English, split for its aspect', () => {
-  const text = '每一帧都由代码画出来，镜头版式和声音全都写在工程里。';
-  const dir = makeFilm({
-    subtitles: { mode: 'burn', bilingual: true },
-    audio: { voices: [{ text, at: 0 }] },
-    cues: { vo1: [0, 2] },
-  });
-  ok(wka('subtitles', dir));
-  const mainSrt = fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8');
-  const enFile = path.join(dir, 'subtitles.en.json');
-  const pairs = JSON.parse(fs.readFileSync(enFile, 'utf8'));
-  const english = ['Every frame is drawn by code', 'shots, layouts and sound all live in the project'];
-  assert.equal(pairs.length, english.length);
-  fs.writeFileSync(enFile, JSON.stringify(pairs.map((p, i) => ({ ...p, en: english[i] }))));
-
-  ok(wka('subtitles', dir, '--aspect', '9:16'));
-  const srt = fs.readFileSync(path.join(dir, 'subtitles.9x16.srt'), 'utf8');
-  const count = (t) => t.trim().split(/\n\s*\n/).length;
-  assert.ok(count(srt) > count(mainSrt), '竖屏每条字数更少，条数更多');
-  const vPairs = JSON.parse(fs.readFileSync(path.join(dir, 'subtitles.en.9x16.json'), 'utf8'));
-  assert.equal(vPairs.length, count(srt));
-  assert.equal(vPairs.map((p) => p.en).join(' '), english.join(' '), '英文沿用主版，只重新拆条');
-  assert.equal(fs.readFileSync(path.join(dir, 'subtitles.srt'), 'utf8'), mainSrt, '主版字幕不动');
-
-  // 主版英文改过：默认保留副版手改，显式 force 后重新拆条
-  const fixed = english.map((e, i) => (i === 0 ? 'Each frame is drawn in code' : e));
-  fs.writeFileSync(enFile, JSON.stringify(pairs.map((p, i) => ({ ...p, en: fixed[i] }))));
-  const later = new Date(Date.now() + 5000);
-  fs.utimesSync(enFile, later, later);
-  const beforeRefresh=fs.readFileSync(path.join(dir,'subtitles.en.9x16.json'),'utf8');
-  ok(wka('subtitles', dir, '--aspect', '9:16'));
-  assert.equal(fs.readFileSync(path.join(dir,'subtitles.en.9x16.json'),'utf8'),beforeRefresh,'普通检查不得覆盖手改英文');
-  ok(wka('subtitles', dir, '--aspect', '9:16', '--force'));
-  const refreshed = JSON.parse(fs.readFileSync(path.join(dir, 'subtitles.en.9x16.json'), 'utf8'));
-  assert.equal(refreshed.map((p) => p.en).join(' '), fixed.join(' '));
-
-  // 已存在时只检查不覆盖（可能手改过断句）
-  const edited = srt.replace('每一帧', '每一帧 ');
-  fs.writeFileSync(path.join(dir, 'subtitles.9x16.srt'), edited);
-  ok(wka('subtitles', dir, '--aspect', '9:16'));
-  assert.equal(fs.readFileSync(path.join(dir, 'subtitles.9x16.srt'), 'utf8'), edited);
-});
 
 test('wka qc --aspect checks the variant video and writes its report under .cache/9x16', opts, () => {
   const dir = makeFilm();
@@ -151,10 +110,10 @@ const report = (dir) => fs.readFileSync(path.join(dir, 'review', '主版不变�
 const rowOf = (text, id) => text.split('\n').find((l) => l.startsWith(`| ${id} `)) || '';
 const state = (dir) => JSON.parse(fs.readFileSync(path.join(dir, '.wka', 'state.json'), 'utf8'));
 
-test('signing off step 13 snapshots the main version; variant renders report whether it changed', opts, () => {
+test('signing off step 6 snapshots the main version; variant renders report whether it changed', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '成片终审通过', '--step', '13'));
+  ok(wka('signoff', dir, '成片终审通过', '--step', '6'));
   assert.deepEqual(Object.keys(state(dir).approved.main), ['s01', 's02']);
   assert.deepEqual(fs.readdirSync(path.join(dir, '.cache', 'approved')).sort(), ['s01.mp4', 's02.mp4']);
 
@@ -184,17 +143,17 @@ test('signing off step 13 snapshots the main version; variant renders report whe
 test('a variant signed off before the main version changed is stale: final refuses it, status says so', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '终审通过', '--step', '13'));
+  ok(wka('signoff', dir, '终审通过', '--step', '6'));
   ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
-  ok(wka('signoff', dir, '副版通过', '--step', '14'));
+  ok(wka('signoff', dir, '副版通过', '--step', '7'));
   assert.ok(state(dir).approved.variants['9:16'].shots.s01);
 
   fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#000000')));
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '返修后终审通过', '--step', '13'));
+  ok(wka('signoff', dir, '返修后终审通过', '--step', '6'));
   const r = wka('final', dir, '--aspect', '9:16', '--proxy');
   assert.notEqual(r.status, 0);
-  assert.match(r.stderr + r.stdout, /第 14 道/);
+  assert.match(r.stderr + r.stdout, /第 7 道/);
 
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-project-'));
   fs.mkdirSync(path.join(projectDir, 'films'));

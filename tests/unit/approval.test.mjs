@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { recordApproval, readProgress, variantStale, staleVariants } from '../../plugin/engine/core/state.mjs';
+import { initializeProduction, recordApproval, readProgress, variantStale, staleVariants } from '../../plugin/engine/core/state.mjs';
 import { psnrMin } from '../../plugin/engine/core/approval.mjs';
 
 const filmDir = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-approval-'));
-  fs.writeFileSync(path.join(dir, 'film.json'), '{}');
+  initializeProduction(dir);fs.writeFileSync(path.join(dir, 'film.json'), '{}');
   return dir;
 };
 

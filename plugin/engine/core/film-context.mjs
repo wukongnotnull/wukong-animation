@@ -5,20 +5,22 @@ import { getRegistry, getStyles } from './registry.mjs';
 import { resolveStyle } from './resolver.mjs';
 import { validate } from './validate.mjs';
 import { migrateFilm } from './compat.mjs';
-import { mergeSubtitleStyle } from './subtitle-layer.mjs';
 import { resolveVariant, overrideShotPath } from './variants.mjs';
-import { assertCompatibleProgress } from './state.mjs';
+import { assertActiveProduction } from './state.mjs';
 
 /**
  * @param {{requireShots?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
  *   aspect: 要处理的画幅，缺省为主版。副版换成副版尺寸、优先用覆盖镜头文件 sNN.<后缀>.<扩展名>
  */
 export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
-  assertCompatibleProgress(filmDir);
+  assertActiveProduction(filmDir);
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
   if (!fs.existsSync(file)) throw new Error(`找不到 ${file}`);
   const { film: rawFilm, renamed: legacyFields } = migrateFilm(JSON.parse(fs.readFileSync(file, 'utf8')));
+  if (rawFilm.subtitles && (rawFilm.subtitles.mode !== 'none' || Object.keys(rawFilm.subtitles).some(k => k !== 'mode'))) throw new Error('新制作流程不支持字幕，请移除字幕配置；画面标题与题字仍可使用。');
+  if (Object.values(rawFilm.variants || {}).some(v => v.subtitles)) throw new Error('新制作流程不支持字幕画幅配置。');
+  if (rawFilm.audio?.voice_source === 'ai' || (rawFilm.audio?.voices || []).some(v => v.voice || v.rate || v.pitch)) throw new Error('新制作流程仅使用用户提供的人声，不支持 AI 人声或自动变速。');
   const errs = validate('film', rawFilm, 'film.json');
   if (errs.length) throw new Error('film.json 校验失败:\n  ' + errs.join('\n  '));
   const ids = new Set();
@@ -47,11 +49,6 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
 
   const styleScripts = (style.scripts || []).map((p) => path.join(style.dir, p));
   const filmScripts = (film.scripts || []).map((p) => path.join(filmDir, p));
-  // 片子可以单独改字幕样式（film.json 的 subtitles.style），副版还能再覆盖一层；不用动插件目录里的 style.json
-  const { by_aspect: byAspect = {}, ...baseSubtitles } = style.subtitles || {};
-  const resolvedSubtitles = [byAspect[variant.aspect],film.subtitles?.style,variant.overrides.subtitles?.style].filter(Boolean)
-    .reduce((acc,o)=>mergeSubtitleStyle(acc,o),baseSubtitles);
-  const filmStyle = { ...style, subtitles: resolvedSubtitles };
-  return { film, filmDir, legacyFields, style: filmStyle, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts, variant };
+  return { film, filmDir, legacyFields, style, registry, ...resolved, shots, totalDuration: t, styleScripts, filmScripts, variant };
 }
 

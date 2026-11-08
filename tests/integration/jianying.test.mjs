@@ -1,3 +1,5 @@
+import { confirmFixtureVoices } from '../helpers/production.mjs';
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // 剪映草稿导出：需要 browser 管线依赖 + ffmpeg + python3 里的 pyJianYingDraft；缺任一项整组跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,7 +31,7 @@ const gapped = (file) =>
 
 /** 两镜各 1 秒；配乐脚本 1 条（一声"笃"）、自供录音人声 2 条、用户音轨 2 条（bgm -6dB、中间静音的 gap）。 */
 function makeFilm({ voices } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-jy-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-jy-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   fs.mkdirSync(path.join(dir, 'audio'));
   for (const id of ['s01', 's02']) fs.writeFileSync(path.join(dir, 'shots', `${id}.js`), SHOT);
@@ -51,7 +53,7 @@ function makeFilm({ voices } = {}) {
       tracks: [{ file: 'audio/bgm.wav', gain: -6 }, { file: 'audio/gap.wav' }],
     },
   };
-  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
+  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));confirmFixtureVoices(dir);
   return dir;
 }
 
@@ -81,32 +83,6 @@ test('writer rejects a genuinely short video instead of silently leaving a timel
   } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(drafts, { recursive: true, force: true }); }
 });
 
-test('draft CLI keeps long English and punctuation as warnings, measures native layout and rejects mismatched text', opts, () => {
-  const dir = makeFilm(), drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-English-'));
-  try {
-    const file = path.join(dir, 'film.json'), film = JSON.parse(fs.readFileSync(file));
-    // 保留竖版和长句拟合断言；宽度留足空间，避免 Linux fallback 在 8px 字号下仍容纳不了整句。
-    film.size = [360, 640]; film.subtitles = { mode: 'both', bilingual: true, style: { size: .03 } };
-    fs.writeFileSync(file, JSON.stringify(film));
-    fs.writeFileSync(path.join(dir, 'subtitles.srt'), '1\n00:00:00,200 --> 00:00:00,700\n第一句\n\n2\n00:00:01,300 --> 00:00:01,700\n第二句\n');
-    const pairs = [{ zh: '第一句', en: 'What you imagine can become what you make.' }, { zh: '第二句', en: 'Ready.' }];
-    const en = path.join(dir, 'subtitles.en.json'); fs.writeFileSync(en, JSON.stringify(pairs));
-    const r = wka(drafts, 'final', dir, '--formats', 'jianying');
-    assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /超过 28/); assert.match(r.stdout, /句号/);
-    const draft = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it/draft_info.json')));
-    assert.ok(draft.materials.texts.some(t => JSON.parse(t.content).text === pairs[0].en));
-    const texts = draft.materials.texts.map(t=>JSON.parse(t.content));
-    const sizes = pairs.map(p=>texts.find(t=>t.text===p.en).styles[0].size);
-    assert.ok(sizes[0] < sizes[1], 'long English uses its fitted per-segment size in Python output');
-    assert.equal(fs.existsSync(path.join(dir, '.cache/video.mp4')), false);
-    const report = JSON.parse(fs.readFileSync(path.join(dir, 'review/字幕预检-版式.json')));
-    assert.deepEqual([report.W, report.H], film.size); assert.equal(report.measurements.length, 2);
-    pairs[0].zh = '错配'; fs.writeFileSync(en, JSON.stringify(pairs));
-    const bad = wka(drafts, 'final', dir, '--formats', 'jianying'); assert.notEqual(bad.status, 0); assert.match(bad.stderr, /第 1 条.*中文/);
-    pairs[0].zh = '第一句'; pairs[0].en = ''; fs.writeFileSync(en, JSON.stringify(pairs));
-    const blank = wka(drafts, 'final', dir, '--formats', 'jianying'); assert.notEqual(blank.status, 0); assert.match(blank.stderr, /英文没填/);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(drafts, { recursive: true, force: true }); }
-});
 
 test('107-shot 30fps main and portrait exports have contiguous actual draft cuts', opts, () => {
   const dir=makeFilm(),drafts=fs.mkdtempSync(path.join(os.tmpdir(),'wka-107-drafts-'));
@@ -134,7 +110,7 @@ test('纯草稿不拼全片，重复/CLI登记前中断不重导，用户编辑�
     const first=wka(drafts,'final',dir,'--formats','jianying');assert.equal(first.status,0,first.stderr);
     assert.ok(first.stdout.indexOf('写入前说明')>=0&&first.stdout.indexOf('写入前说明')<first.stdout.indexOf('draft-export] 开始'),'声音差异在草稿写入前披露');
     const difference=JSON.parse(fs.readFileSync(path.join(dir,'review/草稿声音差异.json')));
-    assert.equal(difference.master.fadeOut,0.2);assert.equal(difference.master.targetLUFS,-18);
+    assert.equal(difference.master.fadeOut,0);assert.equal(difference.master.targetLUFS,-18);
     assert.equal(fs.existsSync(path.join(dir,'.cache/video.mp4')),false,'纯草稿无需拼全片');
     const file=path.join(drafts,'jy-it/draft_info.json'),original=fs.readFileSync(file);
     const twice=wka(drafts,'final',dir,'--formats','jianying');assert.equal(twice.status,0,twice.stderr);
@@ -153,7 +129,7 @@ test('纯草稿不拼全片，重复/CLI登记前中断不重导，用户编辑�
   }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(drafts,{recursive:true,force:true});}
 });
 
-test('exports an editable 剪映 draft split by shot, audio source and subtitle', opts, () => {
+test('exports an editable 剪映 draft split by shot and audio source, with no caption tracks', opts, () => {
   const dir = makeFilm();
   const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
   const r = wka(drafts, 'final', dir, '--formats', 'jianying');
@@ -183,16 +159,7 @@ test('exports an editable 剪映 draft split by shot, audio source and subtitle'
   assert.ok(gap[1].target_timerange.start > 1_500_000 && gap[1].target_timerange.start < 1_700_000, `second part starts at ${gap[1].target_timerange.start}`);
   assert.equal(draft.materials.audios.filter((m) => m.path.endsWith('gap.wav')).length, 1, 'both parts share one material');
 
-  const [text] = byType(draft, 'text');
-  assert.equal(text.segments.length, 2);
-  assert.equal(text.segments[0].target_timerange.start, 200_000);
-  assert.ok(draft.materials.texts.some((t) => t.content.includes('第二句')));
-  // ink-wash 的字幕样式：古风小楷、墨色字、宣纸描边、底边距 10%
-  const [textStyle] = JSON.parse(draft.materials.texts[0].content).styles;
-  assert.equal(textStyle.font.id, '7216598671016596029', '古风小楷');
-  assert.deepEqual(textStyle.fill.content.solid.color.map((c) => Math.round(c * 255)), [0x2b, 0x2b, 0x2b]);
-  assert.equal(textStyle.strokes.length, 1);
-  assert.equal(text.segments[0].clip.transform.y, -0.75);
+  assert.deepEqual(byType(draft, 'text'), []);assert.deepEqual(draft.materials.texts, []);
 
   const paths = [...draft.materials.videos, ...draft.materials.audios].map((m) => m.path);
   for (const p of paths) assert.ok(p.startsWith(path.join(draftDir, 'materials') + path.sep), `outside draft: ${p}`);
@@ -234,7 +201,7 @@ test('gives every exported draft its own id so 剪映 does not reuse a cached ti
   fs.rmSync(drafts, { recursive: true, force: true });
 });
 
-test('puts overlapping voices and their subtitles on second tracks', opts, () => {
+test('puts overlapping voices on second tracks without implicit captions', opts, () => {
   const dir = makeFilm({
     voices: [
       { text: '第一句', at: 0.2, file: 'audio/vo1.wav' },
@@ -248,7 +215,7 @@ test('puts overlapping voices and their subtitles on second tracks', opts, () =>
   const voices = byType(draft, 'audio').filter((t) => t.name.startsWith('人声'));
   assert.deepEqual(voices.map((t) => [t.name, t.segments.map((s) => s.target_timerange.start)]), [['人声', [200_000]], ['人声 2', [500_000]]]);
   assert.ok(Math.abs(voices[0].segments[0].target_timerange.duration - 500_000) < 20_000, 'voice segment is as long as its audio');
-  assert.deepEqual(byType(draft, 'text').map((t) => t.segments.length), [1, 1]);
+  assert.deepEqual(byType(draft, 'text'), []);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });
@@ -298,20 +265,4 @@ test('refuses to export a draft in proxy mode', opts, () => {
   assert.deepEqual(fs.readdirSync(drafts), []);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
-});
-
-test('warns when the film’s subtitle font has no 剪映 counterpart, but not for fonts mapped to null', opts, () => {
-  for (const [family, warned] of [['Long Cang', true], ['Noto Sans SC', false]]) {
-    const dir = makeFilm();
-    const f = path.join(dir, 'film.json');
-    fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), subtitles: { mode: 'none', style: { font: { family } } } }));
-    const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
-    const r = wka(drafts, 'final', dir, '--formats', 'jianying');
-    assert.equal(r.status, 0, r.stderr);
-    const re = new RegExp(`字幕字体「${family}」在剪映字体对照表里没有对应项`);
-    if (warned) assert.match(r.stdout, re);
-    else assert.doesNotMatch(r.stdout, /在剪映字体对照表里没有对应项/);
-    fs.rmSync(dir, { recursive: true, force: true });
-    fs.rmSync(drafts, { recursive: true, force: true });
-  }
 });

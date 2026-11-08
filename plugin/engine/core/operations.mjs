@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { atomicJson, readJson, digest, fileDigest, fileEvidence, treeEvidence } from './evidence.mjs';
 import { fileVersion } from './file-hash.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
-import { assertCompatibleProgress } from './state.mjs';
+import { assertCompatibleProgress, assertActiveProduction, inspectProduction } from './state.mjs';
 
 const ledgerFile=dir=>path.join(path.resolve(dir),'.cache/operations.json');
 const keyOf=({stage,aspect,proxy})=>`${aspect}|${proxy?'proxy':'full'}|${stage}`;
@@ -50,17 +50,12 @@ export function sourceState(dir) {
     guards.push(()=>{if(shape(base,exclude)!==before)throw changed(base);});
     return treeEvidence(base,exclude,readDigest);
   };
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','subtitle-layout.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,source(path.join(dir,rel))]);
   const film=readJson(path.join(dir,'film.json'),{});
-  const presenterFiles=film.subtitles?.source==='presenter'?[film.subtitles.file||'subtitles.srt',...Object.values(film.variants||{}).map(v=>v.subtitles?.file)]:[];
-  const references=[...presenterFiles,...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
+  const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
   for(const rel of references)data.push([rel,source(path.resolve(dir,rel))]);
   data.push(['shots',tree(path.join(dir,'shots'))],['audio',tree(path.join(dir,'audio'),(rel,ent)=>ent.isDirectory()&&ent.name==='generated')]);
-  const subtitleNames=()=>fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>/^subtitles.*\.(srt|json)$/.test(f)):[];
-  const subtitles=subtitleNames();
-  guards.push(()=>{if(JSON.stringify(subtitleNames())!==JSON.stringify(subtitles))throw changed(dir);});
-  for(const file of subtitles)data.push([file,fileEvidence(path.join(dir,file),readDigest).sha256]);
   // 检查新增/删除条目和缺失引用；排除目录及无关缓存写入不触发目录 mtime 误报。
   for(const guard of guards)guard();
   for(const file of versions.keys())observe(file);
@@ -71,13 +66,13 @@ export function outputsMatch(outputs) {
   try {return outputs.length>0&&outputs.every(old=>digest(capture(old.file))===digest(old));}catch{return false;}
 }
 export function rememberArtifacts(dir,{stage,aspect,proxy=false,signature,value,outputs}) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const data=load(dir),key=keyOf({stage,aspect,proxy});
   data.stages[key]={id:crypto.randomUUID(),stage,aspect,proxy,signature,implementation:implementationState(),sourceState:sourceState(dir),status:'completed',startedAt:new Date().toISOString(),completedAt:new Date().toISOString(),value,outputs:outputs.map(capture)};
   atomicJson(ledgerFile(dir),data); return data.stages[key];
 }
 export async function runStage(dir,{stage,aspect,proxy=false,signature,force=false,log=console.log,run,validate=()=>true,onReuse=()=>{},reuseOnly=false}) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const key=keyOf({stage,aspect,proxy}),data=load(dir),old=data.stages[key];
   const label=`[${aspect} ${proxy?'小样':'高清'} · ${stage}]`;
   if(!force&&signature&&old?.signature===signature&&old.implementation===implementationState()&&old.status==='completed'&&outputsMatch(old.outputs)&&await validate(old.value)){
@@ -99,7 +94,7 @@ export async function runStage(dir,{stage,aspect,proxy=false,signature,force=fal
 }
 const alive=pid=>{try{process.kill(pid,0);return true;}catch(e){return e.code==='EPERM';}};
 export function lockProduction(dir) {
-  assertCompatibleProgress(dir);
+  assertActiveProduction(dir);
   const file=path.join(path.resolve(dir),'.cache/operation.lock');fs.mkdirSync(path.dirname(file),{recursive:true});
   for(let n=0;n<2;n++){
     try{
@@ -116,6 +111,7 @@ export function lockProduction(dir) {
 }
 export function recoveryStatus(dir) {
   assertCompatibleProgress(dir);
+  if (inspectProduction(dir).mode === 'archive') return { version: 1, readonly: true, stages: [], next: '历史档案仅供查看；续作请新建项目，不继承旧签批。' };
   const data=load(dir);
   const source=sourceState(dir),implementation=implementationState();
   const stages=Object.values(data.stages).map(s=>({...s,status:s.status==='running'?(s.host!==os.hostname()?'needs-review':alive(s.pid)?'running':'interrupted'):s.status==='completed'&&!outputsMatch(s.outputs)?(s.stage==='draft-export'?'user-modified':'stale'):s.status==='completed'&&(s.sourceState!==source||s.implementation!==implementation)?'stale':s.status}));

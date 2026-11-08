@@ -44,15 +44,9 @@ function walk(root, relative) {
 }
 
 function inferredStep(file) {
-  if (/(?:[-./\\])\d+x\d+(?=[./\\-]|$)/.test(file)) return 14;
-  if (/试听|人声来源/.test(file)) return 6;
-  if (/声轨/.test(file)) return 7;
-  if (/美术|定调|visual-direction/.test(file)) return 3;
-  if (/局部小样|局部原画质/.test(file)) return 9;
-  if (/字幕预览|小样|QC报告-proxy/.test(file)) return 11;
-  if (/QC报告|最终交付|主版不变/.test(file)) return 13;
-  if (/字幕|subtitles/.test(file)) return 10;
-  return 8;
+  if (/(?:[-./\\])\d+x\d+(?=[./\\-]|$)/.test(file)) return 7;
+  if (/QC报告(?!-proxy)|最终交付|主版不变/.test(file)) return 6;
+  return 5;
 }
 
 export function workbenchCatalog(dir, registrations = []) {
@@ -65,40 +59,28 @@ export function workbenchCatalog(dir, registrations = []) {
     const key = absolute;
     const old = items.get(key);
     const relativePath = extra.external ? null : path.relative(dir, absolute).split(path.sep).join('/');
-    items.set(key, { step, label: path.basename(file), kind: workbenchKind(file), required: true, ...old, ...extra,
+    items.set(key, { step, label: /QC报告|主版不变|音效电平审计/.test(file) ? '检查结果' : path.basename(file), kind: workbenchKind(file), required: true, ...old, ...extra,
       id: digest(relativePath === null ? 'external:' + absolute : 'project:' + relativePath).slice(0, 24), path: absolute, relativePath });
   };
-  add('brief.md', 2); add('story.md', 4); add('storyboard.md', 5);
-  if (!registrations.some(r => r.step === 3)) add('visual-direction.md', 3, { label: '美术方案与选择' });
-  if (!registrations.some(r => r.step === 6)) add('review/人声来源.md', 6, { label: '人声来源与音色选择' });
-  const audio = film.audio || {}, silent = configured && (audio.voice_source || 'none') === 'none' && !audio.build && !audio.tracks?.length && !audio.voices?.length;
-  if (!silent) add('review/声轨.m4a', 7);
-  add('review/接触表.jpg', 8); add('review/动态分镜.mp4', 8);
-  const subtitlesMode = film.subtitles?.mode || (configured ? 'none' : null);
-  if (subtitlesMode !== 'none') {
-    add(film.subtitles?.file || 'subtitles.srt', 10);
-    if (film.subtitles?.bilingual) add(film.subtitles?.en_file || 'subtitles.en.json', 10);
-    const preflight = ['review/字幕预检-版式.json', 'review/字幕预检-proxy.json'].find(f => fs.existsSync(scopedPath(dir, f)));
-    add(preflight || 'review/字幕预检-版式.json', 10);
-    add('review/字幕预览.mp4', 11);
-  }
-  add('review/小样.mp4', 11); add('review/QC报告-proxy.json', 11);
+  if (fs.existsSync(scopedPath(dir, 'review/环境检查.md'))) add('review/环境检查.md', 1, { label: '环境检查结果', required: false });
+  add('brief.md', 2, { label: '方案简报' }); add('story.md', 3, { label: '剧本' }); add('storyboard.md', 4, { label: '分镜稿' });
+  add('review/小样.mp4', 5, { label: '小样视频' }); add('review/QC报告-proxy.json', 5, { label: '检查结果' });
   for (const file of [...walk(dir, 'review'), ...walk(dir, 'stills')]) {
     if (!['text', 'image', 'audio', 'video'].includes(workbenchKind(file))) continue;
-    if (/交付清单|交付审计/.test(file)) continue;
+    if (/交付清单|交付审计|字幕|subtitles/.test(file)) continue;
     // A directory may also contain user references; discovery alone is not a review contract.
     if (!items.has(scopedPath(dir, file))) {
-      const formal = /^(?:stills\/s[\w-]+[-.]|review\/(?:局部小样|局部原画质)\/|review\/(?:试听|声轨|接触表|动态分镜|小样|字幕预览|字幕预检|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
+      const formal = /^(?:review\/(?:小样|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
       add(file, inferredStep(file), { required: formal });
     }
   }
-  for (const file of fs.readdirSync(dir)) if (/\.(mp4|webm|gif|srt)$/.test(file) && !/^subtitles/.test(file)) add(file, /-\d+x\d+/.test(file) ? 14 : 13, { required: false });
+  for (const file of fs.readdirSync(dir)) if (/\.(mp4|webm|gif)$/.test(file) && !/^subtitles/.test(file)) add(file, /-\d+x\d+/.test(file) ? 7 : 6, { required: false });
   for (const operation of Object.values(stages).filter(s => s.status === 'completed')) {
     for (const output of operation.outputs || []) {
-      if (!output.file) continue;
+      if (!output.file || /字幕|subtitles/.test(output.file)) continue;
       const rel = path.relative(dir, path.resolve(dir, output.file));
       if (rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).some(p => p.startsWith('.'))) continue;
-      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: true });
+      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: !/局部/.test(rel) && /小样|QC报告/.test(rel) });
     }
   }
   let contract = null;
@@ -109,8 +91,8 @@ export function workbenchCatalog(dir, registrations = []) {
         const artifact = (ledger.artifacts || []).filter(a => a.slot === slot.slot).at(-1);
         const operation = Object.values(stages).find(s => s.stage === slot.stage && s.aspect === slot.aspect && !s.proxy && s.status === 'completed');
         const file = artifact?.path || operation?.outputs?.[0]?.file || slot.path;
-        if (file) add(file, slot.kind === 'draft' ? 15 : slot.aspect === contract.mainAspect ? 13 : 14,
-          { required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
+        if (file) add(file, slot.kind === 'draft' ? 8 : slot.aspect === contract.mainAspect ? 6 : 7,
+          { label: slot.kind === 'draft' ? '剪映草稿' : slot.aspect === contract.mainAspect ? '成片视频' : Number(slot.aspect.split(':')[0]) > Number(slot.aspect.split(':')[1]) ? '横屏成片' : Number(slot.aspect.split(':')[0]) < Number(slot.aspect.split(':')[1]) ? '竖屏成片' : '画幅成片', required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
       }
       warnings.push(...contract.errors);
     } catch (error) { warnings.push(`最终交付要求待核实：${error.message}`); }
@@ -119,11 +101,9 @@ export function workbenchCatalog(dir, registrations = []) {
   // A whole draft directory is an explicitly registered external deliverable, not an arbitrary browsing root.
   for (const item of items.values()) if (fs.existsSync(item.path) && fs.lstatSync(item.path).isDirectory()) item.kind = 'directory';
   const notApplicable = new Set();
-  if (silent) notApplicable.add(7);
-  if (subtitlesMode === 'none') notApplicable.add(10);
-  if (configured && !Object.keys(film.variants || {}).length) notApplicable.add(14);
+  if (configured && !Object.keys(film.variants || {}).length) notApplicable.add(7);
   const decisions = workbenchJson(scopedPath(dir, '.wka/decisions.json'), {});
-  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video-only') notApplicable.add(15);
+  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video') notApplicable.add(8);
   let start = 0;
   const shots = (film.shots || []).map(s => { const row = { id: s.id, start, duration: Number(s.duration) || 0 }; start += row.duration; return row; });
   return { film, items: [...items.values()], warnings, notApplicable, shots, duration: start, contract };
@@ -140,13 +120,12 @@ export function workbenchDependencies(dir, item, film) {
   };
   if (item.depends) item.depends.forEach(add);
   else {
-    if ([3, 4, 5].includes(item.step)) add('brief.md');
-    if (item.step === 5) add('story.md');
-    if (item.step === 6) projections.voice = { voice_source: film.audio?.voice_source, voices: film.audio?.voices };
-    const sound = [7, 8, 9, 10, 11, 13, 14, 15].includes(item.step) && item.kind !== 'image';
-    const picture = [8, 9, 11, 13, 14, 15].includes(item.step);
+    if ([3, 4].includes(item.step)) add('brief.md');
+    if (item.step === 4) add('story.md');
+    const sound = [5, 6, 7, 8].includes(item.step) && item.kind !== 'image';
+    const picture = [5, 6, 7, 8].includes(item.step);
     if (sound) {
-      projections.audio = film.audio || {}; add(film.audio?.build);
+      projections.audio = film.audio || {}; add(film.audio?.build); add('.wka/voice-alignment.json');
       for (const track of [...(film.audio?.tracks || []), ...(film.audio?.voices || [])]) add(track.file);
     }
     if (picture) {
@@ -169,13 +148,10 @@ export function workbenchDependencies(dir, item, film) {
       for (const script of film.scripts || []) addScript(script);
       const start = selected ? (film.shots || []).slice(0, film.shots.indexOf(selected)).reduce((sum, shot) => sum + (Number(shot.duration) || 0), 0) : null;
       projections.picture = { style: film.style, size: film.size, fps: film.fps, seed: film.seed, shots, start,
-        cues: pickCues(film.cues || {}, [...seen].map(f => scopedPath(dir, f))), variants: item.step === 14 ? film.variants : undefined };
-      add('visual-direction.md');
+        cues: pickCues(film.cues || {}, [...seen].map(f => scopedPath(dir, f))), variants: item.step === 7 ? film.variants : undefined };
+      add('brief.md'); add('story.md'); add('storyboard.md');
     }
-    if ([10, 11, 13, 14, 15].includes(item.step)) {
-      projections.subtitles = film.subtitles || {}; add('subtitle-layout.json');
-      if (item.step !== 10) { add(film.subtitles?.file || 'subtitles.srt'); if (film.subtitles?.bilingual) add(film.subtitles?.en_file || 'subtitles.en.json'); }
-    }
+
   }
   return digest({ projections, files: [...files].sort().filter(f => path.resolve(dir, f) !== item.path).map(source) });
 }

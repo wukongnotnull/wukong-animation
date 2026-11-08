@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { parseArgs } from '../core/command-args.mjs';
-import { assertCompatibleProgress, assertProjectCompatible } from '../core/state.mjs';
+import { inspectProduction, assertActiveProduction, assertProjectCompatible } from '../core/state.mjs';
 import { lockProduction } from '../core/operations.mjs';
 import { atomicJson } from '../core/evidence.mjs';
 import { hasWorkbench, captureWorkbenchLocked, assertWorkbenchScope } from '../core/workbench.mjs';
@@ -16,6 +16,10 @@ export async function runCli(argv, { log: write = console.log, error = console.e
   try {
     argv = [...argv];
     const parsed = parseArgs(argv), { cmd, pos, opt } = parsed;
+    if (['audition', 'subtitles'].includes(cmd)) {
+      if (pos[0] && inspectProduction(pos[0]).readonly) assertActiveProduction(pos[0]);
+      throw new Error('AI 人声和字幕制作已取消；请提供人声录音，在制作小样中完成声画编排。');
+    }
     const commands = commandsFor(commandContext(parsed, log));
     const command = Object.hasOwn(commands, cmd) ? commands[cmd] : null;
     if (!command) {
@@ -26,10 +30,12 @@ export async function runCli(argv, { log: write = console.log, error = console.e
 
     // Preflight always precedes locks, recovery records and handler side effects.
     if (command.preflight === 'project') assertProjectCompatible(pos[0] || '.');
-    else if (pos[0] && command.preflight === 'new-film') assertCompatibleProgress(path.resolve(opt('dir', '.'), 'films', pos[0]));
-    else if (pos[0] && (command.preflight === 'film' || (command.preflight === 'film-unless-list' && !opt('list')))) assertCompatibleProgress(pos[0]);
+    else if (pos[0] && command.preflight === 'new-film') {
+      const dir = path.resolve(opt('dir', '.'), 'films', pos[0]);
+      if (inspectProduction(dir).readonly) assertActiveProduction(dir);
+    } else if (pos[0] && ['film', 'film-unless-list'].includes(command.preflight)) assertActiveProduction(pos[0]);
 
-    const observe = pos[0] && ['signoff', 'qc', 'still', 'animatic', 'preview', 'render', 'soundtrack', 'audition', 'subtitles', 'final'].includes(cmd) && hasWorkbench(pos[0]);
+    const observe = pos[0] && ['signoff', 'qc', 'still', 'animatic', 'preview', 'render', 'soundtrack', 'final'].includes(cmd) && hasWorkbench(pos[0]);
     if (observe) assertWorkbenchScope(pos[0]);
     const needsLock = observe || command.lock === 'film' || (command.lock === 'final-record' && opt('final') && opt('record'));
     const unlock = needsLock && pos[0] ? lockProduction(pos[0]) : () => {};

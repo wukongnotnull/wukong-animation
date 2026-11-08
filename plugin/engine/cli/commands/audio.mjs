@@ -1,4 +1,5 @@
-import path from 'node:path';
+import fs from 'node:fs';
+import { alignVoice, prepareVoiceAlignment, voiceAlignmentStatus, importVoiceTiming, applyVoiceAlignment } from '../../audio/voice-alignment.mjs';
 import { writeReview } from '../../core/job.mjs';
 import { loadFilm } from '../../core/film-context.mjs';
 import { fail } from '../context.mjs';
@@ -25,6 +26,17 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
     log('完成 ✓');
   }
   return {
+    'align-voice': async () => {
+      if (!pos[0]) fail('用法：wka align-voice <片目录> [--prepare --binary 路径 --model 路径 | --status | --import 时间点.json --confirm "用户确认说明"]');
+      if (opt('status')) { const result = voiceAlignmentStatus(pos[0]);log(JSON.stringify(result, null, 2));return result.ready ? 0 : 2; }
+      if (opt('prepare')) { const result = prepareVoiceAlignment(pos[0], { binary: opt('binary'), model: opt('model') });log(JSON.stringify(result, null, 2));return result.ready ? 0 : 2; }
+      let result;
+      if (opt('import')) { importVoiceTiming(pos[0], JSON.parse(fs.readFileSync(String(opt('import')), 'utf8')), { confirmation: opt('confirm') });result = voiceAlignmentStatus(pos[0]); }
+      else result = await alignVoice(pos[0], { binary: opt('binary'), model: opt('model'), force: !!opt('force'), log });
+      if (result.ready) applyVoiceAlignment(pos[0]);
+      log(result.ready ? '台词定位可用于制作小样；请随小样检查声画对齐。' : '台词定位仍有待确认项，请查看 review/台词定位.md。');
+      return result.ready ? 0 : 2;
+    },
     'soundtrack': async () => {
       if (!pos[0]) fail('用法：wka soundtrack <片目录>');
       loadFilm(pos[0], { requireShots: false });
@@ -35,19 +47,6 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
     },
     'sfx': async () => {
       return cmdSfx(pos[0], { list: !!opt('list') });
-    },
-    'audition': async () => {
-      if (!pos[0]) fail('用法：wka audition <片目录> [--voices a,b,c] [--text "…"] [--rate -20%] [--pitch -2Hz]');
-      const ctx = loadFilm(pos[0], { requireShots: false });
-      const { auditionVoices, DEFAULT_AUDITION_VOICES } = await import('../../audio/audition.mjs');
-      const voices = typeof opt('voices') === 'string' ? opt('voices').split(',').map((v) => v.trim()).filter(Boolean) : DEFAULT_AUDITION_VOICES;
-      const first = ctx.film.audio?.voices?.[0] || {};
-      const str = (name) => (typeof opt(name) === 'string' ? opt(name) : undefined);
-      // 没给参数时用第一条人声的文本和它已经调过的语速、音高
-      const text = str('text') ?? first.text;
-      const audition=auditionVoices({ text, voices, rate: str('rate') ?? first.rate, pitch: str('pitch') ?? first.pitch, outDir: path.join(ctx.filmDir, 'review'), log });
-      registerReview(pos[0],'audition',audition.map(a=>a.file));
-      return;
     }
   };
 }

@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { buildDraftPlan } from './plan.mjs';
 import { freeDraftName, jianyingRunning } from './guards.mjs';
 import { detectSoundRanges } from './silence.mjs';
-import { missingJianyingFonts } from './fonts.mjs';
 import { probeDuration } from '../../core/ffmpeg.mjs';
 import crypto from 'node:crypto';
 import { atomicJson, readJson, digest, fileDigest, treeEvidence } from '../../core/evidence.mjs';
@@ -34,7 +33,7 @@ export async function encodeOutput({ out, proxy, timeline, force=false }) {
   if (proxy) throw new Error('剪映草稿用于后期接着剪，不能用预览（--proxy）素材导出，请去掉 --proxy');
   if (!timeline) throw new Error('jianying 导出器需要时间线，请用 wka final 导出');
   const root = draftsRoot();
-  // 人声本来就是一句一个文件；其余音轨只放有声音的片段
+  // 每段用户录音完整保留，不按台词重复混入；其余音轨只放有声音的片段
   const tracks = timeline.tracks.map((t) => (t.role === 'voice' ? t : { ...t, ranges: detectSoundRanges(t.file, probeDuration(t.file)) }));
   const base = buildDraftPlan({ ...timeline, tracks });
   const signature=digest({root,base,files:[...timeline.shots,...tracks].map(t=>[t.file,fileDigest(t.file)]),writer:treeEvidence(HERE)});
@@ -72,15 +71,7 @@ export async function encodeOutput({ out, proxy, timeline, force=false }) {
   if(marker?.operation!==operation || digest(marker.entries)!==digest(treeEvidence(draftDir,rel=>rel==='.wka-complete.json'))) throw new Error(`草稿完成回执无效：${draftDir}`);
   atomicJson(receiptFile,{version:1,operation,signature,path:draftDir,status:'completed',outputs:marker.entries});
 
-  // 片子 film.json 自己改的字幕字体 lint 查不到，导出时提示（对照表里值为 null 的是有意用默认字体，不提示）
-  const bilingual = plan.subtitleTracks.some((t) => t.name.startsWith('英文字幕'));
-  const families = [timeline.subtitleStyle?.font?.family, bilingual ? timeline.subtitleStyle?.font_en?.family : null].filter(Boolean);
-  const missing = plan.subtitleTracks.some((t) => t.segments.length) ? missingJianyingFonts([...new Set(families)]) : [];
-  for (const family of missing) console.log(`  ! 字幕字体「${family}」在剪映字体对照表里没有对应项，草稿里用剪映默认字体。`);
-  if (missing.length) console.log('    要指定剪映字体，在插件的 engine/exporters/jianying/fonts.json 补一项（这需要改插件，告诉开发者）');
-  const estimated = plan.subtitleTracks.flatMap((t) => t.segments).filter((s) => s.estimated).map((s) => `「${s.text}」`);
-  if (estimated.length) console.log(`  ! 以下字幕没有人声音频，时长为估算值：${estimated.join('、')}`);
-  console.log('  · 草稿未做响度标准化和结尾淡出，请在剪映里用「响度统一」和淡出处理');
+  console.log('  · 草稿未做整体响度标准化，请按声音差异报告在剪映里核对');
   console.log('  · 剪映里看不到新草稿时，重启剪映');
   return draftDir;
 }

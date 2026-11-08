@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +10,7 @@ const serverUrl = new URL('../../plugin/engine/cli/workbench-server.mjs', import
 async function fixture(t) {
   assert.ok(fs.existsSync(serverUrl), '本地工作台服务尚未实现');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workbench-http-')), film = path.join(root, 'films', '测试 片');
-  fs.mkdirSync(film, { recursive: true }); fs.writeFileSync(path.join(film, 'brief.md'), '# 审阅内容\n需要保留');
+  fs.mkdirSync(film, { recursive: true }); initializeProduction(film); fs.writeFileSync(path.join(film, 'brief.md'), '# 审阅内容\n需要保留');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const { startWorkbench } = await import(serverUrl);
   const server = await startWorkbench(root);
@@ -61,7 +62,7 @@ test('CLI capture and pending work from a copied plugin without opening a server
   const run = args => spawnSync(process.execPath, [path.join(copy, 'plugin/engine/bin/wka.mjs'), ...args], { cwd: f.root, encoding: 'utf8', timeout: 10000 });
   const capture = run(['workbench', f.film, '--capture']);
   assert.equal(capture.status, 0, capture.stderr);
-  assert.equal(JSON.parse(capture.stdout).stages.length, 15);
+  assert.equal(JSON.parse(capture.stdout).stages.length, 8);
   const pending = run(['workbench', f.film, '--pending']);
   assert.equal(pending.status, 0, pending.stderr); assert.ok(Array.isArray(JSON.parse(pending.stdout).notes));
 });
@@ -74,7 +75,7 @@ test('an archive failure prevents an enrolled CLI command from signing off', asy
   const cli = fileURLToPath(new URL('../../plugin/engine/bin/wka.mjs', import.meta.url));
   const result = spawnSync(process.execPath, [cli, 'signoff', f.film, '不应批准', '--step', '2'], { encoding: 'utf8' });
   assert.equal(result.status, 1); assert.match(result.stderr, /快照损坏/);
-  assert.equal(fs.existsSync(path.join(f.film, '.wka/state.json')), false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.film, '.wka/state.json'))).step, 0);
   assert.equal(fs.existsSync(path.join(f.film, '.cache/operation.lock')), false);
 });
 
@@ -90,7 +91,7 @@ test('UI drafts and status use authenticated routes and restore across server in
   assert.equal(value.entries['note:test:a:v1'].value.text, '未提交草稿');
   const status = await (await f.request('/api/status?film=' + f.id)).json();
   assert.equal(status.busy, false); assert.equal(typeof status.revision, 'string');
-  assert.equal(fs.existsSync(path.join(f.film, '.wka/state.json')), false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(f.film, '.wka/state.json'))).step, 0);
 });
 
 test('CLI repair records an existing new version and HTTP user verification closes it', async t => {

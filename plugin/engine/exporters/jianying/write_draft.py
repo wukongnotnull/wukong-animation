@@ -12,7 +12,7 @@ import uuid
 import hashlib
 
 import pyJianYingDraft as draft
-from pyJianYingDraft import ClipSettings, FontType, TextBorder, TextStyle, Timerange, TrackSpec, TrackType
+from pyJianYingDraft import Timerange, TrackSpec, TrackType
 from pyJianYingDraft.exceptions import SegmentOverlap
 
 
@@ -34,23 +34,9 @@ def add(script: draft.ScriptFile, segment: object, track: str | None, what: str)
         raise SystemExit(f"{what}在 {start:.2f}s 处与同一条轨上的前一段重叠") from None
 
 
-def text_options(style: dict | None) -> dict:
-    """plan.mjs 换算好的字幕样式 → TextSegment 的关键字参数；没有样式就用剪映默认。"""
-    if not style:
-        return {}
-    border = style["border"]
-    options = {
-        "style": TextStyle(size=style["size"], color=tuple(style["color"]), alpha=style["alpha"]),
-        "clip_settings": ClipSettings(transform_x=style.get("transformX", 0), transform_y=style["transformY"]),
-    }
-    if border["width"] > 0 and border["alpha"] > 0:
-        options["border"] = TextBorder(color=tuple(border["color"]), alpha=border["alpha"], width=border["width"])
-    if style["font"]:
-        options["font"] = FontType[style["font"]]
-    return options
-
-
 def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
+    if plan.get("subtitleTracks") or plan.get("subtitleStyle"):
+        raise ValueError("当前流程不支持字幕轨道")
     mdir = os.path.join(draft_dir, "materials")
     os.makedirs(mdir)
     taken = set()
@@ -76,13 +62,6 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
                 continue
             segment = draft.AudioSegment(material, Timerange(s["start"], duration), source_timerange=Timerange(s["sourceStart"], duration), volume=s["volume"])
             add(script, segment, t["name"], f"音轨「{t['name']}」")
-
-    for t in plan["subtitleTracks"]:
-        # 双语时每条字幕轨带自己的样式（中文上移一行、英文用英文字体）
-        script.append_track(TrackSpec(TrackType.text, t["name"]))
-        for s in t["segments"]:
-            options = text_options(s.get("style") or t.get("style") or plan.get("subtitleStyle"))
-            add(script, draft.TextSegment(s["text"], Timerange(s["start"], s["duration"]), **options), t["name"], f"字幕「{s['text']}」")
 
 
 def update_json(file: str, **fields: object) -> None:

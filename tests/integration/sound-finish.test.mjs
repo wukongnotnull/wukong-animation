@@ -1,3 +1,5 @@
+import { confirmFixtureVoices } from '../helpers/production.mjs';
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // wka soundtrack：背景音乐随人声闪避、两遍母带到风格响度、音效听感审计。不联网：人声和音效都用合成的 wav。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,7 +42,7 @@ function voiceWav(file) {
 }
 
 function makeFilm(style) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-sound-it-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-sound-it-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'audio'));
   fs.writeFileSync(path.join(dir, 'audio', 'build.mjs'), BUILD);
   voiceWav(path.join(dir, 'vo.wav'));
@@ -49,7 +51,7 @@ function makeFilm(style) {
     shots: [{ id: 's01', file: 's01.js', duration: 4 }, { id: 's02', file: 's02.js', duration: 4 }],
     audio: { build: 'audio/build.mjs', voice_source: 'user', voices: [{ text: '测试一句人声', at: VOICE.at, file: 'vo.wav', cue: '人声' }] },
   };
-  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
+  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));confirmFixtureVoices(dir);
   return dir;
 }
 

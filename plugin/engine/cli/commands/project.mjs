@@ -4,7 +4,7 @@ import { getStyles } from '../../core/registry.mjs';
 import { ENGINE_ROOT, PLUGIN_ROOT, TEMPLATES_DIR, USER_STYLES_DIR } from '../../core/paths.mjs';
 import { copyTemplate, NAME_RE } from '../../core/scaffold.mjs';
 import { initProject } from '../../core/project.mjs';
-import { recordProgress, listProductions, PRODUCTION_STEPS, LAST_STEP, flowDiagnostic } from '../../core/state.mjs';
+import { recordProgress, listProductions, PRODUCTION_STEPS, LAST_STEP, flowDiagnostic, inspectProduction, initializeProduction } from '../../core/state.mjs';
 import { recoveryStatus } from '../../core/operations.mjs';
 import { fail } from '../context.mjs';
 
@@ -20,6 +20,7 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
     const filmDir = path.resolve(dir, 'films', name);
     if (fs.existsSync(path.join(filmDir, 'film.json'))) fail(`${filmDir} 已存在`);
     const tpl = path.join(TEMPLATES_DIR, 'film');
+    initializeProduction(filmDir);
     fs.cpSync(tpl, filmDir, { recursive: true });
     const size = aspect === '9:16' ? [1080, 1920] : aspect === '1:1' ? [1080, 1080] : [1920, 1080];
     const film = JSON.parse(fs.readFileSync(path.join(filmDir, 'film.json'), 'utf8'));
@@ -40,6 +41,7 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
     const brief = path.join(filmDir, 'brief.md');
     if (fs.existsSync(brief)) fail(`${brief} 已存在`);
     const tpl = fs.readFileSync(path.join(TEMPLATES_DIR, 'brief.md'), 'utf8');
+    initializeProduction(filmDir);
     fs.mkdirSync(filmDir, { recursive: true });
     fs.writeFileSync(brief, tpl.replaceAll('<片名>', name));
     recordProgress(filmDir, { step: 1, note: '建立占位片目录' });
@@ -71,6 +73,8 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
       if(!pos[0]) throw new Error('用法：wka resume <片目录> [--json]');
       const diagnostic=flowDiagnostic(pos[0]);
       if(diagnostic){log(opt('json')?JSON.stringify(diagnostic,null,2):diagnostic.error);return 1;}
+      const identity=inspectProduction(pos[0]);
+      if(identity.readonly){const status={readonly:true,flow:identity.flow,stages:[],next:'历史项目（只读）；续作请新建项目并复用素材，不继承旧签批。'};log(opt('json')?JSON.stringify(status,null,2):status.next);return;}
       const status=recoveryStatus(path.resolve(pos[0]));
       log(opt('json')?JSON.stringify(status,null,2):[...status.stages.map(s=>`[${s.aspect} ${s.proxy?'小样':'高清'} · ${s.stage}] ${s.status}${s.error?'：'+s.error:''}`),status.next].join('\n'));return;
     },
@@ -95,10 +99,10 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
       for (const f of list) {
         log(`${f.name}  《${f.title}》 ${f.style}`);
         if(f.compatible===false){log(`  ${f.error}`);exitCode=1;continue;}
-        if (f.migrated) log(`  · 进度已按新流程（${LAST_STEP} 道工序）换算`);
+        if (f.readonly) { log('  历史项目（只读） · 续作请新建项目并复用素材'); continue; }
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
-        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 13 道重新签批过，要重做第 14 道「改版」`);
+        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 6 道重新签批过，要复核第 7 道「调整画幅」`);
       }
       return exitCode;
     }

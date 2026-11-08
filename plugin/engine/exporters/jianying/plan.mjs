@@ -1,19 +1,8 @@
 // 把引擎的时间线换算成剪映草稿计划：时间用微秒整数，音量用线性倍数。纯函数，不碰文件。
 import path from 'node:path';
-import { JIANYING_FONTS } from './fonts.mjs';
 
 const US = 1e6;
 const VOICE_TRACK = '人声';
-const SUBTITLE_TRACK = '字幕';
-const EN_SUBTITLE_TRACK = '英文字幕';
-/** 字幕行高（字号的倍数），与烧录层一致 */
-const LINE_HEIGHT = 1.3;
-
-// 剪映11.6/pyJianYingDraft0.3.1 原生探针：字号按画宽换算。
-// 1920宽每单位约11.3778px，1080宽约6.4px；横/竖/方形及两档字号证据见交付修复报告。
-const NATIVE_SIZE_WIDTH = 168.75;
-const BORDER_PER_STROKE = 40 / 0.12;
-
 const us = (sec) => Math.round(sec * US);
 const linearVolume = (db = 0) => (db ? 10 ** (db / 20) : 1);
 
@@ -89,84 +78,9 @@ function audioTracks(tracks, duration) {
   return out;
 }
 
-/**
- * 有字幕文件（timeline.subtitles，wka subtitles 生成的 srt）就按它；没有就与人声一一对应。
- * 重叠的分到「字幕 2」…，规则同人声。
- */
-function subtitleTracks(voices, srt, base = SUBTITLE_TRACK) {
-  const subs = srt
-    ? srt.map((s) => ({ text: s.text, start: us(s.start), duration: us(s.end - s.start), estimated: false, ...(s.draftStyle ? {style:s.draftStyle} : {}) }))
-    : voices.map((v) => ({ text: v.text, start: us(v.at), duration: us(v.duration), estimated: !!v.estimated }));
-  return lanes(subs, (s) => s.duration).map((segments, i) => ({ name: laneName(base, i), segments }));
-}
-
-const round = (x, digits = 4) => +x.toFixed(digits);
-
-/** CSS 颜色（#RGB / #RRGGBB / #RRGGBBAA / rgb() / rgba()）→ { color: [r,g,b]（0–1）, alpha }。 */
-function parseColor(css) {
-  const s = String(css).trim();
-  let rgba;
-  const hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
-  if (hex) {
-    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
-    rgba = [0, 2, 4, 6].map((i) => (i < h.length ? parseInt(h.slice(i, i + 2), 16) : 255));
-    rgba[3] /= 255;
-  } else {
-    const fn = s.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
-    if (!fn) throw new Error(`读不懂字幕颜色「${css}」：style.json 的 subtitles 请用 #RRGGBB 或 rgba(r,g,b,a)`);
-    rgba = [+fn[1], +fn[2], +fn[3], fn[4] === undefined ? 1 : +fn[4]];
-  }
-  return { color: rgba.slice(0, 3).map((c) => round(c / 255)), alpha: round(rgba[3], 3) };
-}
-
-/**
- * 字幕样式（subtitle-layer.mjs subtitleStyle() 补齐缺省值后的 style.json subtitles 块）→ 剪映文字参数。
- * size、bottom 是画高的比例；transformY 是字幕中心的纵向位移，单位半个画高，向下为负。
- */
-function jianyingSubtitleStyle(s, { font = s?.font, lift = 0, canvas = [1920,1080], measurement, lang = 'zh' } = {}) {
-  if (!s) return null;
-  const stroke = parseColor(s.stroke.color);
-  const [W,H] = canvas;
-  const rect = measurement?.rects.find(r=>r.lang===lang);
-  const px = measurement ? measurement[lang] : Math.round(s.size * H);
-  return {
-    // 对照表里没有或值为 null：不设字体，用剪映默认字体
-    font: JIANYING_FONTS[font.family] || null,
-    size: round(px * NATIVE_SIZE_WIDTH / W),
-    ...parseColor(s.color),
-    border: { ...stroke, width: round(Math.min(100, s.stroke.width * BORDER_PER_STROKE), 2) },
-    // lift：往上挪几行（双语时中文在英文上面一行）
-    transformY: rect ? round(1 - 2 * (rect.y + rect.h / 2) / H) : round(-(1 - s.bottom - s.size / 2 - 0.5) * 2 + lift * s.size * LINE_HEIGHT * 2),
-    ...(rect ? {transformX:round(2 * (rect.x + rect.w / 2) / W - 1)} : {}),
-  };
-}
-
-/** 双语：中文轨上移一行，另起「英文字幕」轨在原来的位置；每条轨带自己的样式。单语时原样返回。 */
-function bilingualTracks(tracks, srt, style, canvas) {
-  if (!srt?.some((s) => s.en)) return tracks;
-  const en = subtitleTracks([], srt.map((s) => ({ ...s, text: s.en || '', draftStyle:s.draftEnglishStyle })), EN_SUBTITLE_TRACK);
-  const zhStyle = jianyingSubtitleStyle(style, { lift: 1, canvas });
-  const enStyle = jianyingSubtitleStyle(style, { font: style?.font_en || style?.font, canvas });
-  return [...tracks.map((t) => ({ ...t, style: zhStyle })), ...en.map((t) => ({ ...t, style: enStyle }))];
-}
-
-/**
- * @param {object} timeline { title, size:[W,H], fps, duration, shots, tracks, voices, subtitles?, subtitleStyle? }
- * @returns {object} { name, width, height, fps, video, audioTracks, subtitleTracks, subtitleStyle }
- */
 export function buildDraftPlan(timeline) {
   const [width, height] = timeline.size;
-  let subs = timeline.subtitles;
-  if (timeline.subtitleMeasurements !== undefined) {
-    const ms = timeline.subtitleMeasurements;
-    if (!subs || !timeline.subtitleStyle || ms.length !== subs.length) throw new Error('草稿字幕测量条数与当前字幕不一致');
-    subs = subs.map((s,i)=>{
-      const m = ms[i], langs = s.en ? ['zh','en'] : ['zh'];
-      if (!m || m.index !== s.index || !m.loaded || langs.some(lang=>!Number.isFinite(m[lang]) || m[lang]<=0 || !m.rects?.some(r=>r.lang===lang && [r.x,r.y,r.w,r.h].every(Number.isFinite) && r.w>0 && r.h>0))) throw new Error(`第 ${s.index} 条草稿字幕测量缺失或无效`);
-      return {...s,draftStyle:jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size,measurement:m}),
-        ...(s.en?{draftEnglishStyle:jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size,measurement:m,lang:'en',font:timeline.subtitleStyle.font_en || timeline.subtitleStyle.font})}:{})};
-    });
-  }
+  if (timeline.subtitles || timeline.subtitleMeasurements || timeline.subtitleStyle) throw new Error('新制作流程不支持剪映字幕轨道');
   return {
     name: timeline.title,
     width,
@@ -174,7 +88,6 @@ export function buildDraftPlan(timeline) {
     fps: timeline.fps,
     video: videoSegments(timeline),
     audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
-    subtitleTracks: bilingualTracks(subtitleTracks(timeline.voices || [], subs), subs, timeline.subtitleStyle, timeline.size),
-    subtitleStyle: jianyingSubtitleStyle(timeline.subtitleStyle,{canvas:timeline.size}),
+    subtitleTracks: [],
   };
 }

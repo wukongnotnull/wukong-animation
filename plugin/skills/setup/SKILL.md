@@ -27,7 +27,6 @@ description: 用户首次安装 wukong-animation、要求安装或检查本地�
    | ffmpeg（必需） | 编码与混音 | macOS：`brew install ffmpeg`；Ubuntu：`sudo apt install ffmpeg`；Windows：`winget install ffmpeg` |
    | git（推荐） | 审片定版存档 | [git-scm.com](https://git-scm.com/) |
    | fonttools（推荐） | 中文字体子集化 | `pip install fonttools brotli` |
-   | edge-tts / kokoro（可选） | AI 配音 | `pip install edge-tts` |
 
    不替用户执行需要管理员权限的安装命令；让用户执行给出的命令后重新检查。
 
@@ -43,3 +42,5 @@ node "<插件根目录>/engine/bin/wka.mjs" check --upgrade --json
 ```
 
 按结果说明插件版本、引擎版本、包格式、依赖状态及对应升级指引。远端最新版本和宿主是否已重载无法由离线诊断确认；不要声称已是最新版。发现其他 marketplace 路径失效时指出具体条目，请用户核对，不自动删除或改写其他插件配置。仅请求诊断时不运行 setup 或更新命令；更新操作仍按用户明确授权执行。诊断不是媒体环境检查，需要确认制作环境时继续运行上面的普通 check。
+
+用户录音的本地定位可选组件是 whisper.cpp 与本地多语言模型，按 [本地录音准备](../director/references/LOCAL-SPEECH.md) 操作。识别不上传录音；不可用时允许用户确认人工时间点。

@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WK = path.join(ROOT, 'plugin/engine/bin/wka.mjs');
@@ -61,8 +62,12 @@ for (const id of fs.readdirSync(skills)) {
     tested++;
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-smoke-'));
     const film = path.join(tmp, name);
-    fs.cpSync(path.join(ex, name), film, { recursive: true });
+    initializeProduction(film);
+    fs.cpSync(path.join(ex, name), film, { recursive: true, filter: file => !['.wka', '.cache', 'review'].includes(path.basename(file)) });
     const fj = JSON.parse(fs.readFileSync(path.join(film, 'film.json'), 'utf8'));
+    // Historical examples supply visuals only, in a new independent smoke-test film.
+    delete fj.audio;delete fj.subtitles;for(const v of Object.values(fj.variants||{})) delete v.subtitles;
+    fs.writeFileSync(path.join(film,'film.json'),JSON.stringify(fj));
     const pick = [fj.shots[0], fj.shots[Math.floor(fj.shots.length / 2)], fj.shots[fj.shots.length - 1]];
     const points = pick.map((s) => ({ shot: s.id, t: +(s.duration * 0.7).toFixed(2) }));
     // 主版，加上 film.json 的 variants 里的每个副版（基准图目录 <片名>-<后缀>）

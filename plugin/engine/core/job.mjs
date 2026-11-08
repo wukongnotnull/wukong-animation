@@ -18,7 +18,7 @@ import { labelPngs } from './labels.mjs';
 import { prepareWordShots, writeWordReview } from './word-sync.mjs';
 import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFailure, requireTiming, checkOutputTiming, checkAnimaticTiming } from './timing.mjs';
 import { captureFinalGeneration, recordFinalArtifact } from './final-delivery.mjs';
-import { assertCompatibleProgress } from './state.mjs';
+import { assertActiveProduction } from './state.mjs';
 
 import { outputSize, renderWorkers } from './render-profile.mjs';
 export { outputSize } from './render-profile.mjs';
@@ -126,9 +126,11 @@ async function pipelineModule(job) {
 
 /** 渲染所有（或指定）镜头并拼接成一条无声视频，返回其路径。 */
 export async function render(filmDir, { proxy = false, only = null, selected = null, daily = false, force = false, aspect = null, segmentsOnly = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir, { aspect });
+  let ctx = loadFilm(filmDir, { aspect });
   for (const id of selected || only || []) if (!ctx.shots.some(s => s.id === id)) throw new Error(`没有镜头 ${id}`);
-  renderWorkers({ proxy, daily }); // 在准备字体或启动浏览器之前校验并发设置
+  renderWorkers({ proxy, daily }); // 在准备声音、字体或浏览器之前校验
+  const soundtrack = await (await import('../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
+  ctx = loadFilm(filmDir, { aspect });
   const job = createRenderJob(ctx, { proxy, log });
   job.daily = daily;
   log(`[${ctx.variant.aspect} ${proxy?'小样':'高清'} · segments] 开始`);
@@ -182,7 +184,7 @@ export async function render(filmDir, { proxy = false, only = null, selected = n
   const video = path.join(ctx.variant.cacheDir, proxy ? 'video-proxy.mp4' : 'video.mp4');
   const shotSegments = selectedShots.map((s, i) => ({ id: s.id, start: s.startFrame / job.fps, duration: s.frames / job.fps, file: segments[i] }));
   rememberArtifacts(ctx.filmDir,{stage:daily?'preview-segments':'segments',aspect:ctx.variant.aspect,proxy,signature:digest(hashes),value:shotSegments,outputs:segments});
-  if(segmentsOnly) return {video:null,job,segments:shotSegments};
+  if(segmentsOnly) return {video:null,job,segments:shotSegments,soundtrack};
   try {
     await runStage(ctx.filmDir,{stage:'concat',aspect:ctx.variant.aspect,proxy,force,signature:digest({fps:job.fps,segments:segments.map(file=>fileDigest(file))}),log,
       run:async()=>{await concatVideo(segments,{fps:job.fps,list,out:video});return {value:video,outputs:[video]};},
@@ -194,7 +196,7 @@ export async function render(filmDir, { proxy = false, only = null, selected = n
   recordTiming(ctx, video, segments, { proxy, log });
   await writeWordReview(job, { video });
   log(`  已拼接 → ${path.relative(ctx.filmDir, video)}`);
-  return { video, job, segments: shotSegments };
+  return { video, job, segments: shotSegments, soundtrack };
 }
 
 /** 日常局部审阅：不拼接整片，不生成整片验收证据。 */
@@ -233,7 +235,7 @@ export async function preview(filmDir, { only = null, proxy = true, aspect = nul
 
 /** 审阅副本写进片目录的 review/（不隐藏、体积小，聊天和访达里都能直接播放），返回绝对路径。 */
 export async function writeReview(filmDir, file, args) {
-  assertCompatibleProgress(filmDir);
+  assertActiveProduction(filmDir);
   const out = path.join(ensureDir(path.join(path.resolve(filmDir), 'review')), file);
   await run([...args, out]);
   return out;
@@ -325,7 +327,7 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
 }
 
 /** 导出：调用 film.json 里声明的各个导出器。 */
-export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], unknownReasons = [], verifyMp4 = null, reuseOnly = false, log = console.log }) {
+export async function encodeOutputs(filmDir, { video, audio, timeline = null, proxy = false, formats = null, suffix = '', aspect = null, force = false, fontFiles = [], unknownReasons = [], reuseOnly = false, log = console.log }) {
   const ctx = loadFilm(filmDir, { aspect });
   const wanted = formats || ctx.film.export?.formats || ['mp4'];
   if(wanted.some(f=>f!=='jianying')) requireTiming(ctx,{proxy});
@@ -344,27 +346,17 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     const target = path.join(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`);
     let generation=null;
     if(!proxy)try {
-      const kind=name==='jianying'?'draft':'video',flavor=kind==='video'?(suffix.includes('有字幕')?'burned':'clean'):null;
-      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{}),...(flavor==='burned'?{bilingual:!!ctx.film.subtitles?.bilingual}:{})};
+      const kind=name==='jianying'?'draft':'video',flavor=kind==='video'?'clean':null;
+      const slot=[ctx.variant.aspect,kind,name,...(flavor?[flavor]:[])].join('/'),projection={slot,name:base,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{})};
       generation=captureFinalGeneration(ctx.filmDir,{slot,fontFiles,unknownReasons,inputFiles:[audio,...(timeline?[...timeline.shots,...timeline.tracks].map(t=>t.file):[])].filter(Boolean),descriptor:{slot,aspect:ctx.variant.aspect,kind,format:name,flavor,projection,contractDigest:digest(projection)}});
     }catch(e){log(`  ! 交付来源未取证，保留导出任务：${e.message}`);}
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const signature=digest({target,draftRoot:name==='jianying'?(process.env.WKA_JIANYING_DRAFTS||path.join(os.homedir(),'Movies/JianyingPro/User Data/Projects/com.lveditor.draft')):null,video:video&&fileDigest(video),audio:audio&&fileDigest(audio),timeline,inputs:timeline?[...timeline.shots,...timeline.tracks].map(t=>[t.file,fileDigest(t.file)]):[],exporter:treeEvidence(exp.dir),name,suffix,proxy,settings:ctx.film.export});
-    let exportId;
     const out=await runStage(ctx.filmDir,{stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,aspect:ctx.variant.aspect,proxy,signature,force,log,reuseOnly:name==='mp4'&&reuseOnly,
-      onReuse:entry=>{exportId=entry.id;},
-      run:async entry=>{exportId=entry.id;const out=(await mod.encodeOutput({video,audio,out:target,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
+      run:async()=>{const out=(await mod.encodeOutput({video,audio,out:target,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
     if (name === 'mp4') checkOutputTiming(ctx, out, { proxy, log });
     const technical={status:['mp4','jianying'].includes(name)?'passed':'unknown',
       checks:name==='jianying'?['native writer 时间线及素材校验']:name==='mp4'?['实际输出时间轴校验']:[],errors:[]};
-    if(name==='mp4'&&verifyMp4) {
-      try {
-        const result=await verifyMp4(out,exportId);
-        if(result.error)technical.errors.push(result.error);
-        else technical.checks.push(result.check);
-      } catch(error) { technical.errors.push(`成片字幕核验失败，已保留成片：${error.message}`); }
-      if(technical.errors.length)technical.status='hard-error';
-    }
     if(generation)try{recordFinalArtifact(ctx.filmDir,{generation,path:out,stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,technical});}catch(e){log(`  ! 产物已生成，交付证据未存档，待核实；可 delivery --final --record 重试：${e.message}`);}
     if(technical.errors.length)throw new Error(technical.errors.join('；'));
     log(`  导出 ${name} → ${out.startsWith(ctx.filmDir + path.sep) ? path.relative(ctx.filmDir, out) : out}`);

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { validate } from './validate.mjs';
-import { countChars } from './subtitles.mjs';
+import { countChars } from './spoken-text.mjs';
 import { usedCueNames } from './cues.mjs';
 import { run, probeDuration } from './ffmpeg.mjs';
 
@@ -11,7 +11,7 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const fileHash = file => hash(fs.readFileSync(file));
 const sourceFile = ctx => path.join(ctx.filmDir,'.cache','voice-sources.json');
 const voiceName = (v,i) => v.cue || `vo${i+1}`;
-const requestHash = (audio,v) => hash(JSON.stringify({source:audio.voice_source || ((audio.voices || []).some(v=>v.file)?'user':'ai'),text:v.text,voice:v.voice,rate:v.rate,pitch:v.pitch,file:v.file,kind:v.kind || 'vo'}));
+const requestHash = (audio,v) => hash(JSON.stringify({source:audio.voice_source || ((audio.voices || []).some(v=>v.file)?'user':'none'),text:v.text,voice:v.voice,rate:v.rate,pitch:v.pitch,file:v.file,kind:v.kind || 'vo'}));
 function atomic(file,data) {
   fs.mkdirSync(path.dirname(file),{recursive:true});
   fs.writeFileSync(file+'.tmp',JSON.stringify(data,null,2)+'\n');
@@ -23,7 +23,7 @@ export function writeVoiceSources(ctx,items) {
   if(audio.voice_source!=='none') (audio.voices || []).forEach((v,i)=>{
     const item=items[i];
     if(!item?.file || !item.duration || !fs.existsSync(item.file)) return;
-    voices[voiceName(v,i)]={file:path.relative(ctx.filmDir,item.file),audio_sha256:fileHash(item.file),text_sha256:hash(v.text),request_sha256:requestHash(audio,v),at:v.at,duration:item.duration};
+    voices[voiceName(v,i)]={file:path.relative(ctx.filmDir,item.file),audio_sha256:fileHash(item.file),text_sha256:hash(v.text || ''),request_sha256:requestHash(audio,v),at:v.at,duration:item.duration};
   });
   atomic(sourceFile(ctx),{version:1,voices});
 }
@@ -62,7 +62,7 @@ export function resolveWordSync(ctx) {
     if(p.method==='aligned' && !fs.existsSync(path.resolve(ctx.filmDir,p.evidence))) throw new Error(`${label}：缺少本地对齐证据文件`);
     const source=sources[p.voice];
     let fresh=false,observedAudio=null;
-    if(source && Number.isFinite(source.at) && Number.isFinite(source.duration) && source.duration>0 && source.request_sha256===requestHash(audio,voice) && source.text_sha256===hash(voice.text)) {
+    if(source && Number.isFinite(source.at) && Number.isFinite(source.duration) && source.duration>0 && source.request_sha256===requestHash(audio,voice) && source.text_sha256===hash(voice.text || '')) {
       try {observedAudio=fileHash(path.resolve(ctx.filmDir,source.file));fresh=observedAudio===source.audio_sha256;} catch { /* 旧音频丢失 */ }
     }
     const measurementValid=measured && fresh && p.source.audio_sha256===source.audio_sha256 && p.source.text_sha256===source.text_sha256;

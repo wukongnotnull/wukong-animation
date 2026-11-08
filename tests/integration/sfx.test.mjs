@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // wka sfx / wka soundtrack 接录音音效库。不联网：在临时的 WUKONG_ANIMATION_HOME 里预置处理好的音效。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +24,7 @@ const BUILD = `export default async function ({ synth, sfx, duration, outDir }) 
 `;
 
 function makeFilm(style) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-sfx-it-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-sfx-it-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'audio'));
   fs.writeFileSync(path.join(dir, 'audio', 'build.mjs'), BUILD);
   const film = {

@@ -3,7 +3,7 @@ import { projectCommands } from './commands/project.mjs';
 import { reviewCommands } from './commands/review.mjs';
 import { mediaCommands } from './commands/media.mjs';
 import { audioCommands } from './commands/audio.mjs';
-import { subtitlesFinalCommands } from './commands/subtitles-final.mjs';
+import { finalCommands } from './commands/final.mjs';
 import { workbenchCommands } from './commands/workbench.mjs';
 
 // 唯一命令目录：处理器与保护策略一起维护。
@@ -14,7 +14,7 @@ export function commandsFor(context) {
     'review': reviewCommands(context),
     'media': mediaCommands(context),
     'audio': audioCommands(context),
-    'subtitles-final': subtitlesFinalCommands(context),
+    'final': finalCommands(context),
   };
 
   return {
@@ -36,10 +36,9 @@ export function commandsFor(context) {
     'preview': { preflight: 'film', lock: 'film', active: true, run: groups['media']['preview'] },
     'clean': { preflight: 'film', lock: 'film', active: true, run: groups['media']['clean'] },
     'render': { preflight: 'film', lock: 'film', active: true, run: groups['media']['render'] },
+    'align-voice': { preflight: 'film', lock: 'film', active: false, run: groups['audio']['align-voice'] },
     'soundtrack': { preflight: 'film', lock: 'film', active: true, run: groups['audio']['soundtrack'] },
     'sfx': { preflight: 'film-unless-list', lock: 'none', active: false, run: groups['audio']['sfx'] },
-    'audition': { preflight: 'film', lock: 'none', active: false, run: groups['audio']['audition'] },
-    'subtitles': { preflight: 'film', lock: 'film', active: true, run: groups['subtitles-final']['subtitles'] },
-    'final': { preflight: 'film', lock: 'film', active: true, run: groups['subtitles-final']['final'] }
+    'final': { preflight: 'film', lock: 'film', active: true, run: groups['final']['final'] }
   };
 }

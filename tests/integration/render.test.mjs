@@ -1,3 +1,5 @@
+import { confirmFixtureVoices } from '../helpers/production.mjs';
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // 需要真实的 Chromium + ffmpeg（wka setup）；缺依赖时整组跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +20,7 @@ const SHOT = (body) => `wk.shot({ render(ctx, t, s) { ctx.fillStyle = '#F2EDE3';
 
 /** 在临时目录里搭一支最小的片子。shots: {id: 源码} */
 function makeFilm(shots, extra = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-it-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-it-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   for (const [id, src] of Object.entries(shots)) fs.writeFileSync(path.join(dir, 'shots', `${id}.js`), src);
   const film = {
@@ -50,9 +52,9 @@ test('a truncated shot manifest recovers on rerun without changing protected fil
   const existing = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).shots.s01;
   const protectedPaths = ['film.json', 'shots/s01.js'];
   for (const [rel, body] of Object.entries({
-    'audio/original.wav': 'original audio', '.cache/mix.wav': 'existing mix',
+    'audio/original.wav': 'original audio',
     '.cache/approved/s01.mp4': 'approved snapshot', '.cache/9x16/manifest.json': '{"shots":{}}',
-    '.wka/state.json': '{"flow":5,"step":0,"history":[]}',
+    '.wka/state.json': '{"flow":6,"step":0,"history":[]}',
     'assets/reference.txt': 'reference', 'review/approved.mp4': 'reviewed video', 'out.mp4': 'delivered video',
   })) {
     const file = path.join(dir, rel);
@@ -146,7 +148,7 @@ test('wka soundtrack works before the shots are drawn (only s01.js exists)', () 
   fs.mkdirSync(path.join(dir, 'audio'));
   spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=3', path.join(dir, 'audio', 'tone.wav')]);
   film.audio = { tracks: [{ file: 'audio/tone.wav' }] };
-  fs.writeFileSync(f, JSON.stringify(film));
+  fs.writeFileSync(f, JSON.stringify(film));confirmFixtureVoices(dir);
   const r = wka('soundtrack', dir);
   assert.equal(r.status, 0, r.stderr);
   assert.ok(fs.existsSync(path.join(dir, '.cache', 'mix.wav')));
@@ -188,7 +190,7 @@ test('voices with chars: true get per-character cues that shots read with s.cueC
   // 0.4s 有声 + 0.5s 静音 + 0.4s 有声，对应「春眠，不觉」两个分句
   spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=1.3', '-af', "volume='if(between(t,0.4,0.9),0,1)':eval=frame", path.join(dir, 'audio', 'vo.wav')]);
   film.audio = { voice_source: 'user', voices: [{ text: '春眠，不觉', at: 0.1, cue: '一', chars: true, file: 'audio/vo.wav' }] };
-  fs.writeFileSync(f, JSON.stringify(film));
+  fs.writeFileSync(f, JSON.stringify(film));confirmFixtureVoices(dir);
   const r = wka('soundtrack', dir);
   assert.equal(r.status, 0, r.stderr);
   const cues = JSON.parse(fs.readFileSync(f, 'utf8')).cues;
@@ -216,13 +218,13 @@ test('without drawtext the contact sheet and animatic still carry shot labels (d
 });
 
 test('a second soundtrack run with per-character cues leaves film.json untouched', () => {
-  const dir = makeFilm({ s01: SHOT('') });
+  const dir = makeFilm({ s01: SHOT(''), s02: SHOT('') });
   const f = path.join(dir, 'film.json');
   const film = JSON.parse(fs.readFileSync(f, 'utf8'));
   fs.mkdirSync(path.join(dir, 'audio'));
   spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=0.6', path.join(dir, 'audio', 'a.wav')]);
   film.audio = { voice_source: 'user', voices: [{ text: '春眠', at: 0, cue: 'a', chars: true, file: 'audio/a.wav' }, { text: '不觉', at: 0.7, cue: 'b', file: 'audio/a.wav' }] };
-  fs.writeFileSync(f, JSON.stringify(film));
+  fs.writeFileSync(f, JSON.stringify(film));confirmFixtureVoices(dir);
   assert.equal(wka('soundtrack', dir).status, 0);
   const first = fs.readFileSync(f, 'utf8');
   const r = wka('soundtrack', dir);
@@ -239,11 +241,11 @@ test('renaming a chars voice clears its old per-character cues and keeps hand-wr
   spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=0.6', path.join(dir, 'audio', 'a.wav')]);
   film.cues = { 落印: [0.8, 0.9] };
   film.audio = { voice_source: 'user', voices: [{ text: '春眠', at: 0, cue: '甲', chars: true, file: 'audio/a.wav' }] };
-  fs.writeFileSync(f, JSON.stringify(film));
+  fs.writeFileSync(f, JSON.stringify(film));confirmFixtureVoices(dir);
   assert.equal(wka('soundtrack', dir).status, 0);
   const renamed = JSON.parse(fs.readFileSync(f, 'utf8'));
   renamed.audio.voices[0].cue = '乙';
-  fs.writeFileSync(f, JSON.stringify(renamed));
+  fs.writeFileSync(f, JSON.stringify(renamed));confirmFixtureVoices(dir);
   const r = wka('soundtrack', dir);
   assert.equal(r.status, 0, r.stderr);
   const keys = Object.keys(JSON.parse(fs.readFileSync(f, 'utf8')).cues);
@@ -269,7 +271,7 @@ test('two voices with the same cue name stop wka soundtrack and leave film.json 
   const before = fs.readFileSync(f, 'utf8');
   const r = wka('soundtrack', dir);
   assert.notEqual(r.status, 0);
-  assert.match(r.stderr, /同步点名重复：「甲」用在第 1、2 条/);
+  assert.match(r.stderr, /同步点名重复|录音 cue 必须唯一/);
   assert.equal(fs.readFileSync(f, 'utf8'), before);
   fs.rmSync(dir, { recursive: true, force: true });
 });

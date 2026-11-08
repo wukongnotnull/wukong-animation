@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -45,8 +46,6 @@ test('without an aspect the main version keeps every existing path', () => {
   assert.equal(v.cacheDir, path.join(DIR, '.cache'));
   assert.equal(v.stillsDir, path.join(DIR, 'stills'));
   assert.equal(v.review('小样.mp4'), '小样.mp4');
-  assert.equal(v.subtitlesFile, 'subtitles.srt');
-  assert.equal(v.enFile, 'subtitles.en.json');
   assert.equal(v.exportName, 'qishier');
   assert.equal(v.title, '七十二变');
   assert.deepEqual(v.overrides, {});
@@ -58,8 +57,8 @@ test('naming the main aspect is the same as naming none', () => {
   assert.equal(v.cacheDir, path.join(DIR, '.cache'));
 });
 
-test('a variant gets its own size, cache, stills, review names, subtitles and export name', () => {
-  const film = { ...FILM, subtitles: { file: 'zh.srt' }, variants: { '9:16': {} } };
+test('a variant gets its own size, cache, stills, review names and export name', () => {
+  const film = { ...FILM, variants: { '9:16': {} } };
   const v = resolveVariant({ film, style: STYLE, filmDir: DIR }, '9:16');
   assert.equal(v.isMain, false);
   assert.equal(v.aspect, '9:16');
@@ -70,8 +69,6 @@ test('a variant gets its own size, cache, stills, review names, subtitles and ex
   assert.equal(v.stillsDir, path.join(DIR, 'stills', '9x16'));
   assert.equal(v.review('小样.mp4'), '小样-9x16.mp4');
   assert.equal(v.review('主版不变报告.md'), '主版不变报告-9x16.md');
-  assert.equal(v.subtitlesFile, 'zh.9x16.srt');
-  assert.equal(v.enFile, 'subtitles.en.9x16.json');
   assert.equal(v.exportName, 'qishier-9x16');
   assert.equal(v.title, '七十二变-9x16');
 });
@@ -83,11 +80,10 @@ test('a portrait main version can have a landscape variant', () => {
   assert.equal(v.cacheDir, path.join(DIR, '.cache', '16x9'));
 });
 
-test('variant overrides: export name and subtitle style', () => {
-  const film = { ...FILM, variants: { '9:16': { export: { name: 'qishier-shu' }, subtitles: { style: { size: 0.03 } } } } };
+test('variant overrides: export name', () => {
+  const film = { ...FILM, variants: { '9:16': { export: { name: 'qishier-shu' } } } };
   const v = resolveVariant({ film, style: STYLE, filmDir: DIR }, '9:16');
   assert.equal(v.exportName, 'qishier-shu');
-  assert.deepEqual(v.overrides.subtitles, { style: { size: 0.03 } });
 });
 
 test('rejects aspects that are malformed, not declared, the main one as a variant, or unsupported by the style', () => {
@@ -118,11 +114,11 @@ test('listAspects lists the main version first, then the variants', () => {
   assert.deepEqual(listAspects({ ...FILM, variants: { '9:16': {} } }), ['16:9', '9:16']);
 });
 
-test('film.schema accepts variants with export name and subtitle style overrides only', async () => {
+test('film.schema accepts variants with export name overrides only', async () => {
   const { validate } = await import('../../plugin/engine/core/validate.mjs');
   const film = { title: 't', style: 'keynote', size: [1920, 1080], fps: 30, seed: 1, shots: [{ id: 's01', file: 'shots/s01.tsx', duration: 1 }] };
   assert.deepEqual(validate('film', { ...film, variants: { '9:16': {} } }), []);
-  assert.deepEqual(validate('film', { ...film, variants: { '9:16': { export: { name: 'x' }, subtitles: { style: { size: 0.03 } } } } }), []);
+  assert.deepEqual(validate('film', { ...film, variants: { '9:16': { export: { name: 'x' } } } }), []);
   assert.notDeepEqual(validate('film', { ...film, variants: { '9:16': { foo: 1 } } }), []);
   assert.notDeepEqual(validate('film', { ...film, variants: { '9:16': { subtitles: { mode: 'burn' } } } }), []);
 });
@@ -137,6 +133,7 @@ test('style.schema accepts qc.by_aspect overrides', async () => {
 /** 临时片目录：ink-wash 风格（声明了 16:9 与 9:16），s01 有竖版覆盖文件。 */
 function inkFilm(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variant-film-'));
+  initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   for (const f of ['s01.js', 's01.9x16.js', 's02.js']) fs.writeFileSync(path.join(dir, 'shots', f), '');
   const film = {
@@ -159,13 +156,12 @@ test('loadFilm without an aspect loads the main version as before', async () => 
 
 test('loadFilm with a variant aspect swaps the size and picks override shot files', async () => {
   const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
-  const dir = inkFilm({ variants: { '9:16': { subtitles: { style: { size: 0.03 } } } } });
+  const dir = inkFilm({ variants: { '9:16': {} } });
   const ctx = loadFilm(dir, { aspect: '9:16' });
   assert.equal(ctx.variant.isMain, false);
   assert.deepEqual(ctx.film.size, [180, 320]);
   assert.equal(ctx.shots[0].path, path.join(dir, 'shots', 's01.9x16.js'));
   assert.equal(ctx.shots[1].path, path.join(dir, 'shots', 's02.js'));
-  assert.equal(ctx.style.subtitles.size, 0.03);
   // film.json 本身不被改写
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8')).size, [320, 180]);
 });

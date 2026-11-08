@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { atomicJson, digest } from './evidence.mjs';
-import { assertCompatibleProgress } from './state.mjs';
+import { assertCompatibleProgress, inspectProduction, assertActiveProduction } from './state.mjs';
 import { scopedPath, workbenchJson } from './workbench-catalog.mjs';
 
 function scope(dir) { const root = fs.realpathSync(path.resolve(dir)); assertCompatibleProgress(root); scopedPath(root, '.wka/workbench-local/state.json'); return root; }
@@ -15,6 +15,7 @@ export function readWorkbenchUI(dir) {
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
 export function writeWorkbenchUI(dir, { key, expected, value }) {
   const root = scope(dir);
+  if (inspectProduction(root).mode === 'archive') assertActiveProduction(root);
   if (typeof key !== 'string' || !/^(?:film|layout|(?:note|stage|position):[\w:.-]{1,200})$/.test(key) || !Number.isInteger(expected) || expected < 0 || value === undefined || JSON.stringify(value).length > 40000) throw new Error('草稿键或内容格式无效');
   const folder = scopedPath(root, '.wka/workbench-local'), lock = scopedPath(root, '.wka/workbench-local/write.lock');
   fs.mkdirSync(folder, { recursive: true }); fs.writeFileSync(scopedPath(root, '.wka/workbench-local/.gitignore'), '*\n!.gitignore\n');

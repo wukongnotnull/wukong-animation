@@ -1,4 +1,4 @@
-// 主版不变证明：第 13 道签批时存主版每镜的定稿快照；做副版（第 14 道）时，
+// 主版不变证明：第 6 道签批时存主版每镜的定稿快照；做副版（第 7 道）时，
 // 主版哈希变了的镜头重渲后与快照逐帧比 PSNR，写成「主版不变报告」交审片节点 ⑪。
 import fs from 'node:fs';
 import os from 'node:os';
@@ -43,7 +43,7 @@ export async function psnrMin(a, b) {
 const SNAPSHOT_DIR = (filmDir) => path.join(path.resolve(filmDir), '.cache', 'approved');
 
 /**
- * 第 13 道签批时调用：主版每镜复制一份定稿快照到 .cache/approved/（不进 git），返回每镜哈希。
+ * 第 6 道签批时调用：主版每镜复制一份定稿快照到 .cache/approved/（不进 git），返回每镜哈希。
  * 还没按当前代码渲染过全分辨率的镜头没有快照，列在 missing 里。
  */
 export function snapshotMain(filmDir, { log = console.log } = {}) {
@@ -77,7 +77,7 @@ function reportText(aspect, rows) {
   const failed = rows.filter((r) => r.result === 'fail').map((r) => r.id);
   const missing = rows.filter((r) => r.result === 'missing').map((r) => r.id);
   const verdict = failed.length
-    ? `✗ 主版有变化：${failed.join('、')}。先请用户在第 13 道重新审主版，再交副版。`
+    ? `✗ 主版有变化：${failed.join('、')}。先请用户在第 6 道重新审主版，再交副版。`
     : missing.length
       ? `! ${missing.join('、')} 的定稿快照缺失，没法逐帧比对，请目视复核这几镜的主版。`
       : '✓ 主版画面没有变化。';
@@ -86,7 +86,7 @@ function reportText(aspect, rows) {
     '',
     verdict,
     '',
-    `主版镜头哈希与第 13 道签批时相同即不变；哈希变了的镜头重渲后与定稿快照逐帧比对，每帧 PSNR 高于 ${PSNR_PASS} dB 算不变。`,
+    `主版镜头哈希与第 6 道签批时相同即不变；哈希变了的镜头重渲后与定稿快照逐帧比对，每帧 PSNR 高于 ${PSNR_PASS} dB 算不变。`,
     '',
     '| 镜头 | 结果 | 最低 PSNR |',
     '|---|---|---|',
@@ -96,7 +96,7 @@ function reportText(aspect, rows) {
 }
 
 /**
- * 做副版前调用：比对主版与第 13 道签批时的定稿，写「主版不变报告」到 review/。
+ * 做副版前调用：比对主版与第 6 道签批时的定稿，写「主版不变报告」到 review/。
  * 主版还没签批过、或处理的就是主版时返回 null。比对不通过不中断，只在报告和日志里写明。
  */
 export async function checkMainUnchanged(filmDir, { aspect, log = console.log } = {}) {
@@ -106,8 +106,8 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   log=message=>callerLog(`[${mainAspect} 主版高清 · main-check；准备 ${variant.aspect} 副版] ${message}`);
   const progress=readProgress(filmDir),approved=progress.approved?.main;
   const pending=readJson(path.join(path.resolve(filmDir),'.wka/pending-approval.json'));
-  if(pending&&pending.step===13&&pending.status!=='completed') throw new Error('主版批准仍待存档，请先恢复原 signoff 命令');
-  if (!approved) { log('  ! 主版还没在第 13 道签批，跳过主版不变比对'); return null; }
+  if(pending&&pending.step===6&&pending.status!=='completed') throw new Error('主版批准仍待存档，请先恢复原 signoff 命令');
+  if (!approved) { log('  ! 主版还没在第 6 道签批，跳过主版不变比对'); return null; }
   const ctx=loadFilm(filmDir),current=shotHashes(filmDir),native=buildFrameTimeline(ctx.shots,ctx.film.fps);
   const ids=[...new Set([...Object.keys(approved),...Object.keys(current)])];
   const cache=new ShotCache(ctx.filmDir),proofFile=path.join(ctx.filmDir,'.cache/main-check.json');
@@ -160,7 +160,7 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   if(ok&&conditions&&!reused) atomicJson(proofFile,result);
   const file=path.join(ensureDir(path.join(ctx.filmDir,'review')),variant.review('主版不变报告.md'));
   atomicJson(file.replace(/\.md$/,'.json'),result);
-  fs.writeFileSync(file,reportText(variant.aspect,rows)+`\n检查：${checkedAt}；原测量：${verifiedAt}；复用：${reused?'是':'否'}。范围：主版镜头画面，不含声音/字幕。\n`);
+  fs.writeFileSync(file,reportText(variant.aspect,rows)+`\n检查：${checkedAt}；原测量：${verifiedAt}；复用：${reused?'是':'否'}。范围：主版镜头画面，声音另行审听。\n`);
   log(`${ok?'  ✓ 主版画面没有变化':'  ! 主版不变比对有问题'}：${file}`);
   return {...result,file};
 }

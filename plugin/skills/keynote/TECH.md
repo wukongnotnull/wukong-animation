@@ -46,7 +46,7 @@ export default function S02({ dur, s }: ShotProps) {
 
 ### 几何与样式
 
-- `useFrame(): FrameSpec` —— `orientation`、`W/H`、`safe`、`type.T01…T09`（size / weight / line）、`layout.L01…L07`（L07 是 `cards` 四个位置）、`subtitle`、`presenter`、`scene.detail`（细节页，整个画面）。横竖跟着当前渲染的画幅（`s.orientation`）走，主版、副版各拿各的。新增横竖不同的几何，加到 `frame.tsx` 的 `SceneGeometry` 并两边都填。
+- `useFrame(): FrameSpec` —— `orientation`、`W/H`、`safe`、`type.T01…T09`（size / weight / line）、`layout.L01…L07`（L07 是 `cards` 四个位置）、`presenter`、`scene.detail`（细节页，整个画面）。横竖跟着当前渲染的画幅（`s.orientation`）走，主版、副版各拿各的。新增横竖不同的几何，加到 `frame.tsx` 的 `SceneGeometry` 并两边都填。
 - `color`、`font`（`sans` / `mono`）、`gap`、`motion`（`fade` 14 / `move` 20 / `transition` 24 帧）、`lanes`。
 - `useShot(): { dur, s }` —— 不想层层传 props 时读当前镜头。
 

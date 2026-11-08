@@ -5,7 +5,6 @@ import { dependencyInfo } from '../../core/deps.mjs';
 import { setupDependencies } from '../../core/setup.mjs';
 import { hasGit } from '../../core/project.mjs';
 import { hasFfmpeg } from '../../core/ffmpeg.mjs';
-import { detectTtsEngine } from '../../audio/tts.mjs';
 import { resolveStyle } from '../../core/resolver.mjs';
 import { fail } from '../context.mjs';
 import { installationDiagnostics } from '../../core/installation-diagnostics.mjs';
@@ -32,8 +31,6 @@ export function environmentCommands({ pos, opt, log, aspectOpt }) {
     ];
     for (const [n, ok, why] of tools) log(`  ${ok ? '✓' : '✗'} ${n.padEnd(20)} ${why}`);
     if (!tools[0][1]) bad++;
-    const tts = detectTtsEngine();
-    log(`  ${tts.length ? '✓' : '·'} TTS                  ${tts.length ? tts.join(', ') : '未安装（可选：kokoro / edge-tts）'}`);
 
     log('\n管线');
     for (const p of reg.pipelines.values()) {

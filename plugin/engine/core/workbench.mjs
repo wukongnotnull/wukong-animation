@@ -3,9 +3,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { digest, fileDigest, atomicJson } from './evidence.mjs';
-import { assertCompatibleProgress, PRODUCTION_STEPS, REVIEW_GATES } from './state.mjs';
+import { assertCompatibleProgress, assertActiveProduction, inspectProduction, FLOW, PRODUCTION_STEPS, REVIEW_GATES } from './state.mjs';
 import { lockProduction } from './operations.mjs';
 import { workbenchCatalog, workbenchDependencies, workbenchJson, scopedPath } from './workbench-catalog.mjs';
+
+import { archiveWorkbench, archiveFile } from './workbench-archive.mjs';
 
 const ledgerPath = dir => scopedPath(dir, '.wka/workbench.json');
 const now = () => new Date().toISOString();
@@ -23,7 +25,7 @@ function ledger(dir) {
 }
 function save(dir, data) { atomicJson(ledgerPath(dir), data); }
 function locked(dir, fn) {
-  dir = rootOf(dir); const release = lockProduction(dir);
+  dir = rootOf(dir); assertActiveProduction(dir); const release = lockProduction(dir);
   try { return fn(dir); } finally { release(); }
 }
 export function hasWorkbench(dir) { return fs.existsSync(path.join(dir, '.wka/workbench.json')); }
@@ -109,9 +111,9 @@ function report(dir, data, catalog) {
       freshness: current && current.dependencies !== a.dependencies && !checked ? 'needs-review' : 'current' };
   });
   const stages = Object.entries(PRODUCTION_STEPS).map(([number, label]) => {
-    const step = Number(number), chosen = items.filter(i => i.step === step || (step === 12 && i.step === 13));
+    const step = Number(number), chosen = items.filter(i => i.step === step);
     const formal = chosen.filter(i => i.required), active = formal.filter(i => i.availability !== 'historical');
-    const revision = digest({ step, items: active.map(i => i.revision), contract: step >= 13 ? catalog.contract?.id : null,
+    const revision = digest({ step, items: active.map(i => i.revision), contract: step >= 6 ? catalog.contract?.id : null,
       blockingNotes: formal.flatMap(i => i.notes.filter(n => n.blocking).map(n => [n.id, n.status, n.repair?.id || null])) });
     const decisions = data.decisions.filter(d => d.step === step), latest = decisions.at(-1);
     const blocks = [];
@@ -122,29 +124,34 @@ function report(dir, data, catalog) {
     }
     for (const item of formal) if (item.notes.some(n => n.blocking && !n.resolved)) blocks.push(`${item.label}：有未解决或待复验的阻塞意见`);
     if (!active.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的正式交付物，请在对话中补齐或登记');
-    if (step >= 13 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
+    if (step >= 6 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
     let status = catalog.notApplicable.has(step) && !active.length && !blocks.length ? 'not-applicable' : 'pending';
     if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length ? 'approved' : 'needs-review';
     else if (latest?.decision === 'changes-requested' && latest.revision === revision) status = 'changes-requested';
     if (status === 'pending' && active.some(i => i.freshness === 'needs-review')) status = 'needs-review';
     return { step, label, gate: REVIEW_GATES[step] || null, revision, status, items: chosen, blocks, decisions };
   });
-  return { version: 1, ok: !items.some(i => i.availability === 'unreadable'), dir, title: catalog.film.title || path.basename(dir), stages, shots: catalog.shots,
+  return { version: 1, readonly: false, flow: FLOW, flowLabel: '制作流程', ok: !items.some(i => i.availability === 'unreadable'), dir, title: catalog.film.title || path.basename(dir), stages, shots: catalog.shots,
     duration: catalog.duration, warnings: catalog.warnings, notes: data.notes, history: items.filter(i => i.availability === 'historical') };
 }
 
-export function captureWorkbench(dir, options = {}) { return locked(dir, root => capture(root, options)); }
+export function captureWorkbench(dir, options = {}) {
+  dir = rootOf(dir); const identity = inspectProduction(dir);
+  if (identity.mode === 'archive') return archiveWorkbench(dir, ledger(dir), identity);
+  return locked(dir, root => capture(root, options));
+}
 export function assertWorkbenchScope(dir) { return rootOf(dir); }
 // Only the CLI pipeline can use this while it already owns the same production lock.
 export function captureWorkbenchLocked(dir, options = {}) {
-  const view = capture(rootOf(dir), options);
+  dir = rootOf(dir); assertActiveProduction(dir);
+  const view = capture(dir, options);
   if (!view.ok) throw new Error('交付版本未能完整保存：' + [...new Set(view.stages.flatMap(s => s.items).filter(i => i.availability === 'unreadable').map(i => i.error))].join('；'));
   return view;
 }
 
 export function registerWorkbenchArtifact(dir, { file, step, label, depends, required = true }) {
   return locked(dir, root => {
-    if (!file || !Number.isInteger(step) || !PRODUCTION_STEPS[step]) throw new Error('登记需要文件路径及 1–15 的工序');
+    if (!file || !Number.isInteger(step) || !PRODUCTION_STEPS[step]) throw new Error('登记需要文件路径及 1–8 的工序');
     if (depends !== undefined && (!Array.isArray(depends) || depends.some(d => typeof d !== 'string'))) throw new Error('来源应为路径列表');
     for (const rel of depends || []) scopedPath(root, rel);
     const absolute = path.resolve(root, file), relative = path.relative(root, absolute);
@@ -166,7 +173,12 @@ function versionFor(data, artifactId, versionId) {
   return { artifact, version };
 }
 export function workbenchFile(dir, artifactId, versionId, entry = null) {
-  dir = rootOf(dir); const data = ledger(dir), { artifact, version } = versionFor(data, artifactId, versionId);
+  dir = rootOf(dir); const data = ledger(dir), identity = inspectProduction(dir);
+  if (identity.mode === 'archive') {
+    const file = archiveFile(dir, archiveWorkbench(dir, data, identity), artifactId, versionId);
+    if (file) return file;
+  }
+  const { artifact, version } = versionFor(data, artifactId, versionId);
   if (version.snapshot.kind === 'directory' && !entry) throw new Error('请选择目录中的具体文件');
   const selected = entry ? version.snapshot.entries.find(e => e.path === entry) : version.snapshot.entries[0];
   if (!selected || !/^[a-f0-9]{64}$/.test(selected.sha256)) throw new Error('文件未登记或超出版本范围');
@@ -176,8 +188,11 @@ export function workbenchFile(dir, artifactId, versionId, entry = null) {
 }
 export function workbenchOriginal(dir, artifactId) {
   dir = rootOf(dir); const data = ledger(dir);
-  const item = workbenchCatalog(dir, data.registrations).items.find(i => i.id === artifactId);
+  const identity = inspectProduction(dir);
+  const items = identity.mode === 'archive' ? archiveWorkbench(dir, data, identity).stages.flatMap(s => s.items) : workbenchCatalog(dir, data.registrations).items;
+  const item = items.find(i => i.id === artifactId);
   if (!item || !fs.existsSync(item.path)) throw new Error('当前登记的原文件已不存在');
+  if (!item.external) scopedPath(dir, item.relativePath || item.path);
   return item.path;
 }
 
@@ -260,7 +275,7 @@ export function checkWorkbenchArtifact(dir, { artifactId, versionId, revision })
   });
 }
 export async function decideWorkbenchStage(dir, request, signoff) {
-  dir = rootOf(dir); const release = lockProduction(dir);
+  dir = rootOf(dir); assertActiveProduction(dir); const release = lockProduction(dir);
   try {
     const { step, revision, decision, note } = request;
     const stage = capture(dir).stages.find(s => s.step === step);
@@ -283,6 +298,7 @@ export async function decideWorkbenchStage(dir, request, signoff) {
 }
 export function workbenchPending(dir) {
   dir = rootOf(dir); const data = ledger(dir);
+  if (inspectProduction(dir).mode === 'archive') return { dir, readonly: true, instruction: '历史档案仅供查看，续作请新建项目。', notes: [], decisions: [] };
   return { dir, instruction: '仅为待办，收到用户在对话中的执行要求后处理；视频生成每批另行确认。',
     notes: data.notes.filter(n => !n.resolved).map(n => {
       const { artifact, version } = versionFor(data, n.artifactId, n.versionId);

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,29 +39,30 @@ test('schema accepts the seven sizes and rejects others', () => {
   assert.equal(validate('film', film('大全景')).length, 1);
 });
 
-// ── wka signoff --step 5 ──
+// ── wka signoff --step 4 ──
 const WKA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../plugin/engine/bin/wka.mjs');
 function filmWith(sizes) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-size-'));
+  initializeProduction(dir);
   fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify({ title: 't', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1, shots: shots(...sizes) }));
   return dir;
 }
 
-test('signoff --step 5 refuses a storyboard that breaks the size rules and records nothing', () => {
+test('signoff --step 4 refuses a storyboard that breaks the size rules and records nothing', () => {
   const dir = filmWith(['近景', '特写', '特写', '远景']);
-  const r = spawnSync(process.execPath, [WKA, 'signoff', dir, '分镜签批', '--step', '5'], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [WKA, 'signoff', dir, '分镜签批', '--step', '4'], { encoding: 'utf8' });
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /s02 和 s03 都是特写/);
   assert.equal(readProgress(dir).step || 0, 0);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('signoff --step 5 --force records the sign-off with the problems attached', () => {
+test('signoff --step 4 --force records the sign-off with the problems attached', () => {
   const dir = filmWith(['近景', '特写', '特写', '远景']);
-  const r = spawnSync(process.execPath, [WKA, 'signoff', dir, '分镜签批', '--step', '5', '--force'], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [WKA, 'signoff', dir, '分镜签批', '--step', '4', '--force'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const st = readProgress(dir);
-  assert.equal(st.step, 5);
+  assert.equal(st.step, 4);
   assert.match(st.history.at(-1).note, /^分镜签批（景别检查未通过：s02 和 s03 都是特写/);
   fs.rmSync(dir, { recursive: true, force: true });
 });

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { migrateFilm } from '../../plugin/engine/core/compat.mjs';
@@ -40,6 +41,7 @@ test('loadFilm can skip the shot-file check (for the soundtrack step)', async ()
   const path = await import('node:path');
   const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-load-'));
+  initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   fs.writeFileSync(path.join(dir, 'shots', 's01.js'), '');
   const shots = ['s01', 's02', 's03'].map((id, i) => ({ id, file: `shots/${id}.js`, duration: i + 1 }));

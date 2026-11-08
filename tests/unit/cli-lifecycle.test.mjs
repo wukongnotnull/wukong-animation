@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,6 +13,7 @@ function fixture(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const film = path.join(root, 'film'), cache = path.join(film, '.cache');
   fs.mkdirSync(cache, { recursive: true });
+  initializeProduction(film);
   const lock = path.join(cache, 'operation.lock'), active = path.join(cache, 'active-command.json');
   const run = args => spawnSync(process.execPath, [cli, ...args], {
     cwd: root, encoding: 'utf8', timeout: 15000,
@@ -25,7 +27,7 @@ test('invalid signoff step releases its lock and retains the recovery command', 
   const result = f.run(args);
   assert.equal(result.status, 1, result.stderr);
   assert.equal(result.stdout, '');
-  assert.equal(result.stderr, '✗ --step 取 1–15\n');
+  assert.equal(result.stderr, '✗ --step 取 1–8\n');
   assert.deepEqual(JSON.parse(fs.readFileSync(f.active)), { argv: args });
   assert.equal(fs.existsSync(f.lock), false, 'controlled validation failure must release its lock');
 });
@@ -47,9 +49,9 @@ test('a successful command releases its lock and preserves the command record', 
     title: 'Lifecycle', style: 'ink-wash', size: [32, 18], fps: 10, seed: 1,
     shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }], subtitles: { mode: 'none' },
   }));
-  const args = ['subtitles', f.film], result = f.run(args);
+  const args = ['clean', f.film, '--render-cache'], result = f.run(args);
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, '本片 subtitles.mode 为 none，不出字幕\n');
+  assert.match(result.stdout, /清理|没有/);
   assert.equal(result.stderr, '');
   assert.equal(fs.existsSync(f.lock), false);
   assert.deepEqual(JSON.parse(fs.readFileSync(f.active)), { argv: args });

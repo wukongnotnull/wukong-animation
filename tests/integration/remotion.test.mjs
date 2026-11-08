@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // 需要 remotion 依赖 + playwright 的 headless shell + ffmpeg（wka setup）；缺依赖时整组跳过。
 // 用临时 WUKONG_ANIMATION_HOME 里的一个最小用户风格，只测管线本身，不依赖 keynote 的组件。
 import { test } from 'node:test';
@@ -32,7 +33,7 @@ export default function Shot({ dur, s }) {
 `;
 
 function makeFilm(shots) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-rm-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-rm-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   for (const [id, src] of Object.entries(shots)) fs.writeFileSync(path.join(dir, 'shots', `${id}.tsx`), src);
   const film = {

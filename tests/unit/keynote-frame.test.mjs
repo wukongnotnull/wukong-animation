@@ -21,20 +21,15 @@ async function loadFrames() {
 }
 const FRAMES = await loadFrames();
 
-const SUBTITLE_LINE = 1.3;
-const SUBTITLE_PAD = 22;
-/** 字幕带上沿：两行字幕加内边距，和 Guides.tsx 一致 */
-const bandTop = (f) => f.subtitle.bottom - (f.subtitle.size * SUBTITLE_LINE * 2 + SUBTITLE_PAD);
 const inside = (r, o) => r.x >= o.x && r.y >= o.y && r.x + r.w <= o.x + o.w && r.y + r.h <= o.y + o.h;
 const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 for (const [name, f] of Object.entries(FRAMES)) {
-  test(`${name}：版式母版都在安全区里、在字幕带之上`, () => {
+  test(`${name}：版式母版都在安全区里`, () => {
     for (const [id, slots] of Object.entries(f.layout)) {
       const rects = id === 'L07' ? slots.cards : Object.values(slots);
       for (const r of rects) {
         assert.ok(inside(r, f.safe), `${id} ${JSON.stringify(r)} 出了安全区`);
-        assert.ok(r.y + r.h <= bandTop(f), `${id} ${JSON.stringify(r)} 进了字幕带`);
       }
     }
   });

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
@@ -9,7 +10,7 @@ for(const pipeline of ['browser','remotion']) {
  const d=path.join(home,'styles',`word-${pipeline}`);fs.mkdirSync(d,{recursive:true});
  fs.writeFileSync(path.join(d,'style.json'),JSON.stringify({id:`word-${pipeline}`,name:'词级测试',category:'xinxi',order:998,engine:'>=0.1.0',pipeline,kits:{},fps:30,aspects:['16:9','9:16'],keywords:['test']}));
  test(`${pipeline} 词首随实际音频锚点出现，横竖/小样/奇数fps`,{timeout:600000},()=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-word-film-'));fs.mkdirSync(path.join(dir,'shots'));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-word-film-'));initializeProduction(dir);fs.mkdirSync(path.join(dir,'shots'));
   try {
    const wave=path.join(dir,'voice.wav');
    const tone=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i',"aevalsrc='0.2*sin(2*PI*440*t)*(between(t,0.2,0.25)+between(t,1.05,1.1)+between(t,2.11,2.16))':s=48000:d=3",wave]);assert.equal(tone.status,0,String(tone.stderr));
@@ -21,6 +22,7 @@ for(const pipeline of ['browser','remotion']) {
    fs.writeFileSync(path.join(dir,'shots',`s01.${ext}`),lead);fs.writeFileSync(path.join(dir,'shots',`s02.${ext}`),body);
    const film={title:'word',style:`word-${pipeline}`,size:[32,18],fps:30,seed:1,variants:{'9:16':{}},shots:[{id:'s01',file:`shots/s01.${ext}`,duration:0.17},{id:'s02',file:`shots/s02.${ext}`,duration:3.12}],audio:{voice_source:'user',voices:[{cue:'v01',text:terms.join('，'),at:0.17,file:'voice.wav'}]}};
    const filmFile=path.join(dir,'film.json');fs.writeFileSync(filmFile,JSON.stringify(film));
+   const prepared=spawnSync(process.execPath,['--input-type=module','-e',`import {confirmFixtureVoices} from ${JSON.stringify(new URL('../helpers/production.mjs',import.meta.url).href)};confirmFixtureVoices(${JSON.stringify(dir)});`],{env,encoding:'utf8'});assert.equal(prepared.status,0,prepared.stderr);
    const track=cli('soundtrack',dir);assert.equal(track.status,0,track.stderr);
    const recording=fs.readFileSync(wave),savedMix=fs.readFileSync(path.join(dir,'.cache','mix.wav'));
    const source=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;

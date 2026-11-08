@@ -78,3 +78,15 @@ test('修改已确认句段后必须重新应用到制作输入，旧画面不�
  importVoiceTiming(dir,input,{confirmation:'修正句段时间'});assert.equal(voiceAlignmentStatus(dir).ready,true);assert.equal(voiceAlignmentStatus(dir).applied,false);
  applyVoiceAlignment(dir);assert.equal(voiceAlignmentStatus(dir).applied,true);
 });
+
+test('重复应用定位保留混音新增 cue 的原始顺序，不改工程或定位记录',t=>{
+ const {dir}=fixture(t),source=voiceAlignmentStatus(dir).voices.user.source;
+ importVoiceTiming(dir,{version:1,voices:{user:{source,segments:[{text:'你好世界',start:0,end:2}]}}},{confirmation:'测试听审确认'});
+ applyVoiceAlignment(dir);
+ const file=path.join(dir,'film.json'),record=path.join(dir,'.wka/voice-alignment.json');
+ const film=JSON.parse(fs.readFileSync(file));film.cues.user=[1,3];film.cues['user#1']=[1,2];film.cues.manual=[0,.2];fs.writeFileSync(file,JSON.stringify(film,null,2)+'\n');
+ const before=fs.readFileSync(file),recordBefore=fs.readFileSync(record);
+ applyVoiceAlignment(dir);applyVoiceAlignment(dir);
+ assert.deepEqual(fs.readFileSync(file),before,'未变化的定位不能重排其他同步点或重写格式');
+ assert.deepEqual(fs.readFileSync(record),recordBefore);
+});

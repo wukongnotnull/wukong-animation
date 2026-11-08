@@ -10,6 +10,8 @@ import { scopedPath } from '../core/workbench-catalog.mjs';
 
 const recordPath = dir => scopedPath(dir, '.wka/voice-alignment.json');
 const normalized = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+// Cue key order is not a timing change; preserve the original file on a no-op.
+const cueDigest = cues => digest(Object.keys(cues || {}).sort().map(key => [key, cues[key]]));
 function read(file, fallback) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return fallback; throw new Error(`无法读取定位记录：${e.message}`); } }
 function ledger(dir) {
   const data = read(recordPath(dir), { version: 1, voices: {}, ownedCues: [] });
@@ -112,7 +114,7 @@ export function applyVoiceAlignment(dir) {
     if (Object.hasOwn(cues, key)) throw new Error(`定位 cue 与手工标记冲突：${key}`);
     cues[key] = [v.source.at + s.start, v.source.at + s.end];owned.push(key);
   });
-  if (digest(film.cues || {}) !== digest(cues) || digest(data.ownedCues) !== digest(owned)) {
+  if (cueDigest(film.cues) !== cueDigest(cues) || digest(data.ownedCues) !== digest(owned)) {
     atomicJson(journal, { fingerprint, before: film.cues || {}, after: cues, oldOwned: data.ownedCues, nextOwned: owned });
     atomicJson(file, { ...film, cues });
     data.ownedCues = owned;atomicJson(recordPath(dir), data);fs.rmSync(journal);

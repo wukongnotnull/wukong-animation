@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "wukong-animation · 代码七十二变",
     "shortDescription": "用代码在本机制作动画短片",
-    "longDescription": "从制作简报、画风、剧本、分镜、声音到字幕和成片的本地动画制作流程。支持水墨写意与发布会 Keynote，每个审片节点由用户确认。需要可访问本地终端和文件的桌面执行环境、Node.js 20+ 与 ffmpeg；渲染依赖通过 setup 安装到本机。",
+    "longDescription": "从方案简报、剧本、分镜稿到小样、成片、画幅调整和剪映草稿的本地动画制作流程。支持水墨写意与发布会 Keynote，接入用户录音并在本地定位台词，不提供 AI 人声和字幕制作；旧项目只读留档。各审片节点由用户确认，工作台负责预览与审阅。需要可访问本地终端和文件的桌面执行环境、Node.js 20+ 与 ffmpeg；制作依赖按需在本机准备。",
     "developerName": "悟空非空也",
     "category": "Creativity",
     "defaultPrompt": [

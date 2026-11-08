@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { assertActiveProduction, assertProjectCompatible } from './state.mjs';
+import { assertActiveProduction, assertProjectCompatible, inspectProduction } from './state.mjs';
 
 const IGNORE_BLOCK = `# >>> wukong-animation >>>
 # 渲染缓存、中间帧、风格帧、审阅副本、成片都可以由源文件重新生成，不进版本库
@@ -61,6 +61,7 @@ const IDENTITY_HINT =
  */
 export function initProject(dir, { log = console.log } = {}) {
   assertProjectCompatible(dir);
+  if (inspectProduction(dir).mode === 'archive') assertActiveProduction(dir);
   dir = path.resolve(dir);
   fs.mkdirSync(path.join(dir, 'films'), { recursive: true });
   if (!hasGit()) {

@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,17 +20,17 @@ function oldTree(dir,exclude=()=>false) {
 }
 // Independent pre-optimization projection: duplicate declarations remain in the data.
 function legacy(dir) {
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','subtitle-layout.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,fs.existsSync(path.join(dir,rel))?oldFile(path.join(dir,rel)):null]);
   let film={};try{film=JSON.parse(fs.readFileSync(path.join(dir,'film.json'),'utf8'));}catch{}
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
   for(const rel of references)data.push([rel,fs.existsSync(path.resolve(dir,rel))?oldFile(path.resolve(dir,rel)):null]);
   data.push(['shots',oldTree(path.join(dir,'shots'))],['audio',oldTree(path.join(dir,'audio'),(rel,ent)=>ent.isDirectory()&&ent.name==='generated')]);
-  if(fs.existsSync(dir))for(const f of fs.readdirSync(dir).filter(f=>/^subtitles.*\.(srt|json)$/.test(f)))data.push([f,oldFile(path.join(dir,f))]);
   return digest(data);
 }
 function fixture(t,count=3) {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-source-state-'));
+  initializeProduction(dir);
   t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   for(const sub of ['shots','audio/generated','other'])fs.mkdirSync(path.join(dir,sub),{recursive:true});
   const shots=Array.from({length:count},(_,i)=>{const id=`s${String(i+1).padStart(3,'0')}`,file=`shots/${id}.js`;fs.writeFileSync(path.join(dir,file),`shot ${id}`);return {id,file,duration:2.05};});
@@ -137,8 +138,8 @@ test('stage execution writes the source identity observed after await, never an 
 });
 
 test('an unstable observation records a failed stage and preserves user approval bytes',async t=>{
-  const dir=fixture(t),out=path.join(dir,'out'),state=path.join(dir,'.wka/state.json');fs.mkdirSync(path.dirname(state));
-  const approval=JSON.stringify({flow:5,step:13,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
+  const dir=fixture(t),out=path.join(dir,'out'),state=path.join(dir,'.wka/state.json');fs.mkdirSync(path.dirname(state),{recursive:true});
+  const approval=JSON.stringify({flow:6,step:6,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
   const readdir=fs.readdirSync;let changed=false;
   t.mock.method(fs,'readdirSync',function(file,...args){const entries=readdir.call(this,file,...args);if(file===path.join(dir,'audio')&&!changed){changed=true;fs.writeFileSync(path.join(dir,'brief.md'),'brief two');}return entries;});
   await assert.rejects(runStage(dir,{stage:'bench',aspect:'16:9',signature:'s',log:()=>{},run:async()=>{fs.writeFileSync(out,'output');return {value:out,outputs:[out]};}}),/变化|changed|观察|observation/i);

@@ -387,8 +387,8 @@ function acceptance(dir,item,artifact,data,history) {
 
 function evidencedCandidates(dir,data,items,host) {
   const stages=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{});
-  const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft|subtitle)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
-  for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^(encode:|review:sidecar-)/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':s.stage.startsWith('encode:')?'video':'subtitle'});
+  const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
+  for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^encode:/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':'video'});
   const seen=new Set(items.map(i=>i.path)),result=[];
   for(const item of known) {
     if(seen.has(item.path))continue;seen.add(item.path);

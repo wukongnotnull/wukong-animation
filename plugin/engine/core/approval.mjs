@@ -160,7 +160,7 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   if(ok&&conditions&&!reused) atomicJson(proofFile,result);
   const file=path.join(ensureDir(path.join(ctx.filmDir,'review')),variant.review('主版不变报告.md'));
   atomicJson(file.replace(/\.md$/,'.json'),result);
-  fs.writeFileSync(file,reportText(variant.aspect,rows)+`\n检查：${checkedAt}；原测量：${verifiedAt}；复用：${reused?'是':'否'}。范围：主版镜头画面，不含声音/字幕。\n`);
+  fs.writeFileSync(file,reportText(variant.aspect,rows)+`\n检查：${checkedAt}；原测量：${verifiedAt}；复用：${reused?'是':'否'}。范围：主版镜头画面，声音另行审听。\n`);
   log(`${ok?'  ✓ 主版画面没有变化':'  ! 主版不变比对有问题'}：${file}`);
   return {...result,file};
 }

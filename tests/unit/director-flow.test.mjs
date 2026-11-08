@@ -30,30 +30,21 @@ test('工序总表逐道对应引擎的工序，审片节点与 --step 一致', 
   assert.deepEqual(table.map((r) => Number(r[0])), Object.keys(PRODUCTION_STEPS).map(Number));
   for (const r of table) {
     const gate = REVIEW_GATES[r[0]];
-    assert.equal(squash(r.at(-1)), gate ? squash(`${gate} · \`${r[0]}\``) : '—', `第 ${r[0]} 道`);
-  }
-});
-
-test('审片节点总表列出全部节点，工序与 --step 一致', () => {
-  const table = rows('节点');
-  assert.deepEqual(table.map((r) => squash(r[0])), Object.values(REVIEW_GATES));
-  for (const r of table) {
-    const step = Object.keys(REVIEW_GATES).find((k) => REVIEW_GATES[k] === squash(r[0]));
-    assert.equal(r[1], `第 ${step} 道 · \`${step}\``);
+    assert.equal(r[1], PRODUCTION_STEPS[r[0]]);
+    assert.ok(gate ? r.at(-1).includes(gate[0]) : r.at(-1) === '—');
   }
 });
 
 test('每道工序都有细则，每个节点都写明签批的 --step', () => {
   for (const n of Object.keys(PRODUCTION_STEPS)) assert.match(SKILL, new RegExp(`^### 第 ${n} 道 · `, 'm'), `缺第 ${n} 道细则`);
   for (const [n, gate] of Object.entries(REVIEW_GATES)) {
-    const line = SKILL.split('\n').find((l) => l.startsWith('✅ **审片节点') && squash(l).includes(`审片节点${gate}**`));
-    assert.ok(line, `缺 ${gate} 的签批行`);
-    assert.ok(line.endsWith(`\`--step ${n}\``), line);
+    const section = SKILL.split(`### 第 ${n} 道 · `)[1].split('### 第 ')[0];
+    assert.ok(section.includes(`--step ${n}`), gate);
   }
 });
 
 test('命令表写明哪些命令能用 --aspect 出副版', () => {
-  for (const cmd of ['still', 'animatic', 'render', 'qc', 'subtitles', 'final']) {
+  for (const cmd of ['still', 'animatic', 'render', 'qc', 'final']) {
     const line = SKILL.split('\n').find((l) => l.startsWith(`| \`wka ${cmd} `));
     assert.ok(line && line.includes('--aspect'), `wka ${cmd} 的命令行没写 --aspect`);
   }

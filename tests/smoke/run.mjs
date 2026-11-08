@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 #!/usr/bin/env node
 // 冒烟测试：每个风格的示范片，用固定种子在 3 个时间点渲染预览静帧，
 //   1) 同一帧渲染两次必须一致（确定性）：允许个别像素的抗锯齿抖动（CI 上的 Chromium 偶尔会有），
@@ -61,8 +62,12 @@ for (const id of fs.readdirSync(skills)) {
     tested++;
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-smoke-'));
     const film = path.join(tmp, name);
-    fs.cpSync(path.join(ex, name), film, { recursive: true });
+    initializeProduction(film);
+    fs.cpSync(path.join(ex, name), film, { recursive: true, filter: file => !['.wka', '.cache', 'review'].includes(path.basename(file)) });
     const fj = JSON.parse(fs.readFileSync(path.join(film, 'film.json'), 'utf8'));
+    // Historical examples supply visuals only, in a new independent smoke-test film.
+    delete fj.audio;delete fj.subtitles;for(const v of Object.values(fj.variants||{})) delete v.subtitles;
+    fs.writeFileSync(path.join(film,'film.json'),JSON.stringify(fj));
     const pick = [fj.shots[0], fj.shots[Math.floor(fj.shots.length / 2)], fj.shots[fj.shots.length - 1]];
     const points = pick.map((s) => ({ shot: s.id, t: +(s.duration * 0.7).toFixed(2) }));
     // 主版，加上 film.json 的 variants 里的每个副版（基准图目录 <片名>-<后缀>）

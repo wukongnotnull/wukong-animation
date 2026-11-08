@@ -47,11 +47,11 @@ test('signing off step 2 records the ① brief gate, and status lists the placeh
   wka(dir, 'brief', '寒江');
   const s = wka(dir, 'signoff', 'films/寒江', '简报签批', '--step', '2');
   assert.equal(s.status, 0, s.stderr);
-  assert.match(s.stdout, /审片节点 ①制作简报/);
+  assert.match(s.stdout, /审片节点 ①方案简报/);
   const st = wka(dir, 'status');
   assert.match(st.stdout, /寒江/);
   assert.match(st.stdout, /未定/);
-  assert.match(st.stdout, /下一步：3\. 美术定调/);
+  assert.match(st.stdout, /下一步：3\. 编写剧本/);
 });
 
 test('wka init completes the placeholder film and keeps brief.md', () => {

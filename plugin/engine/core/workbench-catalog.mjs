@@ -59,9 +59,10 @@ export function workbenchCatalog(dir, registrations = []) {
     const key = absolute;
     const old = items.get(key);
     const relativePath = extra.external ? null : path.relative(dir, absolute).split(path.sep).join('/');
-    items.set(key, { step, label: path.basename(file), kind: workbenchKind(file), required: true, ...old, ...extra,
+    items.set(key, { step, label: /QC报告|主版不变|音效电平审计/.test(file) ? '检查结果' : path.basename(file), kind: workbenchKind(file), required: true, ...old, ...extra,
       id: digest(relativePath === null ? 'external:' + absolute : 'project:' + relativePath).slice(0, 24), path: absolute, relativePath });
   };
+  if (fs.existsSync(scopedPath(dir, 'review/环境检查.md'))) add('review/环境检查.md', 1, { label: '环境检查结果', required: false });
   add('brief.md', 2, { label: '方案简报' }); add('story.md', 3, { label: '剧本' }); add('storyboard.md', 4, { label: '分镜稿' });
   add('review/小样.mp4', 5, { label: '小样视频' }); add('review/QC报告-proxy.json', 5, { label: '检查结果' });
   for (const file of [...walk(dir, 'review'), ...walk(dir, 'stills')]) {
@@ -69,7 +70,7 @@ export function workbenchCatalog(dir, registrations = []) {
     if (/交付清单|交付审计|字幕|subtitles/.test(file)) continue;
     // A directory may also contain user references; discovery alone is not a review contract.
     if (!items.has(scopedPath(dir, file))) {
-      const formal = /^(?:stills\/s[\w-]+[-.]|review\/(?:局部小样|局部原画质)\/|review\/(?:小样|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
+      const formal = /^(?:review\/(?:小样|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
       add(file, inferredStep(file), { required: formal });
     }
   }
@@ -79,7 +80,7 @@ export function workbenchCatalog(dir, registrations = []) {
       if (!output.file || /字幕|subtitles/.test(output.file)) continue;
       const rel = path.relative(dir, path.resolve(dir, output.file));
       if (rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).some(p => p.startsWith('.'))) continue;
-      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: /小样|QC报告/.test(rel) });
+      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: !/局部/.test(rel) && /小样|QC报告/.test(rel) });
     }
   }
   let contract = null;
@@ -91,7 +92,7 @@ export function workbenchCatalog(dir, registrations = []) {
         const operation = Object.values(stages).find(s => s.stage === slot.stage && s.aspect === slot.aspect && !s.proxy && s.status === 'completed');
         const file = artifact?.path || operation?.outputs?.[0]?.file || slot.path;
         if (file) add(file, slot.kind === 'draft' ? 8 : slot.aspect === contract.mainAspect ? 6 : 7,
-          { required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
+          { label: slot.kind === 'draft' ? '剪映草稿' : slot.aspect === contract.mainAspect ? '成片视频' : Number(slot.aspect.split(':')[0]) > Number(slot.aspect.split(':')[1]) ? '横屏成片' : Number(slot.aspect.split(':')[0]) < Number(slot.aspect.split(':')[1]) ? '竖屏成片' : '画幅成片', required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
       }
       warnings.push(...contract.errors);
     } catch (error) { warnings.push(`最终交付要求待核实：${error.message}`); }
@@ -102,7 +103,7 @@ export function workbenchCatalog(dir, registrations = []) {
   const notApplicable = new Set();
   if (configured && !Object.keys(film.variants || {}).length) notApplicable.add(7);
   const decisions = workbenchJson(scopedPath(dir, '.wka/decisions.json'), {});
-  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video-only') notApplicable.add(8);
+  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video') notApplicable.add(8);
   let start = 0;
   const shots = (film.shots || []).map(s => { const row = { id: s.id, start, duration: Number(s.duration) || 0 }; start += row.duration; return row; });
   return { film, items: [...items.values()], warnings, notApplicable, shots, duration: start, contract };
@@ -124,7 +125,7 @@ export function workbenchDependencies(dir, item, film) {
     const sound = [5, 6, 7, 8].includes(item.step) && item.kind !== 'image';
     const picture = [5, 6, 7, 8].includes(item.step);
     if (sound) {
-      projections.audio = film.audio || {}; add(film.audio?.build);
+      projections.audio = film.audio || {}; add(film.audio?.build); add('.wka/voice-alignment.json');
       for (const track of [...(film.audio?.tracks || []), ...(film.audio?.voices || [])]) add(track.file);
     }
     if (picture) {

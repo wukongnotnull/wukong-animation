@@ -116,7 +116,7 @@ export function commitSignoff(filmDir, { id, step, note, signature, main = null,
 
 const sameHashes = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 
-/** 副版签批之后主版又在第 13 道签批过、且主版镜头哈希变了：副版过期，要重做第 14 道。没签批过的副版不算过期。 */
+/** 副版签批之后主版又在第 6 道签批过、且主版镜头哈希变了：副版过期，要重做第 7 道。没签批过的副版不算过期。 */
 export function variantStale(st, aspect) {
   const v = st.approved?.variants?.[aspect];
   return !!v && !sameHashes(v.main, st.approved.main);

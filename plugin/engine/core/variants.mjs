@@ -58,12 +58,11 @@ function checkVariants(film, style) {
 /**
  * 解析要处理的画幅版本。aspect 缺省或等于主版画幅 = 主版。
  * @returns {{aspect, isMain, orientation, size, suffix, cacheDir, stillsDir, review: (name: string) => string,
- *   subtitlesFile, enFile, exportName, title, overrides}}
+ *   exportName, title, overrides}}
  */
 export function resolveVariant({ film, style, filmDir }, aspect = null) {
   checkVariants(film, style);
   const main = aspectOf(film.size);
-  const subtitlesFile = film.subtitles?.file || 'subtitles.srt';
   const exportName = film.export?.name || 'out';
   if (!aspect || aspect === main) {
     return {
@@ -75,8 +74,6 @@ export function resolveVariant({ film, style, filmDir }, aspect = null) {
       cacheDir: path.join(filmDir, '.cache'),
       stillsDir: path.join(filmDir, 'stills'),
       review: (name) => name,
-      subtitlesFile,
-      enFile: 'subtitles.en.json',
       exportName,
       title: film.title,
       overrides: {},
@@ -99,8 +96,6 @@ export function resolveVariant({ film, style, filmDir }, aspect = null) {
     cacheDir: path.join(filmDir, '.cache', suffix),
     stillsDir: path.join(filmDir, 'stills', suffix),
     review: (name) => insertBeforeExt(name, `-${suffix}`),
-    subtitlesFile: insertBeforeExt(subtitlesFile, `.${suffix}`),
-    enFile: `subtitles.en.${suffix}.json`,
     exportName: overrides.export?.name || `${exportName}-${suffix}`,
     title: `${film.title}-${suffix}`,
     overrides,

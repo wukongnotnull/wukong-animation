@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ for (const pipeline of ['browser', 'remotion']) {
 }
 const cli = (...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', maxBuffer: 8e6, env: { ...process.env, WUKONG_ANIMATION_HOME: home, WKA_NO_FONT_DOWNLOAD: '1' } });
 function film(pipeline, count = 3, duration = 0.34, fps = 10) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-时间 空格-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-时间 空格-'));initializeProduction(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   const shots = Array.from({ length: count }, (_, i) => {
     const id = 's' + String(i + 1).padStart(2,'0');
@@ -93,7 +94,7 @@ test('旧定稿帧长变化时，副版检查保留主版缓存与快照', {time
   const dir = film('browser');
   try {
     assert.equal(cli('render',dir).status,0);
-    const signed = cli('signoff',dir,'主版确认','--step','13');
+    const signed = cli('signoff',dir,'主版确认','--step','6');
     assert.equal(signed.status,0,signed.stderr);
     const manifest = fs.readFileSync(path.join(dir,'.cache','manifest.json'));
     const snapshot = fs.readFileSync(path.join(dir,'.cache','approved','s01.mp4'));
@@ -163,9 +164,9 @@ test('零帧镜头和小数fps拒绝，不改工程或启动渲染', () => {
 test('没有时间轴证据不能记录成片终审签批', () => {
   const dir=film('browser');
   try {
-    const r=cli('signoff',dir,'未经渲染的终审','--step','13');
+    const r=cli('signoff',dir,'未经渲染的终审','--step','6');
     assert.notEqual(r.status,0);
     assert.match(r.stderr,/时间轴未验证/);
-    assert.equal(fs.existsSync(path.join(dir,'.wka','state.json')),false);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','state.json'))),{flow:6,step:0,history:[]});
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

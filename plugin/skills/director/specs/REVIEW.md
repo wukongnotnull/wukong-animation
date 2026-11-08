@@ -16,9 +16,9 @@
 
 ## decisions.json
 
-`.wka/decisions.json` 保存明确的用户决定，schema：`engine/schemas/decisions.schema.json`。delivery / aspects / subtitles / materials 各项包含 `status`、已确认的 `value` 和 `source`，只有实际可核实时才记录 confirmedAt。unknown 不填写猜测值。
+`.wka/decisions.json` 保存明确的用户决定，schema：`engine/schemas/decisions.schema.json`。delivery / aspects / materials 各项包含 `status`、已确认的 `value` 和 `source`，只有实际可核实时才记录 confirmedAt。unknown 不填写猜测值。
 
-delivery 的 value 为 video 或 video-and-draft；aspects 是主版在前的画幅数组；subtitles 是 `{mode,bilingual}`；materials 是 `{kind,use,path?,source?}` 数组，明确没有素材用已确认的空数组。source 写对应的已批准简报条目或用户明确结论；不从未签批的默认推荐推断授权。
+delivery 的 value 为 video 或 video-and-draft；aspects 是主版在前的画幅数组；materials 是 `{kind,use,path?,source?}` 数组，明确没有素材用已确认的空数组。source 写对应的已批准简报条目或用户明确结论；不从未签批的默认推荐推断授权。
 
 ## 恢复与交付
 

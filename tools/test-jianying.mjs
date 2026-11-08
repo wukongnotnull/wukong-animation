@@ -7,7 +7,7 @@ import { run as runTests } from 'node:test';
 import { requireDep } from '../plugin/engine/core/deps.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const FILES = ['tests/integration/jianying.test.mjs', 'tests/integration/final-delivery.test.mjs', 'tests/unit/jianying-fonts.test.mjs'];
+const FILES = ['tests/integration/jianying.test.mjs', 'tests/integration/final-delivery.test.mjs', 'tests/unit/jianying-plan.test.mjs'];
 const browserCheck = async () => {
   const browser = await requireDep('playwright').chromium.launch({ timeout: 15000 });
   await browser.close();

@@ -18,7 +18,7 @@ function fixture(t) {
   initializeProduction(dir);fs.mkdirSync(path.join(dir,'shots'));
   fs.writeFileSync(path.join(dir,'shots/s01.js'),'function draw() {}');
   fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({title:'film',style:'ink-wash',size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:'shots/s01.js',duration:1}],export:{name:'影片',formats:['mp4','jianying']}}));
-  fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify({version:1,...Object.fromEntries(Object.entries({delivery:'video-and-draft',aspects:['16:9'],subtitles:{mode:'none',bilingual:false}}).map(([k,value])=>[k,{status:'confirmed',value,source:'用户明确确认'}]))}));
+  fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify({version:1,...Object.fromEntries(Object.entries({delivery:'video-and-draft',aspects:['16:9']}).map(([k,value])=>[k,{status:'confirmed',value,source:'用户明确确认'}]))}));
   return dir;
 }
 

@@ -27,26 +27,26 @@ test('schema rejects an unknown voice kind', () => {
 });
 
 test('lines without kind default to vo', () => {
-  const { lines } = planVoiceLines({ voice_source: 'ai', voices: [{ text: '雾散时', at: 0 }] });
+  const { lines } = planVoiceLines({ voice_source: 'user', voices: [{ text: '雾散时', at: 0, file:'a.wav' }] });
   assert.equal(lines[0].kind, 'vo');
-  assert.equal(lines[0].via, 'tts');
+  assert.equal(lines[0].via, 'recording');
 });
 
-test('live lines use their recording even when voice_source is ai', () => {
+test('all voice kinds use user recordings', () => {
   const { lines } = planVoiceLines({
-    voice_source: 'ai',
+    voice_source: 'user',
     voices: [
-      { text: '旁白', at: 0 },
+      { text: '旁白', at: 0, file:'vo.wav' },
       { text: '采访原声', at: 3, kind: 'live', file: 'audio/voice/int.wav' },
     ],
   });
-  assert.deepEqual(lines.map((l) => l.via), ['tts', 'recording']);
+  assert.deepEqual(lines.map((l) => l.via), ['recording', 'recording']);
 });
 
 test('live lines without a recording are rejected', () => {
   assert.throws(
-    () => planVoiceLines({ voice_source: 'ai', voices: [{ text: '采访原声', at: 3, kind: 'live' }] }),
-    /同期声.*采访原声/s,
+    () => planVoiceLines({ voice_source: 'user', voices: [{ text: '采访原声', at: 3, kind: 'live' }] }),
+    /用户.*录音/,
   );
 });
 
@@ -56,8 +56,8 @@ test('voice_source none drops every line', () => {
   assert.deepEqual(plan.lines, []);
 });
 
-test('schema accepts rate and pitch on a voice line and rejects free-form values', () => {
-  assert.deepEqual(validate('film', film([{ text: '春眠', at: 0, rate: '-30%', pitch: '-4Hz' }])), []);
+test('schema rejects automatic voice rate and pitch changes', () => {
+  assert.equal(validate('film', film([{ text: '春眠', at: 0, rate: '-30%', pitch: '-4Hz' }])).length, 2);
   assert.equal(validate('film', film([{ text: '春眠', at: 0, rate: 'slow' }])).length, 1);
   assert.equal(validate('film', film([{ text: '春眠', at: 0, pitch: '-4' }])).length, 1);
 });

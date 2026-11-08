@@ -28,7 +28,7 @@ export function archiveWorkbench(dir, data, identity) {
   if (!numbers.length) numbers.push(0);
   return { version: 1, ok: true, readonly: true, flow: identity.flow, flowLabel: '历史档案（只读）', dir, title: path.basename(dir),
     stages: numbers.map(step => ({ step, label: history.filter(h => h.step === step).at(-1)?.label || (step ? `原工序 ${step}` : '历史文件'),
-      gate: null, status: 'archived', blocks: [], items: items.filter(a => a.step === step), decisions: data.decisions.filter(d => d.step === step) })),
+      gate: null, status: 'archived', blocks: [], items: items.filter(a => a.step === step), decisions: [...history.filter(h => h.step === step && h.note && !data.decisions.some(d => d.step === step && d.note === h.note && d.at === h.at)).map(h => ({ ...h, decision: 'archived', source: '历史进度记录' })), ...data.decisions.filter(d => d.step === step)] })),
     shots: [], duration: 0, warnings: ['旧项目只读留档；继续制作请新建项目并复用素材，原签批不继承。'], notes: data.notes, history: items };
 }
 

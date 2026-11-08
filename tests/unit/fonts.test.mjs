@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -44,6 +45,7 @@ test('子集字体按内容复用，字表变化不改变镜头使用的源字�
 test('另一镜新增汉字不让未改镜头失效，修改源字体仍使两镜失效', async () => {
   reset();
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-font-hashes-'));
+  initializeProduction(dir);
   const styleDir=path.join(HOME,'styles/font-test');fs.mkdirSync(styleDir,{recursive:true});
   fs.writeFileSync(path.join(styleDir,'style.json'),JSON.stringify({id:'font-test',name:'字体测试',category:'xinxi',order:999,engine:'>=0.1.0',pipeline:'browser',kits:{},fps:30,fonts:[{family:'Inter'}],keywords:['test']}));
   fakeFont(path.join(FONT_CACHE_DIR,'Inter.ttf'));

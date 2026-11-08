@@ -34,10 +34,10 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
     }
     const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
     const draftOnly=formats.every(f=>f==='jianying');
-    // 先混音：人声会刷新 film.json 的声音同步点（cues），画面再按同步点渲染
-    const { mix: audio, tracks, voices,loudness } = await (await import('../../audio/soundtrack.mjs')).mixSoundtrack(filmDir, { log });
+    // render 内先准备真实录音与混音，再制作画面；同一批只运行一次配乐脚本。
+    const { video, job, segments, soundtrack } = await render(filmDir, {...o,segmentsOnly:draftOnly});
+    const { mix: audio, tracks, voices, loudness } = soundtrack;
     ctx=loadFilm(filmDir,{aspect:o.aspect});
-    const { video, job, segments } = await render(filmDir, {...o,segmentsOnly:draftOnly});
     const visual = formats.filter(f => f !== 'jianying'), drafts = formats.filter(f => f === 'jianying');
     const outs = visual.length ? await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: visual, aspect: o.aspect, force:o.force, fontFiles:finalFontFiles(job.fonts), unknownReasons:finalFontUnknown(job.fonts), log }) : [];
     if (drafts.length) {

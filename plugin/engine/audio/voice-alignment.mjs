@@ -13,7 +13,7 @@ const normalized = value => String(value || '').normalize('NFKC').toLowerCase().
 function read(file, fallback) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return fallback; throw new Error(`无法读取定位记录：${e.message}`); } }
 function ledger(dir) {
   const data = read(recordPath(dir), { version: 1, voices: {}, ownedCues: [] });
-  if (data.version !== 1 || !data.voices || typeof data.voices !== 'object' || Array.isArray(data.voices) || !Array.isArray(data.ownedCues)) throw new Error('定位记录损坏或版本不支持，不会覆盖');
+  if (data.version !== 1 || !data.voices || typeof data.voices !== 'object' || Array.isArray(data.voices) || !Array.isArray(data.ownedCues) || data.ownedCues.some(key => typeof key !== 'string' || !/^speech:[\p{L}\p{N}_-]+:\d+$/u.test(key))) throw new Error('定位记录损坏或版本不支持，不会覆盖');
   return data;
 }
 export function validateSegments(rows, duration) {
@@ -60,10 +60,16 @@ function sources(ctx) {
 export function voiceAlignmentStatus(dir) {
   const ctx = loadFilm(dir, { requireShots: false }), data = ledger(ctx.filmDir), current = sources(ctx), voices = {};
   for (const [id, source] of Object.entries(current)) {
-    const saved = data.voices[id], fresh = saved && digest(saved.source) === digest(source);
+    const saved = data.voices[id];
+    if (saved) validateSegments(saved.segments, saved.source?.duration);
+    const fresh = saved && digest(saved.source) === digest(source);
     voices[id] = { source, ...(saved || {}), status: saved ? fresh ? saved.status : 'stale' : 'missing', source };
   }
-  return { version: 1, ready: Object.values(voices).every(v => ['matched', 'confirmed'].includes(v.status)), voices };
+  const ready = Object.values(voices).every(v => ['matched', 'confirmed'].includes(v.status));
+  const expected = ready ? Object.fromEntries(Object.entries(voices).flatMap(([id, v]) => v.segments.map((s, i) => [`speech:${id}:${i + 1}`, [v.source.at + s.start, v.source.at + s.end]]))) : {};
+  const applied = ready && !fs.existsSync(scopedPath(ctx.filmDir, '.wka/voice-cues-pending.json')) &&
+    digest([...data.ownedCues].sort()) === digest(Object.keys(expected).sort()) && Object.entries(expected).every(([key, value]) => digest(ctx.film.cues?.[key] ?? null) === digest(value));
+  return { version: 1, ready, applied, voices };
 }
 function writeReport(dir, data) {
   atomicJson(recordPath(dir), data);
@@ -88,7 +94,17 @@ export function importVoiceTiming(dir, input, { confirmation } = {}) {
 export function applyVoiceAlignment(dir) {
   const status = voiceAlignmentStatus(dir), data = ledger(dir);
   if (!status.ready) throw new Error('台词定位缺失、待确认或已过期，请先运行 align-voice 或确认人工时间点：' + Object.entries(status.voices).filter(([, v]) => !['matched', 'confirmed'].includes(v.status)).map(([id, v]) => `${id} ${v.status}`).join('；'));
-  const file = scopedPath(dir, 'film.json'), film = read(file), cues = { ...film.cues };
+  const file = scopedPath(dir, 'film.json'), journal = scopedPath(dir, '.wka/voice-cues-pending.json');
+  const fingerprint = digest(Object.fromEntries(Object.entries(status.voices).map(([id, v]) => [id, { source: v.source, segments: v.segments }])));
+  const pending = read(journal, null);
+  if (pending) {
+    const film = read(file);
+    if (pending.fingerprint !== fingerprint || ![digest(pending.before), digest(pending.after)].includes(digest(film.cues || {})) ||
+        ![digest(pending.oldOwned), digest(pending.nextOwned)].includes(digest(data.ownedCues))) throw new Error('定位写入中断后输入已变化，请核对 .wka/voice-cues-pending.json，未覆盖手工标记');
+    atomicJson(file, { ...film, cues: pending.after });
+    data.ownedCues = pending.nextOwned;atomicJson(recordPath(dir), data);fs.rmSync(journal);
+  }
+  const film = read(file), cues = { ...film.cues };
   for (const key of data.ownedCues) delete cues[key];
   const owned = [];
   for (const [id, v] of Object.entries(status.voices)) v.segments.forEach((s, i) => {
@@ -96,9 +112,12 @@ export function applyVoiceAlignment(dir) {
     if (Object.hasOwn(cues, key)) throw new Error(`定位 cue 与手工标记冲突：${key}`);
     cues[key] = [v.source.at + s.start, v.source.at + s.end];owned.push(key);
   });
-  if (digest(film.cues || {}) !== digest(cues)) atomicJson(file, { ...film, cues });
-  if (digest(data.ownedCues) !== digest(owned)) { data.ownedCues = owned;atomicJson(recordPath(dir), data); }
-  return status;
+  if (digest(film.cues || {}) !== digest(cues) || digest(data.ownedCues) !== digest(owned)) {
+    atomicJson(journal, { fingerprint, before: film.cues || {}, after: cues, oldOwned: data.ownedCues, nextOwned: owned });
+    atomicJson(file, { ...film, cues });
+    data.ownedCues = owned;atomicJson(recordPath(dir), data);fs.rmSync(journal);
+  }
+  return voiceAlignmentStatus(dir);
 }
 function executable(name) {
   const candidates = path.isAbsolute(name) ? [name] : (process.env.PATH || '').split(path.delimiter).map(dir => path.join(dir, name));

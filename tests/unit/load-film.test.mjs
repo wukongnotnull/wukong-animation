@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,6 +8,7 @@ import { loadFilm, render } from '../../plugin/engine/core/job.mjs';
 
 function fixture(t, style, shots, files = true) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-load-ids-'));
+  initializeProduction(dir);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const film = { title: 'ids', style, size: [320, 180], fps: 10, seed: 1, variants: { '9:16': {} }, shots };
   fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
@@ -52,5 +54,5 @@ test('render rejects repeated IDs before missing files, fonts or cache preparati
     { id: 's01', file: 'missing-b.js', duration: 2 },
   ], false);
   await assert.rejects(render(dir, { log: () => {} }), /镜头.*重复.*s01/);
-  assert.deepEqual(fs.readdirSync(dir), ['film.json']);
+  assert.deepEqual(fs.readdirSync(dir), ['.wka','film.json']);
 });

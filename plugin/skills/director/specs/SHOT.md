@@ -132,4 +132,4 @@ export default function S01({ dur, s }: ShotProps) {
 - `dur`：本镜帧数；`s`：`id / W / H / designW / designH / fps / seed / duration / start` 和 `cueIn(名) / cueOut(名) / cueFrame("word:id")`。`W/H` 是设计尺寸，小样由管线缩小。
 - 铁律照旧：画面只由帧号决定（不用 `Math.random()`、`Date`、网络）；同步点只用字面量 `s.cueIn('名')`。
 - 片内公共组件写成 `.tsx` 列进 `film.json` 的 `scripts`，镜头里用 `@wka/film/<相对片目录的路径>` 引用。
-- 其余（时长、景别、缓存、字幕、声音）与 `.js` 镜头完全相同。
+- 其余（时长、景别、缓存、声音）与 `.js` 镜头完全相同。

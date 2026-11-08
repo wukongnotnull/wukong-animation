@@ -33,7 +33,7 @@ export interface Layouts {
 export interface SceneGeometry {
   /**
    * Pages that show screenshot / UI detail: no page title, the lone image fills the whole canvas
-   * edge to edge (radius 0) and subtitles sit on top of it, outlined so they stay readable
+   * edge to edge (radius 0) and visual titles remain within the safe area
    * (user rules: a video is not a slide deck, a lone image fills the screen with no margins).
    */
   detail: Rect;
@@ -46,8 +46,6 @@ export interface FrameSpec {
   safe: Rect;
   type: Record<TypeStyle, TypeSpec>;
   layout: Layouts;
-  /** subtitle bar: bottom edge, text size, max width */
-  subtitle: { bottom: number; size: number; maxWidth: number };
   /** presenter webcam bubble */
   presenter: Rect;
   /**
@@ -78,11 +76,10 @@ const LANDSCAPE: FrameSpec = {
   },
   layout: {
     L01: { phrase: { x: 120, y: 260, w: 1680, h: 440 }, sub: { x: 320, y: 720, w: 1280, h: 140 } },
-    // L02 / L03 images take everything under the title down to the subtitle band (a video is not a slide deck)
+    // L02 / L03 images take everything under the title down to the safe-area edge (a video is not a slide deck)
     L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 264, w: 1440, h: 584 } },
     L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 264, w: 1680, h: 584 } },
     // L04 image runs to the safe-area edge (spec: 816 wide) and from the safe-area top down to the
-    // subtitle band (user rule: a video is not a slide deck, don't leave big margins around the image)
     L04: {
       title: { x: 120, y: 240, w: 520, h: 260 },
       body: { x: 120, y: 548, w: 520, h: 240 },
@@ -110,14 +107,13 @@ const LANDSCAPE: FrameSpec = {
       ],
     },
   },
-  subtitle: { bottom: 1000, size: 44, maxWidth: 1560 },
   presenter: { x: 1588, y: 80, w: 212, h: 200 },
   scene: {
     detail: { x: 0, y: 0, w: 1920, h: 1080 },
   },
 };
 
-// Portrait: safe area x 72–1008, y 200–1500; subtitles end at 1500; presenter top-right.
+// Portrait: safe area x 72–1008, y 200–1500; safe area ends at 1500; presenter top-right.
 const PORTRAIT: FrameSpec = {
   orientation: "portrait",
   W: 1080,
@@ -165,7 +161,6 @@ const PORTRAIT: FrameSpec = {
       ],
     },
   },
-  subtitle: { bottom: 1500, size: 40, maxWidth: 960 },
   presenter: { x: 796, y: 200, w: 212, h: 200 },
   scene: {
     detail: { x: 0, y: 0, w: 1080, h: 1920 },

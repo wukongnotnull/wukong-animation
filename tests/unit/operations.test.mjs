@@ -1,3 +1,4 @@
+import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,6 +9,7 @@ import * as ops from '../../plugin/engine/core/operations.mjs';
 test('阶段完整才复用，缺失/替换补做，失败不沿用；中断保留准确阶段',async t=>{
   assert.equal(typeof ops.runStage,'function');
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-ops-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  initializeProduction(dir);
   const out=path.join(dir,'声音 文件.wav');let calls=0;
   const options={stage:'encode:mp4',aspect:'16:9',signature:'a',log:()=>{},run:async()=>{calls++;fs.writeFileSync(out,'media');return {outputs:[out],value:out};}};
   assert.equal(await ops.runStage(dir,options),out);

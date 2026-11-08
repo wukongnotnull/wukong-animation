@@ -210,7 +210,7 @@ async function mixSoundtrackFresh(filmDir, { log = console.log } = {}) {
   return { mix: out, tracks, voices, loudness:output, sfxAudit };
 }
 
-/** 各音轨按起点和增益混成一条（末尾淡出），不做响度标准化。 */
+/** 各音轨按起点和增益混成一条（保留完整用户录音），不做响度标准化。 */
 async function mixTracks(tracks, D, out) {
   const inputs = tracks.flatMap((t) => ['-i', t.file]);
   const chains = tracks.map((t, i) => {

@@ -71,50 +71,6 @@
         }
       }
     },
-    "subtitles": {
-      "type": "object",
-      "required": [
-        "status"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": [
-            "confirmed",
-            "unknown"
-          ]
-        },
-        "value": {
-          "type": "object",
-          "required": [
-            "mode",
-            "bilingual"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "mode": {
-              "type": "string",
-              "enum": [
-                "none",
-                "srt",
-                "burn",
-                "both"
-              ]
-            },
-            "bilingual": {
-              "type": "boolean"
-            }
-          }
-        },
-        "source": {
-          "type": "string"
-        },
-        "confirmedAt": {
-          "type": "string"
-        }
-      }
-    },
     "materials": {
       "type": "object",
       "required": [

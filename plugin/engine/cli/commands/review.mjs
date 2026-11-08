@@ -15,6 +15,8 @@ import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, prepareFi
 import { digest, readJson, atomicJson, treeEvidence } from '../../core/evidence.mjs';
 import { fail } from '../context.mjs';
 
+import { voiceAlignmentStatus } from '../../audio/voice-alignment.mjs';
+
 const SHOT_SIZE_STEP = 4;
 const PROXY_STEP = 5;
 const FINAL_REVIEW_STEP = 6;
@@ -42,6 +44,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
         if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
       }
+      if ([5, 6, 7, 8].includes(step) && !voiceAlignmentStatus(pos[0]).applied) throw new Error('录音定位缺失、待确认、已过期或尚未用于制作，请先核实当前声音并更新小样');
       const pendingFile=path.join(path.resolve(pos[0]),'.wka/pending-approval.json');
       const pending=readJson(pendingFile),id=String(opt('approval-id')||(pending?.status!=='completed'&&pending?.note===note?pending.id:crypto.randomUUID()));
       const revision=opt('delivery-revision');

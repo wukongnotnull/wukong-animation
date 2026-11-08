@@ -74,9 +74,9 @@ export function saveSfxReview(ctx,mix,rows) {
   const file=path.join(ctx.filmDir,'review','音效电平审计.json');atomicJson(file,report);return report;
 }
 export function draftAudioDifference(ctx,tracks,measured=null) {
-  const D=ctx.totalDuration,fade=Math.min(1.2,D*0.1),hasAudio=tracks.length>0;
-  const report={version:1,aspect:ctx.variant.aspect,hasAudio,tracks:tracks.map(t=>({file:t.file,start:t.start||0,gain:t.gain||0,ducked:!!t.duckApplied})),master:hasAudio?{fadeOut:fade,targetLUFS:ctx.style.loudness??-18,measuredLUFS:measured}:null,note:hasAudio?'草稿保留当前分轨音量与已烘焙的人声闪避；未应用与成片相同的整体响度标准化和统一尾部淡出，请在剪映核对。':'无音轨，草稿与成片均无声。'};
+  const fade=0,hasAudio=tracks.length>0;
+  const report={version:1,aspect:ctx.variant.aspect,hasAudio,tracks:tracks.map(t=>({file:t.file,start:t.start||0,gain:t.gain||0,ducked:!!t.duckApplied})),master:hasAudio?{fadeOut:fade,targetLUFS:ctx.style.loudness??-18,measuredLUFS:measured}:null,note:hasAudio?'草稿保留当前分轨音量与已烘焙的人声闪避；未应用与成片相同的整体响度标准化，请在剪映核对。':'无音轨，草稿与成片均无声。'};
   const base=path.join(ctx.filmDir,'review',ctx.variant.review('草稿声音差异.json').slice(0,-5));atomicJson(base+'.json',report);
-  fs.writeFileSync(base+'.md',['# 草稿声音差异（导出前）','',report.note,'',...(hasAudio?[`成片目标 ${report.master.targetLUFS} LUFS；${measured===null?'当前响度未测量':'实测 '+measured+' LUFS'}；结尾统一淡出 ${fade}s。`]:[]),...report.tracks.map(t=>`- ${t.file}：起点 ${t.start}s，音量 ${t.gain}dB，闪避烘焙 ${t.ducked?'是':'否'}`),''].join('\n'));
+  fs.writeFileSync(base+'.md',['# 草稿声音差异（导出前）','',report.note,'',...(hasAudio?[`成片目标 ${report.master.targetLUFS} LUFS；${measured===null?'当前响度未测量':'实测 '+measured+' LUFS'}；保留完整录音，不统一淡出。`]:[]),...report.tracks.map(t=>`- ${t.file}：起点 ${t.start}s，音量 ${t.gain}dB，闪避烘焙 ${t.ducked?'是':'否'}`),''].join('\n'));
   return {report,files:[base+'.md',base+'.json']};
 }

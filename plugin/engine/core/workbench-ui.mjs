@@ -31,6 +31,7 @@ export function writeWorkbenchUI(dir, { key, expected, value }) {
     }
     if (!held) throw new Error('草稿存储忙，请重试');
     const data = readWorkbenchUI(root), old = Object.hasOwn(data.entries, key) ? data.entries[key] : null;
+    if (old?.revision === expected + 1 && digest(old.value) === digest(value)) return old;
     if ((old?.revision || 0) !== expected) throw new Error('草稿冲突：其他页面已更新，本页内容仍保留，请核对后重试');
     const entry = { revision: expected + 1, value, at: new Date().toISOString() };
     data.entries[key] = entry; atomicJson(scopedPath(root, '.wka/workbench-local/state.json'), data); return entry;

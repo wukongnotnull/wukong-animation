@@ -23,6 +23,11 @@ async function fixture(t) {
 test('loopback UI serves only registered immutable files with range support and rejects foreign requests', async t => {
   const f = await fixture(t);
   assert.equal((await fetch(f.server.origin + '/')).status, 200);
+  for (const name of ['model', 'document', 'session']) {
+    const module = await fetch(f.server.origin + '/' + name + '.mjs');
+    assert.equal(module.status, 200); assert.match(module.headers.get('content-type'), /javascript/);
+    assert.match(await module.text(), /export /);
+  }
   assert.equal((await fetch(f.server.origin + '/api/films')).status, 401);
   assert.equal((await fetch(f.server.origin + '/api/films', { headers: { ...f.headers, Origin: 'https://evil.example' } })).status, 403);
   const view = await (await f.request('/api/report?film=' + f.id)).json(), item = view.stages.find(s => s.step === 2).items[0];

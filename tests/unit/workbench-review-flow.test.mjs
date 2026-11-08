@@ -94,6 +94,7 @@ test('local drafts survive reopening independently of production, reject conflic
   const release = lockProduction(f.dir);
   try {
     const first = ui.writeWorkbenchUI(f.dir, { key: 'note:film:a:v1', expected: 0, value: { text: '草稿一', anchor: { type: 'general' } } });
+    assert.deepEqual(ui.writeWorkbenchUI(f.dir, { key: 'note:film:a:v1', expected: 0, value: { text: '草稿一', anchor: { type: 'general' } } }), first, 'lost response retry returns the same saved revision');
     ui.writeWorkbenchUI(f.dir, { key: 'note:film:a:v2', expected: 0, value: { text: '草稿二' } });
     assert.equal(ui.readWorkbenchUI(f.dir).entries['note:film:a:v1'].value.text, '草稿一');
     assert.throws(() => ui.writeWorkbenchUI(f.dir, { key: 'note:film:a:v1', expected: 0, value: { text: '覆盖' } }), /其他页面|冲突/);

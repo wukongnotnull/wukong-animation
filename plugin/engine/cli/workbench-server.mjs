@@ -41,13 +41,13 @@ async function bodyOf(req) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('请求格式无效');
   return body;
 }
-function filmsAt(root) {
+function filmsAt(root, workspace = root) {
   const films = scopedPath(root, 'films');
   const dirs = fs.existsSync(films) && fs.statSync(films).isDirectory()
     ? fs.readdirSync(films, { withFileTypes: true }).filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => scopedPath(root, path.join('films', e.name)))
     : [root];
   return dirs.filter(dir => ['film.json', 'brief.md', '.wka/state.json'].some(f => fs.existsSync(scopedPath(dir, f))))
-    .map(dir => ({ id: digest(path.relative(root, dir).split(path.sep).join('/') || '.').slice(0, 24), name: path.basename(dir), dir }));
+    .map(dir => ({ id: digest(path.relative(workspace, dir).split(path.sep).join('/') || '.').slice(0, 24), name: path.basename(dir), dir }));
 }
 function runOpen(command, args) {
   return new Promise((resolve, reject) => {
@@ -77,9 +77,13 @@ async function signoffExisting({ dir, step, note, id, openStatus }) {
   } };
 }
 
-export async function startWorkbench(directory, { port = 0, signoff = signoffExisting, locate = reveal } = {}) {
+export async function startWorkbench(directory, { directories = [], port = 0, signoff = signoffExisting, locate = reveal } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('端口应为 0–65535 的整数');
-  const root = fs.realpathSync(path.resolve(directory));
+  const roots = [...new Set([directory, ...directories].map(dir => {
+    const real = fs.realpathSync(path.resolve(dir));
+    if (!fs.statSync(real).isDirectory()) throw new Error('工作台需要项目或片目录：' + dir);
+    return real;
+  }))], root = roots[0];
   let origin;
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -100,7 +104,9 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
       if (!sameOrigin || (req.method === 'POST' && !originMatches)) {
         send(res, 403, { error: '工作台仅接受本机页面的同源请求，请直接打开本机地址，并检查浏览器扩展是否改写请求' }); return;
       }
-      const films = filmsAt(root);
+      const films = [...new Map(roots.flatMap(dir => filmsAt(dir, root)).map(film => [film.dir, film])).values()];
+      const names = films.map(film => film.name);
+      for (const film of films) if (names.filter(name => name === film.name).length > 1) film.name += '（' + (path.relative(root, film.dir) || '.') + '）';
       if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films, workspaceId: digest(root).slice(0, 24) }); return; }
       const body = req.method === 'POST' ? await bodyOf(req) : {};
       if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(root) : writeWorkbenchUI(root, body)); return; }

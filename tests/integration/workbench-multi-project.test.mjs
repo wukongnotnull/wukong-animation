@@ -63,6 +63,23 @@ test('multiple roots deduplicate overlaps and preserve first workspace identitie
   app = await startWorkbench(f.projects[0], { port, directories: [f.films[0], f.projects[1]] });
   assert.deepEqual(await (await request(app, '/api/films')).json(), listing);
 });
+test('the film picker follows the configured title without changing the project identity', async t => {
+  const f = fixture(t), app = await startWorkbench(f.projects[0]);
+  t.after(() => app.close());
+  const list = async () => (await (await request(app, '/api/films')).json()).films[0];
+  const original = await list();
+  assert.equal(original.name, '同名影片');
+
+  const config = path.join(f.films[0], 'film.json');
+  fs.writeFileSync(config, JSON.stringify({ title: 'AGI科普讲解' }));
+  assert.deepEqual(await list(), { ...original, name: 'AGI科普讲解' });
+  assert.equal((await request(app, '/api/report?film=' + original.id)).status, 200);
+
+  for (const contents of ['{"title":"  "}', '{']) {
+    fs.writeFileSync(config, contents);
+    assert.deepEqual(await list(), original);
+  }
+});
 test('invalid additional directories fail before a partial workbench starts', async t => {
   const f = fixture(t);
   for (const directory of [path.join(f.root, 'missing'), path.join(f.films[0], 'brief.md')]) {

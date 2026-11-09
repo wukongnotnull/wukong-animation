@@ -10,7 +10,7 @@ import { commandContext } from './context.mjs';
 import { reviewCommands } from './commands/review.mjs';
 import { commitSnapshot } from '../core/project.mjs';
 import { finalDeliveryReport } from '../core/final-delivery.mjs';
-import { scopedPath } from '../core/workbench-catalog.mjs';
+import { scopedPath, workbenchJson } from '../core/workbench-catalog.mjs';
 import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, recordWorkbenchRepair, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
 import { readWorkbenchUI, writeWorkbenchUI, workbenchStatus } from '../core/workbench-ui.mjs';
 
@@ -42,13 +42,24 @@ async function bodyOf(req) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('请求格式无效');
   return body;
 }
+function filmName(dir) {
+  const fallback = path.basename(dir), file = scopedPath(dir, 'film.json');
+  if (!fs.lstatSync(file, { throwIfNoEntry: false })?.isFile()) return fallback;
+  try {
+    const title = workbenchJson(file, {})?.title;
+    return (typeof title === 'string' && title.trim()) || fallback;
+  } catch {
+    // An unreadable configuration should not hide other films in the picker.
+    return fallback;
+  }
+}
 function filmsAt(root, workspace = root) {
   const films = scopedPath(root, 'films');
   const dirs = fs.existsSync(films) && fs.statSync(films).isDirectory()
     ? fs.readdirSync(films, { withFileTypes: true }).filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => scopedPath(root, path.join('films', e.name)))
     : [root];
   return dirs.filter(dir => ['film.json', 'brief.md', '.wka/state.json'].some(f => fs.existsSync(scopedPath(dir, f))))
-    .map(dir => ({ id: digest(path.relative(workspace, dir).split(path.sep).join('/') || '.').slice(0, 24), name: path.basename(dir), dir }));
+    .map(dir => ({ id: digest(path.relative(workspace, dir).split(path.sep).join('/') || '.').slice(0, 24), name: filmName(dir), dir }));
 }
 function runOpen(command, args) {
   return new Promise((resolve, reject) => {

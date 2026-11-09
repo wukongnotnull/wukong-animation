@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { digest } from '../core/evidence.mjs';
@@ -80,7 +79,7 @@ async function signoffExisting({ dir, step, note, id, openStatus }) {
 
 export async function startWorkbench(directory, { port = 0, signoff = signoffExisting, locate = reveal } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('端口应为 0–65535 的整数');
-  const root = fs.realpathSync(path.resolve(directory)), token = crypto.randomBytes(32).toString('hex');
+  const root = fs.realpathSync(path.resolve(directory));
   let origin;
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -92,8 +91,11 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }
-      const supplied = req.headers.authorization === 'Bearer ' + token || (route === '/api/file' && url.searchParams.get('token') === token);
-      if (!supplied) { send(res, 401, { error: '工作台连接已失效，请使用启动时提供的完整链接重新打开' }); return; }
+      // Trust this loopback page, not requests initiated by other websites or ports.
+      // Fetch Metadata is browser-controlled; POST must also carry an exact Origin.
+      if (req.headers['sec-fetch-site'] !== 'same-origin' || (req.method === 'POST' && req.headers.origin !== origin)) {
+        send(res, 403, { error: '工作台仅接受本机页面的同源请求，请直接打开本机地址，并检查浏览器扩展是否改写请求' }); return;
+      }
       const films = filmsAt(root);
       if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films, workspaceId: digest(root).slice(0, 24) }); return; }
       const body = req.method === 'POST' ? await bodyOf(req) : {};
@@ -122,6 +124,6 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = 'http://127.0.0.1:' + server.address().port;
-  return { server, origin, token, url: origin + '/#' + token,
+  return { server, origin, url: origin + '/',
     close: () => new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); }) };
 }

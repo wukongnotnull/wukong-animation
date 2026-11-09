@@ -3,8 +3,7 @@ import { renderDocument, documentAnchor, revealDocumentAnchor } from './document
 import { createSession } from './session.mjs';
 
 const $ = id => document.getElementById(id);
-const token = location.hash.slice(1) || sessionStorage.getItem('workbench-token');
-if (token) { sessionStorage.setItem('workbench-token', token); history.replaceState(null, '', '/'); }
+if (location.hash) history.replaceState(null, '', '/');
 const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, overview: true, panel: 'preview', raw: false, mediaStates: new Map(), pendingReport: null, fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, resolving, pollTimer, openedContext = null;
 const labels = { archived: '历史档案 · 只读', pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
@@ -21,11 +20,11 @@ function notice(text, error = false) { $('notice').textContent = text; $('notice
 function connection(text, error = false) { $('connection').textContent = text; $('connection').className = error ? 'warn' : 'good'; $('last-sync').textContent = ui.lastSync ? '最后同步 ' + date(ui.lastSync) : '尚未同步'; }
 async function api(route, body) {
   let response;
-  try { response = await fetch(route, { method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify({ film: ui.film, ...body }) } : {}) }); }
-  catch { connection('连接已断开 · 已加载内容可查看，正式提交暂不可用', true); throw new Error('工作台连接已断开，请重新启动后用最新完整链接打开。未同步草稿保留在此浏览器原地址。'); }
+  try { response = await fetch(route, { method: body ? 'POST' : 'GET', mode: 'same-origin', credentials: 'omit', headers: body ? { 'Content-Type': 'application/json' } : {}, ...(body ? { body: JSON.stringify({ film: ui.film, ...body }) } : {}) }); }
+  catch { connection('连接已断开 · 已加载内容可查看，正式提交暂不可用', true); throw new Error('工作台连接已断开，请重新启动后打开当前本机地址。未同步草稿保留在此浏览器原地址。'); }
   const data = await response.json();
   if (!response.ok) {
-    if (response.status === 401) connection('连接凭据已失效，请使用最新启动链接', true);
+    if (response.status === 403) connection('连接被拒绝 · 请检查浏览器扩展是否改写请求', true);
     if (response.status === 423) { connection('制作进行中 · 正式意见与签批暂不可提交', true); throw new Error('制作正在写入工程，暂时不能提交正式意见或签批。草稿已保留，请等待制作结束后再提交。'); }
     throw new Error(data.error || '操作失败');
   }
@@ -36,7 +35,7 @@ function stage() { return ui.report?.stages.find(s => s.step === ui.step); }
 function item() { return ui.report && allItems(ui.report).find(i => i.id === ui.item); }
 function version() { return item()?.versions.find(v => v.id === ui.version); }
 function current() { return item()?.current?.id === ui.version && item()?.availability !== 'historical'; }
-function mediaUrl(file = item(), v = version()) { return '/api/file?' + new URLSearchParams({ film: ui.film, artifact: file.id, version: v.id, token }); }
+function mediaUrl(file = item(), v = version()) { return '/api/file?' + new URLSearchParams({ film: ui.film, artifact: file.id, version: v.id }); }
 function anchorText(a) {
   if (a.type === 'text') return '文字 · “' + a.quote.slice(0, 35) + (a.quote.length > 35 ? '…' : '') + '”';
   if (a.type === 'image') return '画面位置 · ' + Math.round(a.x * 100) + '%, ' + Math.round(a.y * 100) + '%';
@@ -366,16 +365,12 @@ function applyLayout(layout = {}) {
 for (const [id, key] of [['toggle-library', 'libraryHidden'], ['toggle-inspector', 'inspectorHidden'], ['library-width', 'libraryWidth'], ['inspector-width', 'inspectorWidth']]) $(id).addEventListener(id.startsWith('toggle') ? 'click' : 'input', () => { const layout = { ...session.get('layout') }; layout[key] = id.startsWith('toggle') ? !layout[key] : Number($(id).value); applyLayout(layout); storeValue('layout', layout); });
 $('retry-drafts').onclick = () => action(async () => { if (await session.flush()) return; if (confirm('其他页面可能已修改草稿。是否保留本页文字，并用本页草稿覆盖冲突项？')) await session.keepLocal(); });
 window.addEventListener('pagehide', () => { stash(); session?.flush(); });
-// A restarted local service changes the fragment token. Same-tab navigation may
-// only change the hash, so retain local drafts before loading the new connection.
+// Legacy fragment links still open, but no longer carry connection credentials.
 window.addEventListener('hashchange', () => {
-  const replacement = location.hash.slice(1);
-  if (!replacement || replacement === token) return;
-  stash(); sessionStorage.setItem('workbench-token', replacement); location.reload();
+  if (location.hash) history.replaceState(null, '', '/');
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stash(); else { clearTimeout(pollTimer); poll(); } });
 action(async () => {
-  if (!token) throw new Error('请使用插件启动时提供的完整链接打开。');
   const listing = await api('/api/films');
   if (!listing.films.length) throw new Error('此目录没有影片，请先在对话中创建制作简报。');
   session = await createSession({ read: () => api('/api/ui'), write: data => api('/api/ui', data), storage: localStorage, prefix: listing.workspaceId, onState: (state, message) => { $('draft-status').textContent = message; $('draft-status').className = state === 'error' ? 'warn' : ''; $('retry-drafts').hidden = ui.report?.readonly || state !== 'error'; } });

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import http from 'node:http';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const serverUrl = new URL('../../plugin/engine/cli/workbench-server.mjs', import.meta.url);
@@ -15,12 +16,76 @@ async function fixture(t) {
   const { startWorkbench } = await import(serverUrl);
   const server = await startWorkbench(root);
   t.after(() => server.close());
-  const headers = { Authorization: 'Bearer ' + server.token, 'Content-Type': 'application/json', Origin: server.origin };
+  const headers = { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json', Origin: server.origin };
   const request = (route, body) => fetch(server.origin + route, { method: body ? 'POST' : 'GET', headers, ...(body ? { body: JSON.stringify(body) } : {}) });
   const listing = await (await request('/api/films')).json();
   const id = listing.films[0].id;
   return { root, film, server, headers, request, id };
 }
+test('direct address serves films and immutable media without browser credentials', async t => {
+  const f = await fixture(t);
+  assert.equal(f.server.url, f.server.origin + '/');
+  assert.equal(f.server.server.address().address, '127.0.0.1');
+  const headers = { 'Sec-Fetch-Site': 'same-origin' };
+  const listing = await fetch(f.server.origin + '/api/films', { headers });
+  assert.equal(listing.status, 200);
+  assert.equal((await listing.json()).films[0].id, f.id);
+  const view = await (await fetch(f.server.origin + '/api/report?film=' + f.id, { headers })).json();
+  const item = view.stages.find(s => s.step === 2).items[0];
+  const file = await fetch(f.server.origin + `/api/file?film=${f.id}&artifact=${item.id}&version=${item.current.id}`, { headers: { ...headers, Range: 'bytes=0-4' } });
+  assert.equal(file.status, 206); assert.equal((await file.arrayBuffer()).byteLength, 5);
+  assert.equal(file.headers.get('cache-control'), 'no-store');
+  assert.match(file.headers.get('content-security-policy'), /sandbox/);
+  assert.equal(listing.headers.get('set-cookie'), null);
+});
+test('source checks reject foreign or missing metadata and cannot be bypassed by legacy tokens', async t => {
+  const f = await fixture(t), valid = { Origin: f.server.origin, 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' };
+  const invalid = [
+    {}, { 'Sec-Fetch-Site': 'none' }, { 'Sec-Fetch-Site': 'same-site' }, { 'Sec-Fetch-Site': 'cross-site' },
+    { Origin: f.server.origin }, { ...valid, Origin: 'null' },
+    { ...valid, Origin: 'http://127.0.0.1' }, { ...valid, Origin: 'https://evil.example' },
+    { ...valid, 'Sec-Fetch-Site': 'cross-site', Authorization: 'Bearer legacy-token' },
+  ];
+  for (const headers of invalid) {
+    const response = await fetch(f.server.origin + '/api/films?token=legacy-token', { headers });
+    assert.equal(response.status, 403, JSON.stringify(headers));
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+  }
+  // fetch normalizes Host; raw HTTP proves the server rejects rebinding/aliases.
+  for (const host of ['evil.example', 'localhost:' + new URL(f.server.origin).port]) {
+    const status = await new Promise((resolve, reject) => {
+      http.get(f.server.origin + '/api/films', { headers: { ...valid, Host: host } }, res => {
+        res.resume(); res.on('end', () => resolve(res.statusCode));
+      }).on('error', reject);
+    });
+    assert.equal(status, 403, host);
+  }
+  const writeHeaders = [
+    { 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' },
+    { ...valid, 'Sec-Fetch-Site': 'cross-site' }, { ...valid, Origin: 'https://evil.example' },
+  ];
+  for (const headers of writeHeaders) {
+    const response = await fetch(f.server.origin + '/api/ui', { method: 'POST', headers, body: JSON.stringify({ key: 'film', expected: 0, value: 'unwanted' }) });
+    assert.equal(response.status, 403);
+  }
+  assert.equal((await fetch(f.server.origin + '/api/ui', { method: 'POST', headers: { ...valid, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'key=film&value=unwanted' })).status, 400);
+  const preflight = await fetch(f.server.origin + '/api/ui', { method: 'OPTIONS', headers: { Origin: 'https://evil.example', 'Sec-Fetch-Site': 'cross-site', 'Access-Control-Request-Method': 'POST' } });
+  assert.equal(preflight.status, 403); assert.equal(preflight.headers.get('access-control-allow-origin'), null);
+  assert.equal(fs.existsSync(path.join(f.root, '.wka/workbench-local/state.json')), false);
+  assert.equal(fs.readFileSync(path.join(f.film, 'brief.md'), 'utf8'), '# 审阅内容\n需要保留');
+});
+test('restarting the same local address needs no new credentials and other ports remain foreign', async t => {
+  const f = await fixture(t), { startWorkbench } = await import(serverUrl);
+  let second = await startWorkbench(f.root);
+  t.after(() => second.close());
+  const origin = second.origin, headers = { Origin: origin, 'Sec-Fetch-Site': 'same-origin', Connection: 'close' };
+  assert.equal((await fetch(origin + '/api/films', { headers })).status, 200);
+  assert.equal((await fetch(origin + '/api/films', { headers: { ...headers, Origin: f.server.origin } })).status, 403);
+  await second.close();
+  second = await startWorkbench(f.root, { port: Number(new URL(origin).port) });
+  assert.equal(second.origin, origin);
+  assert.equal((await fetch(origin + '/api/films', { headers })).status, 200);
+});
 test('loopback UI serves only registered immutable files with range support and rejects foreign requests', async t => {
   const f = await fixture(t);
   assert.equal((await fetch(f.server.origin + '/')).status, 200);
@@ -29,7 +94,7 @@ test('loopback UI serves only registered immutable files with range support and 
     assert.equal(module.status, 200); assert.match(module.headers.get('content-type'), /javascript/);
     assert.match(await module.text(), /export /);
   }
-  assert.equal((await fetch(f.server.origin + '/api/films')).status, 401);
+  assert.equal((await fetch(f.server.origin + '/api/films')).status, 403);
   assert.equal((await fetch(f.server.origin + '/api/films', { headers: { ...f.headers, Origin: 'https://evil.example' } })).status, 403);
   const view = await (await f.request('/api/report?film=' + f.id)).json(), item = view.stages.find(s => s.step === 2).items[0];
   const file = `/api/file?film=${f.id}&artifact=${item.id}&version=${item.current.id}`;
@@ -79,15 +144,15 @@ test('an archive failure prevents an enrolled CLI command from signing off', asy
   assert.equal(fs.existsSync(path.join(f.film, '.cache/operation.lock')), false);
 });
 
-test('UI drafts and status use authenticated routes and restore across server instances', async t => {
+test('UI drafts and status use same-origin routes and restore across server instances', async t => {
   const f = await fixture(t);
   let r = await f.request('/api/ui'); assert.equal(r.status, 200, '缺少本机草稿读取路由');
   r = await f.request('/api/ui', { key: 'note:test:a:v1', expected: 0, value: { text: '未提交草稿' } });
   assert.equal(r.status, 200); assert.equal((await r.json()).revision, 1);
   assert.equal((await f.request('/api/ui', { key: 'note:test:a:v1', expected: 0, value: null })).status, 400);
-  assert.equal((await fetch(f.server.origin + '/api/ui')).status, 401);
+  assert.equal((await fetch(f.server.origin + '/api/ui')).status, 403);
   const { startWorkbench } = await import(serverUrl), second = await startWorkbench(f.root); t.after(() => second.close());
-  const value = await (await fetch(second.origin + '/api/ui', { headers: { Authorization: 'Bearer ' + second.token } })).json();
+  const value = await (await fetch(second.origin + '/api/ui', { headers: { 'Sec-Fetch-Site': 'same-origin', Origin: second.origin } })).json();
   assert.equal(value.entries['note:test:a:v1'].value.text, '未提交草稿');
   const status = await (await f.request('/api/status?film=' + f.id)).json();
   assert.equal(status.busy, false); assert.equal(typeof status.revision, 'string');

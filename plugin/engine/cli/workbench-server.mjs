@@ -3,6 +3,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import { digest } from '../core/evidence.mjs';
 import { parseArgs } from '../core/command-args.mjs';
 import { commandContext } from './context.mjs';
@@ -77,13 +78,26 @@ async function signoffExisting({ dir, step, note, id, openStatus }) {
   } };
 }
 
-export async function startWorkbench(directory, { directories = [], port = 0, signoff = signoffExisting, locate = reveal } = {}) {
-  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('端口应为 0–65535 的整数');
-  const roots = [...new Set([directory, ...directories].map(dir => {
+export function normalizeWorkbenchDirectories(directories) {
+  if (!Array.isArray(directories) || !directories.length || directories.length > 1000 || directories.some(dir => typeof dir !== 'string' || !dir)) throw new Error('需要明确指定项目或片目录');
+  return [...new Set(directories.map(dir => {
     const real = fs.realpathSync(path.resolve(dir));
     if (!fs.statSync(real).isDirectory()) throw new Error('工作台需要项目或片目录：' + dir);
     return real;
-  }))], root = roots[0];
+  }))];
+}
+export async function startWorkbench(directory, { directories = [], port = 0, signoff = signoffExisting, locate = reveal, control = null, uiDirectory = null, identityRoot = null } = {}) {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('端口应为 0–65535 的整数');
+  let roots = normalizeWorkbenchDirectories([directory, ...directories]);
+  const root = identityRoot || roots[0], uiRoot = uiDirectory || root;
+  const list = (directories = roots) => {
+    const available = directories.filter(dir => fs.existsSync(dir) && fs.statSync(dir).isDirectory());
+    const films = [...new Map(available.flatMap(dir => filmsAt(dir, root)).map(film => [film.dir, film])).values()];
+    const names = films.map(film => film.name);
+    for (const film of films) if (names.filter(name => name === film.name).length > 1) film.name += '（' + (path.relative(root, film.dir) || '.') + '）';
+    return { films, workspaceId: digest(uiRoot).slice(0, 24) };
+  };
+  list(); // Validate discovery before starting or publishing a service.
   let origin;
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -95,6 +109,21 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
       const originMatches = req.headers.origin === origin || (sameOrigin && req.headers.origin === 'http://127.0.0.1');
       if (req.headers.host !== new URL(origin).host || (req.headers.origin && !originMatches)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
       const url = new URL(req.url, origin), route = url.pathname;
+      if (route.startsWith('/_workbench/')) {
+        const token = Buffer.from(req.headers['x-wka-control'] || ''), expected = Buffer.from(control?.token || '');
+        if (!control || req.headers.origin !== undefined || req.headers['sec-fetch-site'] !== undefined || token.length !== expected.length || !timingSafeEqual(token, expected)) {
+          send(res, 403, { error: '项目接入仅由本机启动命令完成' }); return;
+        }
+        if (route === '/_workbench/status' && req.method === 'GET') { send(res, 200, { service: 'wka-workbench', protocol: 1, instanceId: control.instanceId }); return; }
+        if (route === '/_workbench/projects' && req.method === 'POST') {
+          const body = await bodyOf(req), added = normalizeWorkbenchDirectories(body.directories);
+          const next = [...new Set([...roots, ...added])];
+          const listing = list(next);
+          control.onDirectories(next); roots = next;
+          send(res, 200, listing); return;
+        }
+        send(res, 404, { error: '未知工作台控制入口' }); return;
+      }
       if (['/', '/app.js', '/app.css', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
@@ -104,12 +133,10 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
       if (!sameOrigin || (req.method === 'POST' && !originMatches)) {
         send(res, 403, { error: '工作台仅接受本机页面的同源请求，请直接打开本机地址，并检查浏览器扩展是否改写请求' }); return;
       }
-      const films = [...new Map(roots.flatMap(dir => filmsAt(dir, root)).map(film => [film.dir, film])).values()];
-      const names = films.map(film => film.name);
-      for (const film of films) if (names.filter(name => name === film.name).length > 1) film.name += '（' + (path.relative(root, film.dir) || '.') + '）';
-      if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films, workspaceId: digest(root).slice(0, 24) }); return; }
+      const listing = list(), { films } = listing;
+      if (route === '/api/films' && req.method === 'GET') { send(res, 200, listing); return; }
       const body = req.method === 'POST' ? await bodyOf(req) : {};
-      if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(root) : writeWorkbenchUI(root, body)); return; }
+      if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(uiRoot) : writeWorkbenchUI(uiRoot, body)); return; }
       const film = films.find(f => f.id === (body.film || url.searchParams.get('film')));
       if (!film) throw new Error('影片不在本次工作台授权范围内');
       if (route === '/api/report' && req.method === 'GET') { send(res, 200, captureWorkbench(film.dir)); return; }
@@ -134,6 +161,6 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = 'http://127.0.0.1:' + server.address().port;
-  return { server, origin, url: origin + '/',
+  return { server, origin, url: origin + '/', listing: list,
     close: () => new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); }) };
 }

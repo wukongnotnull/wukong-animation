@@ -285,9 +285,19 @@ async function render() {
   if (ui.overview) { if (ui.media) ui.media.pause(); ui.noteDraftKey = null; ui.stageDraftKey = null; renderOverview(); return; }
   renderStages(); renderFiles(); restoreDrafts(); renderInspector(); await renderViewer(serial); showPanel(ui.panel || 'preview');
 }
+function updateFilmChoices(listing) {
+  const signature = JSON.stringify(listing.films.map(film => [film.id, film.name]));
+  if (signature === ui.filmChoices) return;
+  ui.filmChoices = signature;
+  const options = listing.films.map(film => { const option = el('option', film.name); option.value = film.id; return option; });
+  if (ui.film && !listing.films.some(film => film.id === ui.film)) { const option = el('option', '当前项目暂不可用'); option.value = ui.film; options.push(option); }
+  $('films').replaceChildren(...options); $('films').value = ui.film || '';
+}
 async function poll() {
-  if (!ui.film) return;
   try {
+    const listing = await api('/api/films'); updateFilmChoices(listing);
+    if (!ui.film && listing.films.length) { ui.film = listing.films[0].id; $('films').value = ui.film; await loadReport(true); }
+    if (!ui.film) { connection('已连接 · 等待加入影片'); return; }
     const film = ui.film, state = await api('/api/status?film=' + film); if (film !== ui.film) return;
     ui.busy = state.busy;
     connection(state.busy ? '制作进行中 · 可查看已载入内容，正式提交暂不可用' : '已连接 · 素材保留本机', state.busy);
@@ -304,7 +314,7 @@ async function poll() {
 
 $('overview-button').onclick = () => action(async () => { stash(); ui.overview = true; await render(); rememberPosition(); });
 $('films').onchange = () => action(async () => { stash(); ui.film = $('films').value; ui.fingerprint = null; ui.reviewNote = null; await loadReport(true); });
-$('refresh').onclick = () => action(async () => { stash(); $('refresh').disabled = true; try { await loadReport(); notice('已刷新，正在查看的版本保持不变。'); } finally { $('refresh').disabled = false; } });
+$('refresh').onclick = () => action(async () => { stash(); $('refresh').disabled = true; try { updateFilmChoices(await api('/api/films')); if (ui.film) await loadReport(); notice('已刷新，正在查看的版本保持不变。'); } finally { $('refresh').disabled = false; } });
 $('apply-update').onclick = () => action(async () => { stash(); await loadReport(false, true); notice('已载入更新；旧版本的草稿仍单独保留。'); });
 $('versions').onchange = () => action(async () => { stash(); ui.version = $('versions').value; await render(); rememberPosition(); });
 $('clear-anchor').onclick = () => { setAnchor({ type: 'general' }); captureDrafts(); };
@@ -372,9 +382,10 @@ window.addEventListener('hashchange', () => {
 document.addEventListener('visibilitychange', () => { if (document.hidden) stash(); else { clearTimeout(pollTimer); poll(); } });
 action(async () => {
   const listing = await api('/api/films');
-  if (!listing.films.length) throw new Error('此目录没有影片，请先在对话中创建制作简报。');
   session = await createSession({ read: () => api('/api/ui'), write: data => api('/api/ui', data), storage: localStorage, prefix: listing.workspaceId, onState: (state, message) => { $('draft-status').textContent = message; $('draft-status').className = state === 'error' ? 'warn' : ''; $('retry-drafts').hidden = ui.report?.readonly || state !== 'error'; } });
-  for (const f of listing.films) { const option = el('option', f.name); option.value = f.id; $('films').append(option); }
-  ui.film = listing.films.find(f => f.id === session.get('film'))?.id || listing.films[0].id; $('films').value = ui.film;
-  applyLayout(session.get('layout')); await loadReport(true); pollTimer = setTimeout(poll, 4000);
+  const requested = new URLSearchParams(location.search).get('film');
+  ui.film = listing.films.find(f => f.id === requested)?.id || listing.films.find(f => f.id === session.get('film'))?.id || listing.films[0]?.id;
+  updateFilmChoices(listing); applyLayout(session.get('layout'));
+  if (ui.film) await loadReport(true); else connection('已连接 · 等待加入影片');
+  pollTimer = setTimeout(poll, 4000);
 });

@@ -6,27 +6,29 @@
 
 本规格按用户 2026-11-01 的长期授权默认通过。目标是首次访问、换标签页、换浏览器及刷新时，仅输入当前服务的 `http://127.0.0.1:<端口>/` 即可连接。
 
+用户随后追问“我本机操作，有鉴权的必要吗”。方案据此简化为纯本机、无 token 的工作台，保留浏览器请求来源边界；替代此前“自动领取临时凭据”的设计，后者不实施。
+
 ## 架构与组件边界
 
-- CLI HTTP 服务新增连接入口，只向同源本机页面返回当前进程的临时凭据；监听地址仍为 127.0.0.1。
-- 前端每次启动重新建立连接，后续业务请求与媒体仍使用原有凭据验证，不依赖标签页凭据存储。
+- CLI HTTP 服务不生成或验证 token；监听地址仍为 127.0.0.1，业务与媒体入口检查请求来源。
+- 前端启动即加载影片，不增加握手入口，不读取或保存登录凭据。
 - CLI 默认打印并打开裸地址；文档与导演技能同步入口说明。不改影片生产、签批、草稿存储或历史档案行为。
 
 ## 接口、数据与行为
 
-1. `POST /api/connect` 不要求先有 Bearer。请求必须同时满足：精确 Host、精确 Origin（含端口）、`Sec-Fetch-Site: same-origin`、`Sec-Fetch-Mode: same-origin`、`Sec-Fetch-Dest: empty`、`X-Workbench-Connect: 1`；任一缺失或不符均返回 403，不返回凭据。其他方法返回 405，不发 CORS 允许响应。
-2. 成功返回 `{ token }`，继承 `Cache-Control: no-store`、无引用来源、禁止嵌入等响应策略。凭据仍是服务启动时生成的 256 位随机值，服务重启重新生成。
-3. 前端以 `mode: same-origin`、`credentials: omit` 发起连接，不手动设置浏览器保留的 Origin/Fetch Metadata 请求头。凭据仅保存在当前页面内存，不新增 cookie、localStorage 或 sessionStorage 中的凭据。
-4. 成功后清除地址栏 fragment，再加载影片。历史带凭据链接仍可打开，但连接使用当前服务重新颁发的凭据。旧链接的 hashchange 保留现有暂存草稿再刷新行为。
-5. 无鉴权的影片/媒体/草稿/审阅 API 继续拒绝。错误明确区分服务断开、连接被拒、凭据失效；凭据失效提示刷新，停止服务后需重启并使用当前端口。不自动重试正式写操作。
+1. 所有请求仍要求精确 Host；存在 Origin 时必须与服务地址（含端口）相同。业务与媒体 API 还必须有 `Sec-Fetch-Site: same-origin`，缺失、none、same-site、cross-site 均返回 403，不发 CORS 允许响应。
+2. POST 写请求必须额外携带精确 Origin，并继续只接受 JSON。普通跨站表单、脚本、iframe 和预检不能读写工作台；旧 Bearer 或 URL token 不能绕过来源检查。
+3. 前端 API 请求以 `mode: same-origin`、`credentials: omit` 发送；不发送 Authorization，不手动设置浏览器保留的 Origin/Fetch Metadata 请求头。媒体 URL 去除 token 查询参数。
+4. 历史带 fragment 链接仍可打开，fragment 被清除且不参与访问控制；不再依赖 sessionStorage，也不新增 cookie 或本地登录凭据。
+5. 服务断开或来源被拒时更新连接状态并展示原因，停止服务后需重启并使用当前端口。不自动重试正式写操作。响应继续使用 no-store、nosniff、禁止嵌入与原媒体 sandbox。
 
 ## 约束、兼容性与非目标
 
-不升版本、不发布、不修改插件安装缓存、不新增公网或局域网访问、不生成视频、不改 GitHub Projects。保留无关未提交文件。原有 Bearer 接口继续可用。
+不升版本、不发布、不修改插件安装缓存、不新增公网或局域网访问、不生成视频、不改 GitHub Projects。保留无关未提交文件。HTTP 非浏览器调用须明确提供正确来源头，不再以 Bearer 代替同源校验。
 
-自动连接信任本机浏览器打开的工作台页面与本机进程；不声称隔离已具本机权限的应用或获授权的浏览器扩展。网络页面不能通过伪造普通网页请求读取凭据；Origin 改写扩展仍会被拒绝，不为本轮兼容而放宽来源检查。不同服务端口分别颁发凭据，互不接受。
+此模式信任本机浏览器打开的工作台页面与本机进程；不声称隔离已具本机权限的应用或获授权的浏览器扩展。网络页面不能伪造浏览器保留的 Fetch Metadata；Origin 改写扩展仍会被拒绝。不同服务端口视为不同来源，不互相接受。
 
-依赖现代浏览器的 Fetch Metadata；缺少所需头时明确失败，不回退到公开凭据。参见 [W3C Fetch Metadata](https://www.w3.org/TR/fetch-metadata/) 与 [MDN Sec-Fetch-Site](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site)。
+依赖现代浏览器的 Fetch Metadata；缺少所需头时明确失败，不回退为无来源检查。参见 [W3C Fetch Metadata](https://www.w3.org/TR/fetch-metadata/) 与 [MDN Sec-Fetch-Site](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site)。
 
 ## 错误处理与运维
 
@@ -34,13 +36,13 @@
 
 ## 验收标准与测试
 
-- HTTP 集成：裸地址不泄露凭据；正确连接请求取得凭据并读取影片；无凭据原业务接口仍 401；错误 Host/Origin/Fetch Metadata/自定义头均拒绝；跨源预检与 GET 拒绝且不泄露凭据。
-- 进程边界：第二个服务不接受第一个服务的凭据；重启同端口重新颁发凭据，旧凭据无效。
+- HTTP 集成：裸地址无 fragment；正常同源请求无需凭据即可读取影片/文档/媒体和提交原有操作；错误 Host/Origin/Fetch Metadata 拒绝；跨源预检与 JSON/表单写入拒绝，文件保持不变。
+- 进程边界：其他端口的来源不被接受；重启同端口不需更新凭据即可继续读取。
 - 浏览器：无 fragment 的全新标签页直接显示已连接及正确影片；刷新和另一个新标签页仍可连接；旧 fragment 入口可连接；复用已有视频验证媒体加载，不制作新视频。
 - 运行工作台相关单元/集成测试、CLI/安装相关非视频契约、lint、语法检查和 diff 检查。先运行新增测试确认旧实现失败，再实现。全量含视频测试不属于本次无媒体验证。
 
 ## 实施顺序
 
 1. 提交本规格；新增 HTTP 边界和生命周期回归，运行观察缺功能失败。
-2. 最小实现服务器连接入口、前端自动连接与 CLI 裸链接；更新用户文档和技能。
+2. 最小实现服务器同源入口、前端无 token 请求与 CLI 裸链接；更新用户文档和技能。
 3. 定向回归与真实浏览器验收；启动仓库新版供当前示范片预览；记录验证、提交本轮改动并检查分支/worktree。

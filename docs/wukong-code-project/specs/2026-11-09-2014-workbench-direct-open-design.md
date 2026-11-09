@@ -8,6 +8,8 @@
 
 用户随后追问“我本机操作，有鉴权的必要吗”。方案据此简化为纯本机、无 token 的工作台，保留浏览器请求来源边界；替代此前“自动领取临时凭据”的设计，后者不实施。
 
+2026-11-09 后续用户要求“把外置 Chrome 打不开的问题也一起解决一下”。实际 Chrome 网络记录显示目标 Host 正确、`Sec-Fetch-Site: same-origin` 保留，但 Origin 被改为 `http://127.0.0.1`。本次修订仅兼容这一种端口被删除的形态；适用于静态资源、API、媒体和 JSON 写入。
+
 ## 架构与组件边界
 
 - CLI HTTP 服务不生成或验证 token；监听地址仍为 127.0.0.1，业务与媒体入口检查请求来源。
@@ -16,8 +18,8 @@
 
 ## 接口、数据与行为
 
-1. 所有请求仍要求精确 Host；存在 Origin 时必须与服务地址（含端口）相同。业务与媒体 API 还必须有 `Sec-Fetch-Site: same-origin`，缺失、none、same-site、cross-site 均返回 403，不发 CORS 允许响应。
-2. POST 写请求必须额外携带精确 Origin，并继续只接受 JSON。普通跨站表单、脚本、iframe 和预检不能读写工作台；旧 Bearer 或 URL token 不能绕过来源检查。
+1. 所有请求仍要求精确 Host；存在 Origin 时必须与服务地址（含端口）相同，或满足以下受限兼容：Origin 恰为 `http://127.0.0.1` 且浏览器 `Sec-Fetch-Site` 恰为 `same-origin`。不接受其他端口、主机、协议、null、尾斜杠或缺少同源标记的端口省略值。业务与媒体 API 始终要求 `Sec-Fetch-Site: same-origin`，缺失、none、same-site、cross-site 均返回 403，不发 CORS 允许响应。
+2. POST 写请求必须额外携带符合上述条件的 Origin，并继续只接受 JSON。普通跨站表单、脚本、iframe 和预检不能读写工作台；旧 Bearer 或 URL token 不能绕过来源检查。
 3. 前端 API 请求以 `mode: same-origin`、`credentials: omit` 发送；不发送 Authorization，不手动设置浏览器保留的 Origin/Fetch Metadata 请求头。媒体 URL 去除 token 查询参数。
 4. 历史带 fragment 链接仍可打开，fragment 被清除且不参与访问控制；不再依赖 sessionStorage，也不新增 cookie 或本地登录凭据。
 5. 服务断开或来源被拒时更新连接状态并展示原因，停止服务后需重启并使用当前端口。不自动重试正式写操作。响应继续使用 no-store、nosniff、禁止嵌入与原媒体 sandbox。
@@ -26,7 +28,7 @@
 
 不升版本、不发布、不修改插件安装缓存、不新增公网或局域网访问、不生成视频、不改 GitHub Projects。保留无关未提交文件。HTTP 非浏览器调用须明确提供正确来源头，不再以 Bearer 代替同源校验。
 
-此模式信任本机浏览器打开的工作台页面与本机进程；不声称隔离已具本机权限的应用或获授权的浏览器扩展。网络页面不能伪造浏览器保留的 Fetch Metadata；Origin 改写扩展仍会被拒绝。不同服务端口视为不同来源，不互相接受。
+此模式信任本机浏览器打开的工作台页面与本机进程；不声称隔离已具本机权限的应用或获授权的浏览器扩展。网络页面不能伪造浏览器保留的 Fetch Metadata；特定端口删除兼容不扩展到其他 Origin 改写。不同服务端口视为不同来源，不互相接受。无需访问扩展管理页或更改任何浏览器/扩展设置。
 
 依赖现代浏览器的 Fetch Metadata；缺少所需头时明确失败，不回退为无来源检查。参见 [W3C Fetch Metadata](https://www.w3.org/TR/fetch-metadata/) 与 [MDN Sec-Fetch-Site](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Sec-Fetch-Site)。
 
@@ -38,7 +40,9 @@
 
 - HTTP 集成：裸地址无 fragment；正常同源请求无需凭据即可读取影片/文档/媒体和提交原有操作；错误 Host/Origin/Fetch Metadata 拒绝；跨源预检与 JSON/表单写入拒绝，文件保持不变。
 - 进程边界：其他端口的来源不被接受；重启同端口不需更新凭据即可继续读取。
+- Chrome 端口删除回归：准确 Host + 同源 Fetch Metadata + 端口被删除的 Origin 可读取 CSS/JS/模块、影片和媒体并保存意见；同形态 Origin 配合 missing/none/same-site/cross-site 元数据或错误 Host 仍 403，表单写入仍拒绝。
 - 浏览器：无 fragment 的全新标签页直接显示已连接及正确影片；刷新和另一个新标签页仍可连接；旧 fragment 入口可连接；复用已有视频验证媒体加载，不制作新视频。
+- 外置 Chrome：在当前仍改写 Origin 的实际环境验证样式、连接、影片视频加载和隔离测试项目的意见提交；内嵌浏览器复核原入口。记录实际网络头、返回状态和截图，不将工具成功代替界面观察。
 - 运行工作台相关单元/集成测试、CLI/安装相关非视频契约、lint、语法检查和 diff 检查。先运行新增测试确认旧实现失败，再实现。全量含视频测试不属于本次无媒体验证。
 
 ## 实施顺序

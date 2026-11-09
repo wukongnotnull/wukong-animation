@@ -14,6 +14,7 @@ const icons = { text: '▤', image: '▧', audio: '♫', video: '▶', directory
 const time = value => { const n = Math.max(0, Number(value) || 0); return String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(Math.floor(n % 60)).padStart(2, '0'); };
 const bytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
 const date = at => !at ? '日期未记录' : new Date(at).toLocaleString('zh-CN', { hour12: false });
+const snapshotLabel = number => '快照 ' + (number ?? '?');
 function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, fn, className) { const node = el('button', text, className); node.type = 'button'; node.addEventListener('click', () => action(fn)); return node; }
 function notice(text, error = false) { $('notice').textContent = text; $('notice').className = error ? 'error' : ''; $('notice').hidden = false; clearTimeout(noticeTimer); if (!error) noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 6500); }
@@ -151,7 +152,7 @@ function renderFiles() {
     $('files').append(el('p', categories[category], 'category-label'));
     for (const file of group) {
       const node = button('', () => choose(file), 'file' + (ui.item === file.id ? ' active' : '')), copy = el('span', undefined, 'file-copy');
-      copy.append(el('strong', file.label), el('small', (file.current ? 'v' + file.current.number + ' · ' : '') + (file.checked ? '已检查' : labels[file.availability])));
+      copy.append(el('strong', file.label), el('small', (file.current ? snapshotLabel(file.current.number) + ' · ' : '') + (file.checked ? '已检查' : labels[file.availability])));
       node.append(el('span', icons[file.kind], 'file-icon'), copy); $('files').append(node);
     }
   }
@@ -162,7 +163,7 @@ async function renderViewer(serial) {
   ui.media = null; ui.viewKey = key; ui.documentText = null; $('viewer').replaceChildren(); $('timeline').hidden = true; $('read-mode').hidden = true; $('shot-jump').hidden = true;
   $('stage-name').textContent = '第 ' + ui.step + ' 道 · ' + stage().label; $('file-name').textContent = file?.label || stage().label;
   $('file-path').textContent = file?.relativePath || file?.path || '本地素材 · 只读预览'; $('file-path').title = file?.path || ''; $('locate').disabled = !file || file.availability !== 'present';
-  $('view-state').textContent = v ? (current() ? file.availability === 'present' ? '当前版本 · v' : '最近保存 · v' : '历史版本 · v') + v.number : '尚无交付物';
+  $('view-state').textContent = v ? (current() ? file.availability === 'present' ? '当前' : '最近保存的' : '历史') + snapshotLabel(v.number) : '尚无交付物';
   $('view-state').className = 'tag ' + (!current() && v ? 'warn' : '');
   if (!file || !v) { const empty = el('div', undefined, 'empty'); empty.append(el('h2', stage().status === 'not-applicable' ? '本片不需要此工序' : '等待这一阶段的成果'), el('p', file?.error || '在对话中完成或登记交付物后，这里会提示更新。')); $('viewer').append(empty); return; }
   const url = mediaUrl(file, v);
@@ -219,7 +220,7 @@ async function goToRepair(note) {
 function requestResolution(note, type) { resolving = { id: note.id, action: type, film: ui.film }; $('resolution-title').textContent = type === 'dismissed' ? '无需修改，关闭意见' : '退回继续处理'; $('resolution-reason').value = ''; $('resolution-dialog').showModal(); }
 function noteCard(note) {
   const card = el('article', undefined, 'note-card' + (note.resolved ? ' resolved' : '')), original = allItems(ui.report).find(i => i.id === note.artifactId), vn = original?.versions.find(v => v.id === note.versionId)?.number;
-  card.append(button('v' + (vn || '?') + ' · ' + anchorText(note.anchor), () => goToNote(note)), el('p', note.text));
+  card.append(button(snapshotLabel(vn) + ' · ' + anchorText(note.anchor), () => goToNote(note)), el('p', note.text));
   if (original?.id !== ui.item) card.append(el('small', '原意见：' + original?.label));
   card.append(el('p', noteLabels[noteStatus(note)] + (note.blocking ? ' · 阻塞意见' : ' · 建议'), 'meta'));
   if (note.repair) {
@@ -240,17 +241,17 @@ function noteCard(note) {
 }
 function renderInspector() {
   const file = item(), v = version(), s = stage(); $('kind-label').textContent = kinds[file?.kind] || ''; $('versions').replaceChildren();
-  for (const row of [...file?.versions || []].reverse()) { const option = el('option', 'v' + row.number + ' · ' + date(row.at) + (row.id === file.current.id && file.availability !== 'historical' ? ' · 当前' : ' · 历史')); option.value = row.id; $('versions').append(option); }
+  for (const row of [...file?.versions || []].reverse()) { const option = el('option', snapshotLabel(row.number) + ' · ' + date(row.at) + (row.id === file.current.id && file.availability !== 'historical' ? ' · 当前' : ' · 历史')); option.value = row.id; $('versions').append(option); }
   $('versions').value = ui.version || ''; $('versions').disabled = !v;
-  $('version-detail').textContent = v ? v.snapshot.entries.length + ' 个文件 · ' + bytes(v.snapshot.entries.reduce((n, e) => n + e.size, 0)) + ' · ' + categories[file.category] : '尚无保存版本';
+  $('version-detail').textContent = v ? v.snapshot.entries.length + ' 个文件 · ' + bytes(v.snapshot.entries.reduce((n, e) => n + e.size, 0)) + ' · ' + categories[file.category] : '尚无保存快照';
   $('checks').replaceChildren();
   if (file && current()) {
-    for (const message of [file.availability !== 'present' && labels[file.availability], file.freshness === 'needs-review' && '来源已变化，请复核当前成果', file.problem, file.checked ? '当前版本已检查' : '尚未标记当前版本已检查']) if (message) $('checks').append(el('p', message, 'status-line ' + (file.checked && message === '当前版本已检查' ? 'good' : 'warn')));
+    for (const message of [file.availability !== 'present' && labels[file.availability], file.freshness === 'needs-review' && '来源已变化，请复核当前成果', file.problem, file.checked ? '当前快照已检查' : '尚未标记当前快照已检查']) if (message) $('checks').append(el('p', message, 'status-line ' + (file.checked && message === '当前快照已检查' ? 'good' : 'warn')));
   }
   else if (v) $('checks').append(el('p', '正在查看历史内容；当前阶段的检查与通过不会自动转移到此版本。', 'hint'));
   if (file?.category === 'reference') $('checks').append(el('p', '参考资料不作为本阶段必检项。', 'hint'));
   $('checked').disabled = ui.report.readonly || !file || !v || !current() || file.availability !== 'present' || file.checked;
-  $('checked').textContent = file?.checked && current() ? '当前版本已检查' : '标记此版本已检查';
+  $('checked').textContent = file?.checked && current() ? '当前快照已检查' : '标记此快照已检查';
   $('note-form').hidden = ui.report.readonly || !v; $('notes').replaceChildren();
   let notes = [...file?.notes || []]; const selected = ui.report.notes.find(n => n.id === ui.reviewNote);
   if (selected && !notes.some(n => n.id === selected.id)) notes.unshift(selected);
@@ -305,7 +306,7 @@ async function poll() {
       const report = await api('/api/report?film=' + film); if (film !== ui.film) return;
       ui.pendingReport = report; ui.lastSync = new Date().toISOString(); ui.fingerprint = (await api('/api/status?film=' + film)).revision;
       $('apply-update').textContent = '有更新 · 查看'; $('apply-update').hidden = false; connection('已连接 · 有更新待查看');
-      if (!ui.overview && version()) { $('view-state').textContent = '正在查看 · v' + version().number + ' · 有更新待核对'; $('view-state').className = 'tag warn'; }
+      if (!ui.overview && version()) { $('view-state').textContent = '正在查看 · ' + snapshotLabel(version().number) + ' · 有更新待核对'; $('view-state').className = 'tag warn'; }
     }
     if (session?.dirty()) await session.flush();
   } catch (error) { connection(error.message, true); }
@@ -356,7 +357,7 @@ $('resolution-form').onsubmit = event => { event.preventDefault(); action(async 
 $('cancel-resolution').onclick = () => $('resolution-dialog').close();
 $('pending').onclick = () => action(async () => {
   const data = await api('/api/pending?film=' + ui.film); $('pending-list').replaceChildren();
-  for (const n of data.notes) { const card = el('article', undefined, 'note-card'); card.append(el('p', '第 ' + n.step + ' 道 · v' + n.version + (n.historical ? ' · 历史版本' : '') + ' · ' + noteLabels[noteStatus(n)]), el('p', n.text), button('定位原意见', async () => { $('pending-dialog').close(); await goToNote(n); })); if (n.repair) card.append(button('查看返修版本', async () => { $('pending-dialog').close(); await goToRepair(n); })); $('pending-list').append(card); }
+  for (const n of data.notes) { const card = el('article', undefined, 'note-card'); card.append(el('p', '第 ' + n.step + ' 道 · ' + snapshotLabel(n.version) + (n.historical ? ' · 历史' : '') + ' · ' + noteLabels[noteStatus(n)]), el('p', n.text), button('定位原意见', async () => { $('pending-dialog').close(); await goToNote(n); })); if (n.repair) card.append(button('查看返修版本', async () => { $('pending-dialog').close(); await goToRepair(n); })); $('pending-list').append(card); }
   for (const d of data.decisions) { const card = el('article', undefined, 'note-card'); card.append(el('p', '第 ' + d.step + ' 道 · 阶段返修\n' + d.note), button('查看阶段', async () => { $('pending-dialog').close(); await chooseStage(ui.report.stages.find(s => s.step === d.step)); showPanel('checks'); })); if (d.repair) card.append(button('查看阶段返修版本', async () => { $('pending-dialog').close(); await goToRepair(d); })); $('pending-list').append(card); }
   if (!data.notes.length && !data.decisions.length) $('pending-list').append(el('p', '目前没有待处理意见。')); $('pending-dialog').showModal();
 });

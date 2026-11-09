@@ -20,3 +20,17 @@ plugin/skills/*/examples/*/*_英文字幕.srt
 
 # 可移植发布构建产物
 dist/
+
+# >>> wukong-animation >>>
+# 渲染缓存、中间帧、风格帧、审阅副本、成片都可以由源文件重新生成，不进版本库
+films/*/.cache/
+films/*/stills/
+films/*/audio/generated/
+films/*/review/
+films/*/*.mp4
+films/*/*.gif
+films/*/*.webm
+node_modules/
+.DS_Store
+# 想把成片也纳入版本管理，建议用 Git LFS：git lfs track "films/*/*.mp4"
+# <<< wukong-animation <<<

@@ -1,9 +1,11 @@
-// brief / story / storyboard 的结构只在模板里定义一次（#70）：规范文件写怎么填，示范片照着模板写。
-// 这里从模板读出结构去核对示范片和规范的说明表，测试里不另写一份栏目、章节清单。
+// brief / story / storyboard 的结构由模板定义，规范文件说明怎么填。
+// 用新建的影片核对模板实际生成的结构，并检查现有示范片（如有）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -113,6 +115,16 @@ for (const t of TEMPLATES) {
   }
 }
 
-test('每种模板至少核对了一部示范片', () => {
-  for (const t of TEMPLATES) assert.ok(examples(path.basename(t)).length >= 1, t);
+test('新建影片生成三个空白文档，剧本无需填写版本号', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-templates-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const cli = path.join(PLUGIN, 'engine/bin/wka.mjs');
+  const env = { ...process.env, WUKONG_ANIMATION_HOME: path.join(dir, 'home') };
+  execFileSync(process.execPath, [cli, 'brief', '模板验收', '--dir', dir], { env });
+  execFileSync(process.execPath, [cli, 'init', '模板验收', '--style', 'keynote', '--dir', dir], { env });
+  for (const template of TEMPLATES) {
+    const generated = read(path.join(dir, 'films', '模板验收', path.basename(template)));
+    assert.deepEqual(structure(generated), structure(read(path.join(PLUGIN, template))), template);
+    if (path.basename(template) === 'story.md') assert.doesNotMatch(generated, /剧本版本/);
+  }
 });

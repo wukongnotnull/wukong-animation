@@ -43,7 +43,8 @@ test('source checks reject foreign or missing metadata and cannot be bypassed by
   const invalid = [
     {}, { 'Sec-Fetch-Site': 'none' }, { 'Sec-Fetch-Site': 'same-site' }, { 'Sec-Fetch-Site': 'cross-site' },
     { Origin: f.server.origin }, { ...valid, Origin: 'null' },
-    { ...valid, Origin: 'http://127.0.0.1' }, { ...valid, Origin: 'https://evil.example' },
+    { ...valid, Origin: 'http://127.0.0.1:1' }, { ...valid, Origin: 'https://evil.example' },
+    { ...valid, Origin: 'http://127.0.0.1/' }, { ...valid, Origin: 'https://127.0.0.1' },
     { ...valid, 'Sec-Fetch-Site': 'cross-site', Authorization: 'Bearer legacy-token' },
   ];
   for (const headers of invalid) {
@@ -52,9 +53,9 @@ test('source checks reject foreign or missing metadata and cannot be bypassed by
     assert.equal(response.headers.get('access-control-allow-origin'), null);
   }
   // fetch normalizes Host; raw HTTP proves the server rejects rebinding/aliases.
-  for (const host of ['evil.example', 'localhost:' + new URL(f.server.origin).port]) {
+  for (const host of ['evil.example', 'localhost:' + new URL(f.server.origin).port]) for (const origin of [f.server.origin, 'http://127.0.0.1']) {
     const status = await new Promise((resolve, reject) => {
-      http.get(f.server.origin + '/api/films', { headers: { ...valid, Host: host } }, res => {
+      http.get(f.server.origin + '/api/films', { headers: { ...valid, Origin: origin, Host: host } }, res => {
         res.resume(); res.on('end', () => resolve(res.statusCode));
       }).on('error', reject);
     });
@@ -85,6 +86,40 @@ test('restarting the same local address needs no new credentials and other ports
   second = await startWorkbench(f.root, { port: Number(new URL(origin).port) });
   assert.equal(second.origin, origin);
   assert.equal((await fetch(origin + '/api/films', { headers })).status, 200);
+});
+test('Chrome normalized loopback Origin works for assets, media and JSON review writes', async t => {
+  const f = await fixture(t), headers = { ...f.headers, Origin: 'http://127.0.0.1' };
+  for (const route of ['/app.css', '/app.js', '/model.mjs', '/document.mjs', '/session.mjs']) {
+    const response = await fetch(f.server.origin + route, { headers });
+    assert.equal(response.status, 200, route);
+    assert.match(response.headers.get('content-type'), /text\/(css|javascript)/);
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+    await response.arrayBuffer();
+  }
+  const listing = await fetch(f.server.origin + '/api/films', { headers });
+  assert.equal(listing.status, 200); assert.equal((await listing.json()).films[0].id, f.id);
+  const report = await (await fetch(f.server.origin + '/api/report?film=' + f.id, { headers })).json();
+  const item = report.stages.find(s => s.step === 2).items[0];
+  const file = await fetch(f.server.origin + `/api/file?film=${f.id}&artifact=${item.id}&version=${item.current.id}`, { headers: { ...headers, Range: 'bytes=0-4' } });
+  assert.equal(file.status, 206); assert.equal((await file.arrayBuffer()).byteLength, 5);
+  const note = { film: f.id, artifactId: item.id, versionId: item.current.id, text: 'Chrome 同源意见', anchor: { type: 'general' } };
+  const response = await fetch(f.server.origin + '/api/note', { method: 'POST', headers, body: JSON.stringify(note) });
+  assert.equal(response.status, 200, await response.text());
+  assert.equal((await (await f.request('/api/pending?film=' + f.id)).json()).notes[0].text, note.text);
+  assert.equal((await fetch(f.server.origin + '/api/ui', { method: 'POST', headers: { ...headers, 'Content-Type': 'text/plain' }, body: '{}' })).status, 400);
+});
+test('Chrome normalized Origin never admits foreign, navigation or missing Fetch Metadata', async t => {
+  const f = await fixture(t);
+  for (const site of [undefined, 'none', 'same-site', 'cross-site']) {
+    const headers = { Origin: 'http://127.0.0.1', 'Content-Type': 'application/json', ...(site ? { 'Sec-Fetch-Site': site } : {}) };
+    for (const route of ['/app.css', '/app.js', '/api/films', '/api/file?token=legacy-token']) {
+      const response = await fetch(f.server.origin + route, { headers });
+      assert.equal(response.status, 403, `${site}: ${route}`);
+      assert.equal(response.headers.get('access-control-allow-origin'), null);
+    }
+    assert.equal((await fetch(f.server.origin + '/api/ui', { method: 'POST', headers, body: JSON.stringify({ key: 'film', expected: 0, value: 'unwanted' }) })).status, 403);
+  }
+  assert.equal(fs.existsSync(path.join(f.root, '.wka/workbench-local/state.json')), false);
 });
 test('loopback UI serves only registered immutable files with range support and rejects foreign requests', async t => {
   const f = await fixture(t);

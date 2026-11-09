@@ -85,15 +85,19 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
     try {
-      if (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
+      const sameOrigin = req.headers['sec-fetch-site'] === 'same-origin';
+      // Some header extensions strip only the Origin port. Accept that exact form
+      // only when browser-controlled Fetch Metadata still identifies this origin.
+      const originMatches = req.headers.origin === origin || (sameOrigin && req.headers.origin === 'http://127.0.0.1');
+      if (req.headers.host !== new URL(origin).host || (req.headers.origin && !originMatches)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
       const url = new URL(req.url, origin), route = url.pathname;
       if (['/', '/app.js', '/app.css', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }
       // Trust this loopback page, not requests initiated by other websites or ports.
-      // Fetch Metadata is browser-controlled; POST must also carry an exact Origin.
-      if (req.headers['sec-fetch-site'] !== 'same-origin' || (req.method === 'POST' && req.headers.origin !== origin)) {
+      // POST must also carry an Origin matching the checks above.
+      if (!sameOrigin || (req.method === 'POST' && !originMatches)) {
         send(res, 403, { error: '工作台仅接受本机页面的同源请求，请直接打开本机地址，并检查浏览器扩展是否改写请求' }); return;
       }
       const films = filmsAt(root);

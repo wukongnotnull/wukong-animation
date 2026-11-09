@@ -34,9 +34,9 @@ node tools/bench-performance.mjs --engine /absolute/baseline/plugin/engine --sui
 node tools/bench-performance.mjs --engine /absolute/baseline/plugin/engine --candidate /absolute/candidate/plugin/engine --suite workflow --rounds 5 --out /absolute/new-workflow-results
 ```
 
-`hash` 覆盖 8/64/256 MiB 文件及 107 镜状态观察；`workflow` 覆盖 browser/Remotion 的例片、107 镜长片、256 MiB 有效 PCM 音轨。每组分别测 preview 与 render --proxy 的首次、无改和单镜变化；长片还测 resume、QC 和最终交付查询。准备时间单列。已有缓存的每轮都恢复到同一路径下的固定快照，单镜变化只追加注释。工具核对重渲数量、帧数、尺寸、帧率及首末局部小样的音频区间；不会替测试作品做用户签批。
+`hash` 覆盖 8/64/256 MiB 文件及 107 镜状态观察；`workflow` 覆盖 browser/Remotion 的独立短图形夹具、107 镜长片、256 MiB 有效 PCM 音轨。每组分别测 preview 与 render --proxy 的首次、无改和单镜变化；长片还测 resume、QC 和最终交付查询。准备时间单列。已有缓存的每轮都恢复到同一路径下的固定快照，单镜变化只追加注释。工具核对重渲数量、帧数、尺寸、帧率及首末局部小样的音频区间；不会替测试作品做用户签批。
 
-可用 `--cases browser-example,remotion-long` 分批运行 workflow，允许的名字为 `browser|remotion` 加 `example|long|large-audio`；`--timeout` 为单命令毫秒上限（默认 20 分钟）。每场景至少 5 轮。输出目录已存在即拒绝覆盖；失败/超时保留日志，结果标记为未完成，不能删掉失败后称整组通过。只终止本工具启动的进程树。
+可用 `--cases browser-example,remotion-long` 分批运行 workflow，允许的名字为 `browser|remotion` 加 `example|long|large-audio`；`--timeout` 为单命令毫秒上限（默认 20 分钟）。`example` 标签为兼容旧命令保留，现在使用独立生成的三镜图形夹具，不再复制示范片；不可与旧示范片数据直接比较。每场景至少 5 轮。输出目录已存在即拒绝覆盖；失败/超时保留日志，结果标记为未完成，不能删掉失败后称整组通过。只终止本工具启动的进程树。
 
 `environment.json` 记录提交、工具摘要和环境，`preparations.json` 保存安装与预热时间，`results.json` 保存原始样本和中位数/范围。`*.operation.json` 是排除导入开销的哈希耗时；workflow 的墙钟含整个命令。`*.metrics.json` 的 CPU 与最大 RSS 只属于主 Node 进程，不包含 Chromium/ffmpeg；文件计数是逻辑读取、完整读取次数和最大请求字节，不是物理磁盘吞吐。哈希套件的目标文件完整读取对应完整内容哈希；制作流程的读取还可能来自文本解析等用途。OS 文件缓存未控制，不能称为冷磁盘测量。正式比较应串行交替两个版本，期间不要另跑渲染或测试。 探针只覆盖主 Node 显式同步文件 API，排除模块加载器、原生库和子进程 I/O；`fsCalls` 是这些 API 的调用次数，不是完整系统调用计数。子进程耗时可能重叠，不能直接相加。工具会验证依赖清单、保存自身源码，并在运行时身份中记录 Chromium 与系统字体内容摘要；隔离安装禁用浏览器垃圾回收。
 
@@ -66,8 +66,8 @@ node tools/new-style.mjs watercolor --name 水彩晕染 --category shouhui
 2. **style.json**：管线、工具包（带版本范围）、字体、`qc` 阈值。
 3. **scripts/**：把最难写的技法做成积木，挂到 `wk.<名>`。镜头只做编排。
 4. **TECH.md**：选型理由 + 积木 API。
-5. **examples/<片名>/**：10–20 秒示范片，必须 `wka qc` 全部通过。示范长篇旁白等特定做法的示范片可以更长（如 ink-wash 的《春江花月夜》148.8 秒），在风格 STYLE.md「9. 示范片」里写明它示范什么；冒烟测试只渲染首、中、末三张静帧，片长不影响 CI 用时。
-6. `node tools/render-stills.mjs <id>`（画廊图 `docs/gallery/<id>.jpg`，取最短示范片最后一镜 80% 处，只提交 jpg）→ `npm run catalog`（把画廊图写进 README）→ `npm run smoke -- <id>`（首次会写入本机平台的基准图 `tests/smoke/baseline/<darwin|linux>/`）。CI 跑在 Linux 上，缺 linux 基准图会直接失败：在 GitHub Actions 里手动运行 smoke workflow 并勾选 `update`，下载 `smoke-baseline-linux` artifact，放进 `tests/smoke/baseline/linux/` 一起提交。
+5. **examples/<片名>/**（可选）：示范片须通过 `wka qc`，在 STYLE.md「9. 示范片」里说明用途。没有示范片时，须在 `tests/fixtures/performance.mjs` 注册匹配管线的独立图形夹具，确保冒烟检查有实际渲染覆盖。
+6. 有示范片时，运行 `node tools/render-stills.mjs <id>` 生成画廊图，再运行 `npm run catalog` 和 `npm run smoke -- <id>`，提交对应平台基准图；Linux 基准可由 smoke workflow 的 update 模式生成。无示范片时，运行 catalog 与 smoke：夹具检查基本图形内容、横竖画幅和重复渲染确定性，不保存图片基准，也不代表风格艺术效果验收。
 7. `npm run lint` 通过后提 PR。
 
 SKILL.md 的 description 控制在 200 字以内，并写清与相近风格的区别（例如"比工笔更写意"）——72 条描述会常驻上下文。

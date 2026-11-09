@@ -131,15 +131,16 @@ test('place 记下放置，供密度检查用', ffmpeg, async () => {
   fs.rmSync(lib.dir, { recursive: true, force: true });
 });
 
-test('示范片《七十二变》只用清单里有的音效，写出 sfx.wav', async () => {
-  const lib = loadSfxLibrary(style);
-  const used = [];
-  const fake = { names: Object.keys(lib.sounds), place: (buf, name) => used.push(name) };
-  const outDir = tmp();
-  const build = (await import(path.join(DIR, 'examples/qishier/audio/build.mjs'))).default;
-  const tracks = await build({ synth, sfx: fake, duration: 14, outDir, shots: [], cues: {}, log: () => {} });
-  assert.ok(used.length > 0);
-  for (const n of used) assert.ok(lib.sounds[n], n);
-  assert.deepEqual(tracks.map((t) => path.basename(t.file)), ['bgm.wav', 'sfx.wav']);
-  fs.rmSync(outDir, { recursive: true, force: true });
+test('清单全部音效可离线混入独立音轨', ffmpeg, async t => {
+  const names = Object.keys(loadSfxLibrary(style).sounds);
+  const lib = await fakeLibrary(names);
+  t.after(() => fs.rmSync(lib.dir, { recursive: true, force: true }));
+  const sfx = createSfx(lib), buf = synth.buffer(names.length * 0.25);
+  for (const [i, name] of names.entries()) {
+    sfx.place(buf, name, { at: i * 0.25 });
+    assert.ok(buf.L.slice(i * 12000, i * 12000 + 9600).some(v => Math.abs(v) > 0.01), name);
+  }
+  const file = synth.writeWav(buf, path.join(lib.dir, 'mixed.wav'));
+  assert.deepEqual(sfx.placements.map(p => p.name), names);
+  assert.ok(Math.abs(+probe(file).format.duration - names.length * 0.25) < 0.01);
 });

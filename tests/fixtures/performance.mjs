@@ -50,18 +50,27 @@ export function writeSynthetic(dir,{pipeline,home,count=107,audioBytes=Math.ceil
   fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film,null,2)+'\n');return film;
 }
 
-export function copyExample(engine,dir,pipeline) {
-  const example=pipeline==='browser'?'ink-wash/examples/chunjiang':'keynote/examples/qishier';
-  fs.cpSync(path.resolve(engine,'../skills',example),dir,{recursive:true});
-  const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
-  if(pipeline==='browser')film.shots=film.shots.slice(0,6);
-  // Keep the shipped visuals/scripts. Substitute deterministic local sound, no TTS/network.
-  fs.rmSync(path.join(dir,'audio'),{recursive:true,force:true});
-  const duration=film.shots.reduce((n,s)=>n+s.duration,0);
-  writePcm(path.join(dir,'audio/track.wav'),Math.ceil(duration*192000));
-  film.audio={voice_source:'none',voices:[],tracks:[{file:'audio/track.wav',start:0,gain:1}]};
-  delete film.variants;film.subtitles={mode:'none'};
-  fs.writeFileSync(file,JSON.stringify(film,null,2)+'\n');return film;
+export const BUILTIN_FIXTURE_STYLES = Object.freeze({'ink-wash':'browser',keynote:'remotion'});
+
+// Independent geometry, generated only in a disposable test directory. No demo assets.
+export function writeBuiltinFixture(dir,pipeline,{audio=true}={}) {
+  const style=Object.keys(BUILTIN_FIXTURE_STYLES).find(id=>BUILTIN_FIXTURE_STYLES[id]===pipeline);
+  if(!style)throw new Error('Unsupported fixture pipeline: '+pipeline);
+  fs.mkdirSync(path.join(dir,'shots'),{recursive:true});
+  const shots=Array.from({length:3},(_,i)=>{
+    const id=`s${String(i+1).padStart(2,'0')}`,file=`shots/${id}.${pipeline==='browser'?'js':'tsx'}`;
+    const color=i%2?'#234567':'#345678';
+    fs.writeFileSync(path.join(dir,file),pipeline==='browser'
+      ? `wk.shot({render(ctx,t,s){ctx.fillStyle='${color}';ctx.fillRect(0,0,s.W,s.H);ctx.fillStyle='#fafafa';ctx.fillRect((0.2+t*0.05)*s.W,0.3*s.H,0.1*s.W,0.2*s.H);}});\n`
+      : `import React from 'react';import {AbsoluteFill,useCurrentFrame,useVideoConfig} from 'remotion';export default function Shot(){const frame=useCurrentFrame(),{fps}=useVideoConfig();return <AbsoluteFill style={{background:'${color}'}}><div style={{position:'absolute',left:(20+frame/fps*5)+'%',top:'30%',width:'10%',height:'20%',background:'#fafafa'}}/></AbsoluteFill>;}\n`);
+    return {id,file,duration:2,full_bleed:true};
+  });
+  const film={title:'Rendering fixture',style,size:[512,288],fps:30,seed:731,shots,subtitles:{mode:'none'},variants:{'9:16':{}},export:{formats:['mp4'],name:'fixture'}};
+  if(audio){
+    writePcm(path.join(dir,'audio/track.wav'),6*192000);
+    film.audio={voice_source:'none',voices:[],tracks:[{file:'audio/track.wav',start:0,gain:1}]};
+  }
+  fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film,null,2)+'\n');return film;
 }
 
 export function restoreFixture(snapshot,live,mode) {

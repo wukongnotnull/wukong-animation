@@ -48,9 +48,7 @@
         "慢节奏画外音"
       ],
       "skill": "skills/ink-wash",
-      "examples": [
-        "skills/ink-wash/examples/chunjiang"
-      ]
+      "examples": []
     },
     {
       "id": "gongbi",
@@ -930,9 +928,7 @@
         "片头片尾"
       ],
       "skill": "skills/keynote",
-      "examples": [
-        "skills/keynote/examples/qishier"
-      ]
+      "examples": []
     },
     {
       "id": "doc-subtitle",

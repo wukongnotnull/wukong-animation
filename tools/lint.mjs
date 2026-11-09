@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { BUILTIN_FIXTURE_STYLES } from '../tests/fixtures/performance.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLUGIN = path.join(ROOT, 'plugin');
@@ -84,10 +85,10 @@ for (const st of styles.values()) {
   if (!st.qc) warns.push(`${where}: style.json 没有 qc 阈值，wka qc 只能检查帧差`);
   if (ids.has(st.order)) errors.push(`${where}: order ${st.order} 与 ${ids.get(st.order)} 重复`);
   ids.set(st.order, st.id);
-  // 内置风格必须带示范片：冒烟测试靠它做确定性与基准图比对，没有就等于没测
+  // 内置风格须有示范片或独立渲染夹具，不能静默失去冒烟覆盖。
   const ex = path.join(st.dir, 'examples');
   const films = fs.existsSync(ex) ? fs.readdirSync(ex).filter((e) => fs.existsSync(path.join(ex, e, 'film.json'))) : [];
-  if (!films.length) (st.origin === 'builtin' ? errors : warns).push(`${where}: 没有示范片 examples/<片名>/film.json（冒烟测试需要它）`);
+  if (!films.length && BUILTIN_FIXTURE_STYLES[st.id] !== st.pipeline) (st.origin === 'builtin' ? errors : warns).push(`${where}: 没有示范片或匹配管线的独立冒烟夹具`);
   else {
     for (const e of films) {
       const fj = path.join(ex, e, 'film.json');

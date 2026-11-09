@@ -6,7 +6,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { writeBytes, writeSynthetic, copyExample, restoreFixture } from '../tests/fixtures/performance.mjs';
+import { writeBytes, writeSynthetic, writeBuiltinFixture, restoreFixture } from '../tests/fixtures/performance.mjs';
 
 const self=fileURLToPath(import.meta.url),metrics=fileURLToPath(new URL('./bench-metrics.mjs',import.meta.url));
 const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -203,7 +203,7 @@ async function workflowSuite(contexts,options) {
     const caseName=`${pipeline}-${fixture}`;
     if(options.cases&&!options.cases.includes(caseName))continue;
     for(const ctx of contexts) {
-      const dir=path.join(ctx.root,caseName);const film=fixture==='example'?copyExample(ctx.engine,dir,pipeline):writeSynthetic(dir,{pipeline,home:ctx.home,...(fixture==='large-audio'?{audioBytes:256*1024*1024}:{} )});
+      const dir=path.join(ctx.root,caseName);const film=fixture==='example'?writeBuiltinFixture(dir,pipeline):writeSynthetic(dir,{pipeline,home:ctx.home,...(fixture==='large-audio'?{audioBytes:256*1024*1024}:{} )});
       await wka(ctx,['soundtrack',dir],`${caseName}-soundtrack`);
       ctx.case={dir,film,pristine:path.join(ctx.root,`${caseName}-pristine`)};fs.cpSync(dir,ctx.case.pristine,{recursive:true});
       json(path.join(ctx.out,`${ctx.label}-${caseName}-fixture.json`),{film,seconds:film.shots.reduce((sum,shot)=>sum+shot.duration,0),audio:{bytes:fs.statSync(path.join(dir,'audio/track.wav')).size,sha256:sha(path.join(dir,'audio/track.wav')),interval:[0,film.shots.reduce((sum,shot)=>sum+shot.duration,0)]},runtime:ctx.runtime,cacheStates:{cold:'soundtrack prepared, no rendered shots',unchanged:'completed command snapshot',single:'same snapshot plus comment in first shot'}});

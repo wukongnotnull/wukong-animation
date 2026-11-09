@@ -149,7 +149,7 @@ test('ffmpeg 8 把 B 帧片段末帧样本记短不到 1ms：仍算通过；帧�
  const {inspectVideo}=await import('../../plugin/engine/core/timing.mjs');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-ffmpeg8-'));
  const oldPath=process.env.PATH;
- // 真实 ffmpeg 8.0.1 编码春江花月夜 s06 小样的实测值：116 帧、time_base 1/15360、duration_ts 118779（少 5 tick）
+ // 历史 ffmpeg 8.0.1 小样编码的实测值：116 帧、time_base 1/15360、duration_ts 118779（少 5 tick）
  const probe=(frames,duration,shift=0)=>JSON.stringify({streams:[{r_frame_rate:'15/1',avg_frame_rate:'15/1',time_base:'1/15360',duration:String(duration)}],
   frames:Array.from({length:frames},(_,i)=>({best_effort_timestamp_time:((i+(i===frames-1?shift:0))/15).toFixed(6)}))});
  const fake=(json)=>{fs.writeFileSync(path.join(dir,'probe.json'),json);};

@@ -34,7 +34,7 @@
     </section>
     <aside class="inspector">
       <div class="inspector-scroll">
-        <section class="inspector-section checks-section"><div class="section-heading"><span>快照与检查</span><span id="kind-label" class="muted"></span></div><label class="field-label" for="versions">查看快照</label><select id="versions" aria-describedby="snapshot-help"></select><div id="version-detail" class="meta"></div><p id="snapshot-help" class="hint">工作台按保存顺序编号，文件内的修订号单独记录。</p><div id="checks"></div><button id="checked" class="wide">标记此快照已检查</button></section>
+        <section class="inspector-section checks-section"><div class="section-heading"><span>版本与检查</span><span id="kind-label" class="muted"></span></div><label class="field-label" for="versions">查看版本</label><select id="versions"></select><div id="version-detail" class="meta"></div><div id="checks"></div><button id="checked" class="wide">标记此版本已检查</button></section>
         <section class="inspector-section notes-section"><div class="section-heading"><span>审阅意见</span><span id="note-count" class="muted"></span></div><label class="field-label" for="note-filter">显示意见</label><select id="note-filter"><option value="open">未关闭意见</option><option value="all">全部意见与历史</option><option value="verification">待复验</option></select><div id="notes"></div>
           <form id="note-form"><div class="anchor-row"><span id="anchor-label">整份交付物</span><button id="clear-anchor" type="button" class="quiet">清除定位</button></div>
             <div id="time-anchor" hidden><label>起点（秒）<input id="time-start" type="number" min="0" step="0.01"></label><label>终点（秒）<input id="time-end" type="number" min="0" step="0.01"></label></div>

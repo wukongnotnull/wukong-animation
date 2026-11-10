@@ -87,9 +87,24 @@ test('restarting the same local address needs no new credentials and other ports
   assert.equal(second.origin, origin);
   assert.equal((await fetch(origin + '/api/films', { headers })).status, 200);
 });
+test('page keeps a light and dark theme switch in the browser', async t => {
+  const f = await fixture(t);
+  const headers = { 'Sec-Fetch-Site': 'same-origin', Origin: f.server.origin };
+  const html = await (await fetch(f.server.origin + '/', { headers })).text();
+  assert.match(html, /data-theme-choice="light"/);
+  assert.match(html, /data-theme-choice="dark"/);
+  assert.match(html, /src="\/theme\.js"/);
+  const boot = await (await fetch(f.server.origin + '/theme.js', { headers })).text();
+  assert.match(boot, /wka-workbench-theme/);
+  const css = await (await fetch(f.server.origin + '/app.css', { headers })).text();
+  assert.match(css, /:root\[data-theme="light"\]/);
+  assert.match(css, /--on-accent:/);
+  const js = await (await fetch(f.server.origin + '/app.js', { headers })).text();
+  assert.match(js, /function applyTheme/);
+});
 test('Chrome normalized loopback Origin works for assets, media and JSON review writes', async t => {
   const f = await fixture(t), headers = { ...f.headers, Origin: 'http://127.0.0.1' };
-  for (const route of ['/app.css', '/app.js', '/model.mjs', '/document.mjs', '/session.mjs']) {
+  for (const route of ['/app.css', '/app.js', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs']) {
     const response = await fetch(f.server.origin + route, { headers });
     assert.equal(response.status, 200, route);
     assert.match(response.headers.get('content-type'), /text\/(css|javascript)/);

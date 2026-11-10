@@ -135,7 +135,7 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
         }
         send(res, 404, { error: '未知工作台控制入口' }); return;
       }
-      if (['/', '/app.js', '/app.css', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
+      if (['/', '/app.js', '/app.css', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }

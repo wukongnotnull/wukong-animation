@@ -16,7 +16,7 @@ test('formatted document pieces retain exact raw offsets, tables and shot identi
 });
 
 test('queue filters find feedback and historical items; restoration never substitutes an unknown version silently', async () => {
-  const { reviewRows, restorePosition, noteKey, stageKey, playbackContext } = await moduleAt('model');
+  const { reviewRows, restorePosition, noteKey, stageKey, playbackContext, formatClock, formatSpan, parseClock } = await moduleAt('model');
   const item = { id: 'a', step: 2, label: '简报', category: 'formal', required: true, availability: 'present', checked: false, freshness: 'current', versions: [{ id: 'v1' }, { id: 'v2' }], current: { id: 'v2' }, notes: [{ text: '受众不明确', blocking: true, resolved: false }] };
   const history = { ...item, id: 'b', label: '旧参考', category: 'history', availability: 'historical', required: false };
   const report = { stages: [{ step: 2, label: '简报确认', revision: 'r', items: [item, history] }] };
@@ -24,8 +24,24 @@ test('queue filters find feedback and historical items; restoration never substi
   assert.deepEqual(reviewRows(report, { category: 'history' }).map(r => r.item.id), ['b']);
   assert.equal(restorePosition(report, { step: 2, item: 'a', version: 'v1' }).version, 'v1');
   assert.match(restorePosition(report, { step: 2, item: 'a', version: 'missing' }).message, /版本/);
+  assert.equal(restorePosition(report, null).item, 'a');
+  assert.equal(restorePosition(report, { overview: true }).item, 'a');
+  assert.equal(restorePosition(report, { step: 9, item: 'gone' }).item, 'a');
+  assert.match(restorePosition(report, { step: 9, item: 'gone' }).message, /当前可用成果/);
   assert.notEqual(noteKey('film-a', 'a', 'v1'), noteKey('film-a', 'a', 'v2'));
   assert.notEqual(stageKey('film-a', 2, 'r'), stageKey('film-b', 2, 'r'));
+  assert.equal(formatClock(8.5334), '00:08.53');
+  assert.equal(formatSpan(8.5334, 10.6667), '00:08.53–00:10.67');
+  assert.equal(formatSpan(10.67, 10.67), '00:10.67');
+  assert.equal(parseClock('1:23'), 83);
+  assert.equal(parseClock('1:23.4'), 83.4);
+  assert.equal(parseClock('01:23.45'), 83.45);
+  assert.equal(parseClock('75:00.00'), 4500);
+  assert.equal(formatClock(parseClock('1:23.4')), '01:23.40');
+  assert.equal(parseClock(' 00:08.535 '), 8.54);
+  assert.equal(parseClock('1:60'), null);
+  assert.equal(parseClock('8.5'), null);
+  assert.equal(parseClock(''), null);
   assert.equal(playbackContext({ path: 'old.mp4' }, { id: 'legacy' }), null);
   assert.deepEqual(playbackContext({ path: '局部小样/s02.mp4' }, { context: { shots: [{ id: 's01', start: 0, duration: 3 }, { id: 's02', start: 3, duration: 2 }] } }).shots, [{ id: 's02', start: 0, duration: 2 }]);
 });
@@ -33,9 +49,10 @@ test('queue filters find feedback and historical items; restoration never substi
 test('draft session preserves per-version values and keeps failed submissions local until explicit retry', async () => {
   const { createSession } = await moduleAt('session'); let fail = false;
   const saved = {}, local = new Map(), storage = { getItem: k => local.get(k) || null, setItem: (k, v) => local.set(k, v), removeItem: k => local.delete(k) };
-  const deps = { storage, prefix: 'test', read: async () => ({ entries: structuredClone(saved) }), write: async req => { if (fail) throw new Error('offline'); const entry = { revision: (saved[req.key]?.revision || 0) + 1, value: req.value }; saved[req.key] = entry; return entry; } };
+  const states = [], deps = { storage, prefix: 'test', onState: (state, message) => states.push([state, message]), read: async () => ({ entries: structuredClone(saved) }), write: async req => { if (fail) throw new Error('offline'); const entry = { revision: (saved[req.key]?.revision || 0) + 1, value: req.value }; saved[req.key] = entry; return entry; } };
   let session = await createSession(deps);
   session.set('note:f:a:v1', { text: '一版' }); session.set('note:f:a:v2', { text: '二版' }); await session.flush();
+  assert.deepEqual(states.at(-1), ['saved', '']);
   assert.equal(session.get('note:f:a:v1').text, '一版');
   fail = true; session.set('note:f:a:v2', { text: '断线草稿' }); await session.flush();
   session = await createSession(deps); assert.equal(session.get('note:f:a:v2').text, '断线草稿');

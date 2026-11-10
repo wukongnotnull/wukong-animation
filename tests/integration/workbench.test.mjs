@@ -1,4 +1,6 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { buildManifest, writeManifest } from '../../plugin/engine/core/delivery-manifest.mjs';
+import { initReviewRepo } from '../helpers/review-repo.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -157,6 +159,11 @@ test('loopback UI serves only registered immutable files with range support and 
 });
 test('real review handler signs off a checked brief and persists feedback without generating media', async t => {
   const f = await fixture(t);
+  initReviewRepo(f.film);
+  fs.appendFileSync(path.join(f.film, '.gitignore'), '.wka/workbench.json\n.wka/workbench/\n');
+  const ignore = spawnSync('git', ['commit', '-qam', 'ignore workbench ledger'], { cwd: f.film, encoding: 'utf8' });
+  assert.equal(ignore.status, 0, ignore.stderr);
+  writeManifest(f.film, buildManifest(f.film, 2));
   const view = await (await f.request('/api/report?film=' + f.id)).json(), stage = view.stages.find(s => s.step === 2), item = stage.items[0];
   let response = await f.request('/api/check', { film: f.id, artifactId: item.id, versionId: item.current.id, revision: item.revision });
   assert.equal(response.status, 200);

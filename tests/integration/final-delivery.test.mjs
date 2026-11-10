@@ -27,6 +27,10 @@ test('A3/A9 final CLI reports missing items with exit 2 and only writes four rep
 
 test('A4/A5/A11 real video and draft export bind existing signoff nodes and retain edits',{skip:!browserReady?'browser 管线依赖未安装':!pythonReady?'python3 里没有 pyJianYingDraft':false},t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-real-'));initializeProduction(dir);t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  for (const args of [['init','-q'],['config','user.name','Fixture'],['config','user.email','fixture@example.invalid'],['config','commit.gpgsign','false']]) assert.equal(spawnSync('git',args,{cwd:dir}).status,0);
+  fs.writeFileSync(path.join(dir,'.git/info/exclude'),'/home/\n/*.mp4\n');
+  fs.writeFileSync(path.join(dir,'.gitignore'),'/review/\n/.cache/\n/drafts/\n/.wka/*\n!/.wka/state.json\n!/.wka/decisions.json\n!/.wka/pending-approval.json\n!/.wka/final-delivery.json\n!/.wka/final-delivery-receipts/\n');
+  assert.equal(spawnSync('git',['add','--','.gitignore'],{cwd:dir}).status,0);assert.equal(spawnSync('git',['commit','-qm','init'],{cwd:dir}).status,0);
   const home=path.join(dir,'home'),drafts=path.join(dir,'drafts');fs.mkdirSync(path.join(home,'styles','delivery-fixture'),{recursive:true});fs.mkdirSync(drafts);fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'.wka'),{recursive:true});
   const style=JSON.parse(fs.readFileSync('plugin/skills/ink-wash/style.json'));Object.assign(style,{id:'delivery-fixture',fonts:[],scripts:[]});
   fs.writeFileSync(path.join(home,'styles/delivery-fixture/style.json'),JSON.stringify(style));

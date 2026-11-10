@@ -1,4 +1,5 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { initReviewRepo } from '../helpers/review-repo.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -16,7 +17,7 @@ for (const pipeline of ['browser', 'remotion']) {
 }
 const cli = (...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', maxBuffer: 8e6, env: { ...process.env, WUKONG_ANIMATION_HOME: home, WKA_NO_FONT_DOWNLOAD: '1' } });
 function film(pipeline, count = 3, duration = 0.34, fps = 10) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-时间 空格-'));initializeProduction(dir);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-时间 空格-'));initializeProduction(dir);initReviewRepo(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   const shots = Array.from({ length: count }, (_, i) => {
     const id = 's' + String(i + 1).padStart(2,'0');

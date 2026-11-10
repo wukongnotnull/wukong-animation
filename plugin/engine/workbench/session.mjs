@@ -25,7 +25,7 @@ export async function createSession({ read, write, storage, prefix, onState = ()
             persist();
           } catch (error) { failed = true; onState('error', error.message + '；未提交内容仍保留在本页/此浏览器，请勿清除浏览器数据。'); break; }
         }
-        if (!failed && !session.dirty()) onState('saved', '草稿与审阅位置已保存到本机工程');
+        if (!failed && !session.dirty()) onState('saved', '');
         return !failed;
       })();
       try { return await running; } finally { running = null; }

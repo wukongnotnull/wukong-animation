@@ -115,7 +115,14 @@ for (const t of TEMPLATES) {
   }
 }
 
-test('新建影片生成三个空白文档，剧本无需填写版本号', t => {
+test('剧本模板不写分镜稿才决定的画面、声音和文字形式', () => {
+  const story = read(path.join(PLUGIN, 'engine/templates/film/story.md'));
+  assert.match(story, /\| 段落 \| 时间 \| 这一段讲什么 \| 情绪 \|/);
+  assert.match(story, /\| 文字 \| 所在段落 \|/);
+  assert.doesNotMatch(story, /声音提示|画面在发生什么|运镜|景别|转场|\| 形式 \|/);
+});
+
+test('新建影片生成三个空白文档，简报、剧本和分镜稿都不写版本号', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-templates-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const cli = path.join(PLUGIN, 'engine/bin/wka.mjs');
@@ -125,6 +132,6 @@ test('新建影片生成三个空白文档，剧本无需填写版本号', t => 
   for (const template of TEMPLATES) {
     const generated = read(path.join(dir, 'films', '模板验收', path.basename(template)));
     assert.deepEqual(structure(generated), structure(read(path.join(PLUGIN, template))), template);
-    if (path.basename(template) === 'story.md') assert.doesNotMatch(generated, /剧本版本/);
+    assert.doesNotMatch(generated, /版本号|剧本\s*v\d+/);
   }
 });

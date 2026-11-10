@@ -6,6 +6,7 @@ import { digest, fileDigest, atomicJson } from './evidence.mjs';
 import { assertCompatibleProgress, assertActiveProduction, inspectProduction, FLOW, PRODUCTION_STEPS, REVIEW_GATES } from './state.mjs';
 import { lockProduction } from './operations.mjs';
 import { workbenchCatalog, workbenchDependencies, workbenchJson, scopedPath } from './workbench-catalog.mjs';
+import { verifyManifest } from './delivery-manifest.mjs';
 
 import { archiveWorkbench, archiveFile } from './workbench-archive.mjs';
 
@@ -125,11 +126,17 @@ function report(dir, data, catalog) {
     for (const item of formal) if (item.notes.some(n => n.blocking && !n.resolved)) blocks.push(`${item.label}：有未解决或待复验的阻塞意见`);
     if (!active.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的正式交付物，请在对话中补齐或登记');
     if (step >= 6 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
+    const progress = workbenchJson(scopedPath(dir, '.wka/state.json'), { history: [] });
+    const reviewCommit = verifyManifest(dir);
+    reviewCommit.short = reviewCommit.ok ? '已提交' : reviewCommit.reason?.includes('已变化') ? '已变化' : '未提交';
+    reviewCommit.ready = reviewCommit.ok;
+    const historicalApproval = (progress.history || []).some(h => h.step === step && h.decision === 'approved');
     let status = catalog.notApplicable.has(step) && !active.length && !blocks.length ? 'not-applicable' : 'pending';
-    if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length ? 'approved' : 'needs-review';
+    if (historicalApproval && !latest) status = 'approved';
+    else if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length && reviewCommit.ready ? 'approved' : 'needs-review';
     else if (latest?.decision === 'changes-requested' && latest.revision === revision) status = 'changes-requested';
     if (status === 'pending' && active.some(i => i.freshness === 'needs-review')) status = 'needs-review';
-    return { step, label, gate: REVIEW_GATES[step] || null, revision, status, items: chosen, blocks, decisions };
+    return { step, label, gate: REVIEW_GATES[step] || null, revision, status, items: chosen, blocks, decisions, reviewCommit };
   });
   return { version: 1, readonly: false, flow: FLOW, flowLabel: '制作流程', ok: !items.some(i => i.availability === 'unreadable'), dir, title: catalog.film.title || path.basename(dir), stages, shots: catalog.shots,
     duration: catalog.duration, warnings: catalog.warnings, notes: data.notes, history: items.filter(i => i.availability === 'historical') };
@@ -282,6 +289,8 @@ export async function decideWorkbenchStage(dir, request, signoff) {
     if (!stage || !stage.gate) throw new Error('本工序没有正式审片节点');
     if (stage.revision !== revision) throw new Error('阶段内容或来源已变化，请刷新并重新审阅');
     if (!['approved', 'changes-requested'].includes(decision) || typeof note !== 'string' || !note.trim() || note.length > 10000) throw new Error('请填写明确的审阅结论');
+    if (stage.decisions.at(-1)?.decision === 'changes-requested' && decision === 'approved') throw new Error('这一版已经退回，请重新提交后再签批');
+    if (decision === 'approved' && !stage.reviewCommit?.ready) throw new Error(stage.reviewCommit?.reason?.includes('缺少') ? '待审内容尚未提交' : stage.reviewCommit?.reason || '待审内容尚未提交');
     if (decision === 'approved' && stage.blocks.length) throw new Error(stage.blocks.join('；'));
     if (stage.status === 'approved' && decision === 'approved') return stage.decisions.at(-1);
     const id = crypto.randomUUID(); let result = null;

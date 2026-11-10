@@ -239,7 +239,10 @@ function noteCard(note) {
   return card;
 }
 function renderInspector() {
-  const file = item(), v = version(), s = stage(); $('kind-label').textContent = kinds[file?.kind] || ''; $('versions').replaceChildren();
+  const file = item(), v = version(), s = stage();
+  $('approve').textContent = s?.step === 8 || s?.status === 'not-applicable' ? '完成制作' : '通过并进入下一步';
+  document.getElementById('commit-state')?.remove();
+  if (s?.reviewCommit) $('checks').before(Object.assign(el('p', (s.reviewCommit.short || '未提交') + (s.reviewCommit.sha ? ' · ' + s.reviewCommit.sha.slice(0, 7) : ''), 'status-line ' + (s.reviewCommit.ready ? 'good' : 'warn')), { id: 'commit-state' })); $('kind-label').textContent = kinds[file?.kind] || ''; $('versions').replaceChildren();
   for (const row of [...file?.versions || []].reverse()) { const option = el('option', 'v' + row.number + ' · ' + date(row.at) + (row.id === file.current.id && file.availability !== 'historical' ? ' · 当前' : ' · 历史')); option.value = row.id; $('versions').append(option); }
   $('versions').value = ui.version || ''; $('versions').disabled = !v;
   $('version-detail').textContent = v ? v.snapshot.entries.length + ' 个文件 · ' + bytes(v.snapshot.entries.reduce((n, e) => n + e.size, 0)) + ' · ' + categories[file.category] : '尚无保存版本';
@@ -269,7 +272,7 @@ function renderInspector() {
   for (const d of (ui.report.readonly ? [] : s.decisions.slice(lastApproval + 1)).filter(d => d.decision === 'changes-requested')) {
     const row = el('div', undefined, 'stage-repair'); row.append(el('p', (d.repair ? '阶段返修待复验：' : '阶段待修改：') + d.note));
     if (d.repair) row.append(el('p', d.repair.summary + '\n验证：' + d.repair.verification), button('查看阶段返修版本', () => goToRepair(d)));
-    row.append(el('p', '检查当前成果后，用“通过本阶段”确认，或填写结论退回修改。', 'hint')); $('stage-blocks').append(row);
+    row.append(el('p', '检查当前成果后，用“通过并进入下一步”确认，或填写结论退回修改。', 'hint')); $('stage-blocks').append(row);
   }
   if (!s.decisions.length) $('decision-history').append(el('p', '尚无阶段结论'));
   $('stage-drafts').replaceChildren();
@@ -348,7 +351,7 @@ async function decision(value) {
     const result = await api('/api/decision', { film, step: s.step, revision: s.revision, decision: value, note, ...(ui.step === 8 && $('draft-opened').checked ? { openStatus: 'opened' } : {}) });
     if (session.get(key)?.text === input) { storeValue(key, null); if (ui.stageDraftKey === key) $('decision-note').value = ''; }
     if (film === ui.film) await loadReport();
-    notice(value === 'approved' ? result.archive?.git === 'not-confirmed' ? '批准已记录；Git 存档未确认，请在对话中核实。' : '阶段已通过，结论已同步。' : '返修要求已保存，回到对话后发起处理。');
+    notice(value === 'approved' ? '已通过并进入下一步。' : '返修要求已保存，回到对话后发起处理。');
   } finally { if (!ui.overview) renderInspector(); }
 }
 $('approve').onclick = () => action(() => decision('approved')); $('request-changes').onclick = () => action(() => decision('changes-requested'));

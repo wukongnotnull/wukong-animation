@@ -4,8 +4,9 @@ import crypto from 'node:crypto';
 import { shotHashes } from '../../core/job.mjs';
 import { loadFilm } from '../../core/film-context.mjs';
 import { snapshotMain, checkMainUnchanged } from '../../core/approval.mjs';
-import { commitSnapshot } from '../../core/project.mjs';
-import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, assertActiveProduction } from '../../core/state.mjs';
+import { commitPaths } from '../../core/project.mjs';
+import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, nextProductionStep, assertActiveProduction } from '../../core/state.mjs';
+import { buildManifest, writeManifest, verifyManifest } from '../../core/delivery-manifest.mjs';
 import { runQc } from '../../core/qc.mjs';
 import { requireTiming } from '../../core/timing.mjs';
 import { checkShotSizes } from '../../core/shot-sizes.mjs';
@@ -71,17 +72,32 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
           requireTiming(ctx, { proxy, fresh: true, log });
         }
       }
+      const decision = opt('decision') || 'approved';
+      if (!['approved', 'changes-requested'].includes(decision)) throw new Error('审阅结论无效');
+      const manifest = buildManifest(pos[0], step);
+      writeManifest(pos[0], manifest);
+      const label = path.basename(path.resolve(pos[0]));
+      const reviewPaths = [...manifest.tracked, 'delivery-manifest.json', '.wka/state.json', '.wka/decisions.json', '.wka/pending-approval.json'];
+      const current = readProgress(pos[0]);
+      if (current.history.some(h => h.decision === 'changes-requested' && h.reviewSha)) {
+        const closed = new Set(current.history.filter(h => h.decision === 'changes-requested').map(h => h.reviewSha));
+        const latest = current.history.at(-1);
+        if (latest?.decision === 'changes-requested' && closed.has(latest.reviewSha)) throw new Error('这一版已经退回，请重新提交后再签批');
+      }
+      const review = commitPaths(pos[0], { message: `${label}: 待审 ${PRODUCTION_STEPS[step]}`, paths: reviewPaths }, { log });
+      if (readProgress(pos[0]).history.some(h => h.reviewSha === review.sha && h.decision === 'changes-requested')) throw new Error('这一版已经退回，请重新提交后再签批');
+      const verified = verifyManifest(pos[0]);
+      if (!verified.ok) throw new Error(verified.reason);
       const prior=readProgress(pos[0]).history.find(h=>h.approvalId===id);
       let main=null,variants=null;
-      if(!prior&&step===FINAL_REVIEW_STEP){const snapshot=snapshotMain(pos[0],{log});if(snapshot.missing.length)throw new Error('缺少完整定稿快照，签批存档未提交');main=snapshot.hashes;}
-      if(!prior&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
-      commitSignoff(pos[0],{id,step,note,signature,main,variants});
-      if(deliveryApproval)commitFinalApproval(pos[0],deliveryApproval);
-      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:'pending',...deliveryProof});
-      const sha = commitSnapshot(pos[0], note, { log });
-      atomicJson(pendingFile,{id,step,note,signature,status:'completed',git:sha?'committed':'not-confirmed',sha,...deliveryProof});
+      if(!prior&&decision==='approved'&&step===FINAL_REVIEW_STEP){const snapshot=snapshotMain(pos[0],{log});if(snapshot.missing.length)throw new Error('缺少完整定稿快照，签批存档未提交');main=snapshot.hashes;}
+      if(!prior&&decision==='approved'&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
+      commitSignoff(pos[0],{id,step,note,signature,main,variants,decision,reviewSha:review.sha,advanced:decision==='approved'?nextProductionStep(pos[0],step):null});
+      if(decision==='approved'&&deliveryApproval)commitFinalApproval(pos[0],deliveryApproval);
+      atomicJson(pendingFile,{id,step,note,signature,status:'completed',decision,git:'committed',sha:review.sha,...deliveryProof});
+      const conclusion = commitPaths(pos[0], { message: `${label}: 审阅结论`, paths: ['.wka/state.json', '.wka/pending-approval.json'] }, { log });
+      log(`  ✓ 待审提交 ${review.sha.slice(0, 7)}，结论提交 ${conclusion.sha.slice(0, 7)}`);
       if (step) log(`  进度：第 ${step} 道工序「${PRODUCTION_STEPS[step]}」${REVIEW_GATES[step] ? ' · 审片节点 ' + REVIEW_GATES[step] : ''}`);
-      void sha;
       return;
     },
     'qc': async () => {

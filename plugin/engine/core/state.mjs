@@ -100,7 +100,18 @@ export function recordApproval(filmDir, { main = null, variant = null, shots = n
     : { ...approved, variants: { ...(approved.variants || {}), [variant]: { shots, main: approved.main || null } } };
   const out = { ...st, approved: next, updated: new Date().toISOString() }; writeState(filmDir, out); return out;
 }
-export function commitSignoff(filmDir, { id, step, note, signature, main = null, variants = null }) {
+export function nextProductionStep(filmDir, step) {
+  const filmFile = path.join(path.resolve(filmDir), 'film.json');
+  const film = fs.existsSync(filmFile) ? JSON.parse(fs.readFileSync(filmFile, 'utf8')) : {};
+  const decisions = fs.existsSync(path.join(filmDir, '.wka/decisions.json')) ? JSON.parse(fs.readFileSync(path.join(filmDir, '.wka/decisions.json'), 'utf8')) : {};
+  const excluded = new Set();
+  if (!Object.keys(film.variants || {}).length) excluded.add(7);
+  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video') excluded.add(8);
+  let next = Number(step) + 1;
+  while (excluded.has(next)) next += 1;
+  return next > LAST_STEP ? null : next;
+}
+export function commitSignoff(filmDir, { id, step, note, signature, main = null, variants = null, decision = 'approved', reviewSha = null, advanced = undefined }) {
   const st = assertActiveProduction(filmDir), number = checkedStep(step, st.step), old = st.history.find(h => h.approvalId === id);
   if (old) {
     if (old.signature !== signature || old.step !== number || old.note !== note) throw new Error('同一批准对应的输入或结论发生变化，不一致，需核实当前审阅');
@@ -109,8 +120,9 @@ export function commitSignoff(filmDir, { id, step, note, signature, main = null,
   let approved = st.approved || {};
   if (main) approved = { ...approved, main, mainId: crypto.randomUUID() };
   if (variants) approved = { ...approved, variants: { ...approved.variants, ...Object.fromEntries(Object.entries(variants).map(([aspect, shots]) => [aspect, { shots, main: approved.main || null }])) } };
-  const now = new Date().toISOString(), next = { ...st, step: Math.max(st.step, number), approved, updated: now,
-    history: [...st.history, { step: number, label: PRODUCTION_STEPS[number] || '', gate: REVIEW_GATES[number] || null, note, sha: null, at: now, approvalId: id, signature }] };
+  const now = new Date().toISOString(), destination = decision === 'approved' ? Math.max(st.step, advanced === undefined ? number : (advanced ?? st.step)) : st.step;
+  const next = { ...st, step: destination, approved, updated: now,
+    history: [...st.history, { step: number, label: PRODUCTION_STEPS[number] || '', gate: REVIEW_GATES[number] || null, note, decision, reviewSha, sha: reviewSha, at: now, approvalId: id, signature }] };
   writeState(filmDir, next); return next;
 }
 

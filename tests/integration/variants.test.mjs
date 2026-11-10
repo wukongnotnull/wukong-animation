@@ -1,4 +1,5 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { initReviewRepo } from '../helpers/review-repo.mjs';
 // 横竖双版：同一部片按画幅出主版和副版。需要真实的 Chromium + ffmpeg（wka setup）；缺依赖时跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,7 +22,7 @@ const BRANCHED = SHOT(`${FILL('#FFFFFF')} if (s.orientation === 'portrait') { ${
 
 /** 主版 320×180、副版 9:16 的最小片子；s01 有竖版覆盖文件（红）。 */
 function makeFilm(extra = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-'));initializeProduction(dir);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-'));initializeProduction(dir);initReviewRepo(dir);
   fs.mkdirSync(path.join(dir, 'shots'));
   fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#F2EDE3')));
   fs.writeFileSync(path.join(dir, 'shots', 's01.9x16.js'), SHOT(FILL('#FF0000')));

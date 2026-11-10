@@ -1,4 +1,5 @@
 import { confirmFixtureVoices } from '../helpers/production.mjs';
+import { initReviewRepo } from '../helpers/review-repo.mjs';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 // 真实命令、音频与输出文件验证恢复；不从“命令成功”推断用户批准。
 import {test} from 'node:test';
@@ -14,7 +15,7 @@ const CLI=fileURLToPath(new URL('../../plugin/engine/bin/wka.mjs',import.meta.ur
 const run=(...args)=>spawnSync(process.execPath,[CLI,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WKA_WORKERS:'2'}});
 const ok=r=>assert.equal(r.status,0,r.stdout+r.stderr);
 for(const style of ['ink-wash','keynote'])test(`${style} 实际编码复用、缺失补做、签批重试与特殊路径交付`,t=>{
-  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'动画 工程 (中) #%-'));initializeProduction(dir);t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'动画 工程 (中) #%-'));initializeProduction(dir);initReviewRepo(dir);t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'audio'));
   const browser=style==='ink-wash',ext=browser?'js':'jsx',shot=path.join(dir,'shots',`s01.${ext}`);
   const source=browser?'wk.shot({render(ctx,t,s){ctx.fillStyle="white";ctx.fillRect(0,0,s.W,s.H);}});':'import React from "react";export default function Shot(){return <div style={{width:"100%",height:"100%",background:"white"}}/>}';

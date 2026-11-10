@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { hashFile } from './file-hash.mjs';
 import { loadFilm } from './film-context.mjs';
-import { resolveVariant } from './variants.mjs';
+import { resolveVariant, suffixOf } from './variants.mjs';
 import { assertActiveProduction } from './state.mjs';
 
 const TEXT = {
@@ -31,6 +31,15 @@ function generated(dir, ctx, proxy) {
 function sourceFiles(dir, film) {
   const files = ['film.json', ...film.scripts || [], ...film.shots?.map(shot => shot.file) || []];
   if (film.audio?.build) files.push(film.audio.build);
+  for (const item of [...film.audio?.tracks || [], ...film.audio?.voices || []]) if (item?.file) files.push(item.file);
+  for (const aspect of Object.keys(film.variants || {})) {
+    const mark = `.${suffixOf(aspect)}`;
+    for (const shot of film.shots || []) if (shot.file) {
+      const ext = path.extname(shot.file);
+      files.push(ext ? shot.file.slice(0, -ext.length) + mark + ext : shot.file + mark);
+    }
+  }
+  files.push('.wka/voice-alignment.json', 'sync-points.json', 'review-notes.json');
   return files.map(file => relative(dir, file)).filter(file => exists(dir, file));
 }
 function entry(dir, rel) {
@@ -47,7 +56,7 @@ export function buildManifest(dir, step) {
   if (stepNumber <= 4) tracked = ['film.json', ...TEXT[stepNumber]].filter(file => exists(dir, file));
   else if (fs.existsSync(path.join(dir, 'film.json'))) {
     const ctx = loadFilm(dir, { requireShots: false });
-    tracked = [...TEXT[4], ...sourceFiles(dir, ctx.film)];
+    tracked = [...TEXT[4].filter(file => exists(dir, file)), ...sourceFiles(dir, ctx.film)];
     media = stepNumber === 5 ? generated(dir, ctx, true) : stepNumber === 6 ? generated(dir, ctx, false) : [];
     if (stepNumber === 7) {
       for (const aspect of Object.keys(ctx.film.variants || {})) {

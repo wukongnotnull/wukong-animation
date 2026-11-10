@@ -125,7 +125,7 @@ function commitIgnoreUpdate(dir, userEdits, log) {
  */
 export function commitSnapshot(filmDir, message, { log = console.log } = {}) {
   assertActiveProduction(filmDir);
-  filmDir = path.resolve(filmDir);
+  filmDir = fs.realpathSync(path.resolve(filmDir));
   if (!hasGit()) return null;
   if (!git(filmDir, ['rev-parse', '--is-inside-work-tree']).ok) {
     log('  ! 项目不是 git 仓库，跳过提交（先运行 wka init-project）');
@@ -159,29 +159,36 @@ function normalizeReviewPath(file) {
   return rel;
 }
 
+function gitRoot(dir) {
+  const r = git(dir, ['rev-parse', '--show-toplevel']);
+  if (!r.ok) throw new Error('项目不是 git 仓库，先运行 wka init-project');
+  return path.resolve(r.out);
+}
 function changedPaths(dir) {
-  const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '-uall'], { cwd: dir, encoding: 'utf8' });
+  const root = gitRoot(dir), prefix = path.relative(root, dir).split(path.sep).filter(Boolean).join('/');
+  const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '-uall'], { cwd: root, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`无法读取 Git 状态：${(r.stderr || '').trim()}`);
   const records = (r.stdout || '').split('\0').filter(part => part !== '');
   const paths = [];
   for (let i = 0; i < records.length; i++) {
     const status = records[i].slice(0, 2);
-    paths.push(records[i].slice(3));
+    paths.push(records[i].slice(3).trimStart());
     if (status[0] === 'R' || status[0] === 'C') paths.push(records[++i]);
   }
-  return paths.filter(Boolean);
+  return paths.filter(Boolean).filter(file => !prefix || file === prefix || file.startsWith(prefix + '/')).map(file => prefix ? file.slice(prefix.length + 1) : file);
 }
 
 /** 只提交调用方点名的文件。范围外有改动时拒绝，不改动暂存区。 */
 export function commitPaths(filmDir, { message, paths } = {}, { log = console.log } = {}) {
   assertActiveProduction(filmDir);
-  filmDir = path.resolve(filmDir);
+  filmDir = fs.realpathSync(path.resolve(filmDir));
   if (typeof message !== 'string' || !message.trim()) throw new Error('待审提交说明无效');
   if (!Array.isArray(paths) || !paths.length) throw new Error('待审提交范围无效');
   const allowed = [...new Set(paths.map(normalizeReviewPath))];
   if (!hasGit()) throw new Error('没有找到 git，不能提交待审版本');
   if (!git(filmDir, ['rev-parse', '--is-inside-work-tree']).ok) throw new Error('项目不是 git 仓库，先运行 wka init-project');
   if (!hasIdentity(filmDir)) throw new Error(IDENTITY_HINT);
+  const root = gitRoot(filmDir), prefix = path.relative(root, filmDir).split(path.sep).filter(Boolean).join('/');
   const dirty = changedPaths(filmDir);
   const outside = dirty.filter(file => !allowed.includes(file.split(path.sep).join('/')));
   if (outside.length) throw new Error(`签批范围之外还有未提交改动：${outside.join('、')}`);
@@ -197,9 +204,10 @@ export function commitPaths(filmDir, { message, paths } = {}, { log = console.lo
     if (!fs.existsSync(absolute) && !tracked) throw new Error(`待审文件不存在：${file}`);
     if (fs.existsSync(absolute) && !fs.statSync(absolute).isFile()) throw new Error(`待审范围必须是文件：${file}`);
   }
-  const added = git(filmDir, ['add', '--', ...allowed]);
+  const rooted = allowed.map(file => prefix ? prefix + '/' + file : file);
+  const added = git(root, ['add', '--', ...rooted]);
   if (!added.ok) throw new Error(`暂存待审文件失败：${added.err}`);
-  const committed = git(filmDir, ['commit', '-m', message, '--', ...allowed]);
+  const committed = git(root, ['commit', '-m', message, '--', ...rooted]);
   if (!committed.ok) throw new Error(`提交失败：${committed.err}`);
   const sha = git(filmDir, ['rev-parse', 'HEAD']);
   if (!sha.ok) throw new Error('提交后无法读取 Git 版本');

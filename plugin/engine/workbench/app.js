@@ -304,11 +304,13 @@ async function poll() {
     const film = ui.film, state = await api('/api/status?film=' + film); if (film !== ui.film) return;
     ui.busy = state.busy;
     connection(state.busy ? '制作进行中 · 可查看已载入内容，正式提交暂不可用' : '已连接 · 素材保留本机', state.busy);
-    if (!state.busy && state.revision !== ui.fingerprint) {
-      const report = await api('/api/report?film=' + film); if (film !== ui.film) return;
-      ui.pendingReport = report; ui.lastSync = new Date().toISOString(); ui.fingerprint = (await api('/api/status?film=' + film)).revision;
-      $('apply-update').textContent = '有更新 · 查看'; $('apply-update').hidden = false; connection('已连接 · 有更新待查看');
-      if (!ui.overview && version()) { $('view-state').textContent = '正在查看 · v' + version().number + ' · 有更新待核对'; $('view-state').className = 'tag warn'; }
+    if (!state.busy && state.revision !== ui.fingerprint && !ui.applyingUpdate) {
+      ui.applyingUpdate = true;
+      try {
+        stash();
+        await loadReport(false, true);
+        if (film === ui.film) notice('已载入新版本；未提交的草稿仍留在原版本。');
+      } finally { ui.applyingUpdate = false; }
     }
     if (session?.dirty()) await session.flush();
   } catch (error) { connection(error.message, true); }

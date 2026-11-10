@@ -44,6 +44,8 @@ test('wka brief without a name prints usage and fails', () => {
 
 test('signing off step 2 records the ① brief gate, and status lists the placeholder film', () => {
   const dir = project();
+  wka(dir, 'init-project');
+  for (const args of [['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['config', 'commit.gpgsign', 'false']]) spawnSync('git', args, { cwd: dir });
   wka(dir, 'brief', '寒江');
   const s = wka(dir, 'signoff', 'films/寒江', '简报签批', '--step', '2');
   assert.equal(s.status, 0, s.stderr);
@@ -51,7 +53,7 @@ test('signing off step 2 records the ① brief gate, and status lists the placeh
   const st = wka(dir, 'status');
   assert.match(st.stdout, /寒江/);
   assert.match(st.stdout, /未定/);
-  assert.match(st.stdout, /下一步：3\. 编写剧本/);
+  assert.match(st.stdout, /下一步：4\. 规划镜头/);
 });
 
 test('wka init completes the placeholder film and keeps brief.md', () => {

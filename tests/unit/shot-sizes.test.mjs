@@ -1,4 +1,5 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { initReviewRepo } from '../helpers/review-repo.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -44,6 +45,7 @@ const WKA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../pl
 function filmWith(sizes) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-size-'));
   initializeProduction(dir);
+  initReviewRepo(dir);
   fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify({ title: 't', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1, shots: shots(...sizes) }));
   return dir;
 }
@@ -62,7 +64,7 @@ test('signoff --step 4 --force records the sign-off with the problems attached',
   const r = spawnSync(process.execPath, [WKA, 'signoff', dir, '分镜签批', '--step', '4', '--force'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const st = readProgress(dir);
-  assert.equal(st.step, 4);
+  assert.equal(st.step, 5);
   assert.match(st.history.at(-1).note, /^分镜签批（景别检查未通过：s02 和 s03 都是特写/);
   fs.rmSync(dir, { recursive: true, force: true });
 });

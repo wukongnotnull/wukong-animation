@@ -7,8 +7,8 @@ import path from 'node:path';
 import { aspectOf, orientationOf, suffixOf, sizeOf, resolveVariant, overrideShotPath, listAspects } from '../../plugin/engine/core/variants.mjs';
 
 const STYLE = { id: 'keynote', aspects: ['16:9', '9:16'] };
-const FILM = { title: '七十二变', style: 'keynote', size: [1920, 1080], export: { name: 'qishier' } };
-const DIR = '/tmp/films/qishier';
+const FILM = { title: '画幅测试', style: 'keynote', size: [1920, 1080], export: { name: 'variant-fixture' } };
+const DIR = '/tmp/films/variant-fixture';
 
 test('aspectOf reduces the size to W:H', () => {
   assert.equal(aspectOf([1920, 1080]), '16:9');
@@ -46,8 +46,8 @@ test('without an aspect the main version keeps every existing path', () => {
   assert.equal(v.cacheDir, path.join(DIR, '.cache'));
   assert.equal(v.stillsDir, path.join(DIR, 'stills'));
   assert.equal(v.review('小样.mp4'), '小样.mp4');
-  assert.equal(v.exportName, 'qishier');
-  assert.equal(v.title, '七十二变');
+  assert.equal(v.exportName, 'variant-fixture');
+  assert.equal(v.title, '画幅测试');
   assert.deepEqual(v.overrides, {});
 });
 
@@ -69,8 +69,8 @@ test('a variant gets its own size, cache, stills, review names and export name',
   assert.equal(v.stillsDir, path.join(DIR, 'stills', '9x16'));
   assert.equal(v.review('小样.mp4'), '小样-9x16.mp4');
   assert.equal(v.review('主版不变报告.md'), '主版不变报告-9x16.md');
-  assert.equal(v.exportName, 'qishier-9x16');
-  assert.equal(v.title, '七十二变-9x16');
+  assert.equal(v.exportName, 'variant-fixture-9x16');
+  assert.equal(v.title, '画幅测试-9x16');
 });
 
 test('a portrait main version can have a landscape variant', () => {
@@ -81,9 +81,9 @@ test('a portrait main version can have a landscape variant', () => {
 });
 
 test('variant overrides: export name', () => {
-  const film = { ...FILM, variants: { '9:16': { export: { name: 'qishier-shu' } } } };
+  const film = { ...FILM, variants: { '9:16': { export: { name: 'variant-fixture-shu' } } } };
   const v = resolveVariant({ film, style: STYLE, filmDir: DIR }, '9:16');
-  assert.equal(v.exportName, 'qishier-shu');
+  assert.equal(v.exportName, 'variant-fixture-shu');
 });
 
 test('rejects aspects that are malformed, not declared, the main one as a variant, or unsupported by the style', () => {

@@ -1,16 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import { digest } from '../core/evidence.mjs';
 import { parseArgs } from '../core/command-args.mjs';
 import { commandContext } from './context.mjs';
 import { reviewCommands } from './commands/review.mjs';
 import { commitSnapshot } from '../core/project.mjs';
 import { finalDeliveryReport } from '../core/final-delivery.mjs';
-import { scopedPath } from '../core/workbench-catalog.mjs';
+import { scopedPath, workbenchJson } from '../core/workbench-catalog.mjs';
 import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, recordWorkbenchRepair, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
 import { readWorkbenchUI, writeWorkbenchUI, workbenchStatus } from '../core/workbench-ui.mjs';
 
@@ -42,13 +42,24 @@ async function bodyOf(req) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('请求格式无效');
   return body;
 }
-function filmsAt(root) {
+function filmName(dir) {
+  const fallback = path.basename(dir), file = scopedPath(dir, 'film.json');
+  if (!fs.lstatSync(file, { throwIfNoEntry: false })?.isFile()) return fallback;
+  try {
+    const title = workbenchJson(file, {})?.title;
+    return (typeof title === 'string' && title.trim()) || fallback;
+  } catch {
+    // An unreadable configuration should not hide other films in the picker.
+    return fallback;
+  }
+}
+function filmsAt(root, workspace = root) {
   const films = scopedPath(root, 'films');
   const dirs = fs.existsSync(films) && fs.statSync(films).isDirectory()
     ? fs.readdirSync(films, { withFileTypes: true }).filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => scopedPath(root, path.join('films', e.name)))
     : [root];
   return dirs.filter(dir => ['film.json', 'brief.md', '.wka/state.json'].some(f => fs.existsSync(scopedPath(dir, f))))
-    .map(dir => ({ id: digest(path.relative(root, dir).split(path.sep).join('/') || '.').slice(0, 24), name: path.basename(dir), dir }));
+    .map(dir => ({ id: digest(path.relative(workspace, dir).split(path.sep).join('/') || '.').slice(0, 24), name: filmName(dir), dir }));
 }
 function runOpen(command, args) {
   return new Promise((resolve, reject) => {
@@ -78,26 +89,65 @@ async function signoffExisting({ dir, step, note, id, openStatus }) {
   } };
 }
 
-export async function startWorkbench(directory, { port = 0, signoff = signoffExisting, locate = reveal } = {}) {
+export function normalizeWorkbenchDirectories(directories) {
+  if (!Array.isArray(directories) || !directories.length || directories.length > 1000 || directories.some(dir => typeof dir !== 'string' || !dir)) throw new Error('需要明确指定项目或片目录');
+  return [...new Set(directories.map(dir => {
+    const real = fs.realpathSync(path.resolve(dir));
+    if (!fs.statSync(real).isDirectory()) throw new Error('工作台需要项目或片目录：' + dir);
+    return real;
+  }))];
+}
+export async function startWorkbench(directory, { directories = [], port = 0, signoff = signoffExisting, locate = reveal, control = null, uiDirectory = null, identityRoot = null } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('端口应为 0–65535 的整数');
-  const root = fs.realpathSync(path.resolve(directory)), token = crypto.randomBytes(32).toString('hex');
+  let roots = normalizeWorkbenchDirectories([directory, ...directories]);
+  const root = identityRoot || roots[0], uiRoot = uiDirectory || root;
+  const list = (directories = roots) => {
+    const available = directories.filter(dir => fs.existsSync(dir) && fs.statSync(dir).isDirectory());
+    const films = [...new Map(available.flatMap(dir => filmsAt(dir, root)).map(film => [film.dir, film])).values()];
+    const names = films.map(film => film.name);
+    for (const film of films) if (names.filter(name => name === film.name).length > 1) film.name += '（' + (path.relative(root, film.dir) || '.') + '）';
+    return { films, workspaceId: digest(uiRoot).slice(0, 24) };
+  };
+  list(); // Validate discovery before starting or publishing a service.
   let origin;
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
     try {
-      if (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
+      const sameOrigin = req.headers['sec-fetch-site'] === 'same-origin';
+      // Some header extensions strip only the Origin port. Accept that exact form
+      // only when browser-controlled Fetch Metadata still identifies this origin.
+      const originMatches = req.headers.origin === origin || (sameOrigin && req.headers.origin === 'http://127.0.0.1');
+      if (req.headers.host !== new URL(origin).host || (req.headers.origin && !originMatches)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
       const url = new URL(req.url, origin), route = url.pathname;
+      if (route.startsWith('/_workbench/')) {
+        const token = Buffer.from(req.headers['x-wka-control'] || ''), expected = Buffer.from(control?.token || '');
+        if (!control || req.headers.origin !== undefined || req.headers['sec-fetch-site'] !== undefined || token.length !== expected.length || !timingSafeEqual(token, expected)) {
+          send(res, 403, { error: '项目接入仅由本机启动命令完成' }); return;
+        }
+        if (route === '/_workbench/status' && req.method === 'GET') { send(res, 200, { service: 'wka-workbench', protocol: 1, instanceId: control.instanceId }); return; }
+        if (route === '/_workbench/projects' && req.method === 'POST') {
+          const body = await bodyOf(req), added = normalizeWorkbenchDirectories(body.directories);
+          const next = [...new Set([...roots, ...added])];
+          const listing = list(next);
+          control.onDirectories(next); roots = next;
+          send(res, 200, listing); return;
+        }
+        send(res, 404, { error: '未知工作台控制入口' }); return;
+      }
       if (['/', '/app.js', '/app.css', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }
-      const supplied = req.headers.authorization === 'Bearer ' + token || (route === '/api/file' && url.searchParams.get('token') === token);
-      if (!supplied) { send(res, 401, { error: '工作台连接已失效，请使用启动时提供的完整链接重新打开' }); return; }
-      const films = filmsAt(root);
-      if (route === '/api/films' && req.method === 'GET') { send(res, 200, { films, workspaceId: digest(root).slice(0, 24) }); return; }
+      // Trust this loopback page, not requests initiated by other websites or ports.
+      // POST must also carry an Origin matching the checks above.
+      if (!sameOrigin || (req.method === 'POST' && !originMatches)) {
+        send(res, 403, { error: '工作台仅接受本机页面的同源请求，请直接打开本机地址，并检查浏览器扩展是否改写请求' }); return;
+      }
+      const listing = list(), { films } = listing;
+      if (route === '/api/films' && req.method === 'GET') { send(res, 200, listing); return; }
       const body = req.method === 'POST' ? await bodyOf(req) : {};
-      if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(root) : writeWorkbenchUI(root, body)); return; }
+      if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(uiRoot) : writeWorkbenchUI(uiRoot, body)); return; }
       const film = films.find(f => f.id === (body.film || url.searchParams.get('film')));
       if (!film) throw new Error('影片不在本次工作台授权范围内');
       if (route === '/api/report' && req.method === 'GET') { send(res, 200, captureWorkbench(film.dir)); return; }
@@ -122,6 +172,6 @@ export async function startWorkbench(directory, { port = 0, signoff = signoffExi
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   origin = 'http://127.0.0.1:' + server.address().port;
-  return { server, origin, token, url: origin + '/#' + token,
+  return { server, origin, url: origin + '/', listing: list,
     close: () => new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); server.closeIdleConnections(); }) };
 }

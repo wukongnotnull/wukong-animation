@@ -8,14 +8,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as synth from '../../plugin/engine/audio/synth.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-// 《春江花月夜》的配乐挂在人声同步点上：每句 4 秒，落印在片尾前。
-const CHUNJIANG_CUES = {
-  ...Object.fromEntries(Array.from({ length: 36 }, (_, i) => [`第${i + 1}句`, [5 + i * 4, 8 + i * 4]])),
-  落印: [150, 150.5],
-};
 const SCRIPTS = {
   'film template': { rel: 'plugin/engine/templates/film/audio/build.mjs', duration: 12, cues: {} },
-  'chunjiang example': { rel: 'plugin/skills/ink-wash/examples/chunjiang/audio/build.mjs', duration: 155, cues: CHUNJIANG_CUES },
+  'sub-second film template': { rel: 'plugin/engine/templates/film/audio/build.mjs', duration: 0.25, cues: {} },
 };
 
 for (const [name, { rel, duration, cues }] of Object.entries(SCRIPTS)) {
@@ -24,7 +19,11 @@ for (const [name, { rel, duration, cues }] of Object.entries(SCRIPTS)) {
     const build = (await import(pathToFileURL(path.join(ROOT, rel)).href)).default;
     const tracks = await build({ synth, duration, outDir, shots: [], cues, log: () => {} });
     assert.deepEqual(tracks.map((t) => path.basename(t.file)), ['bgm.wav', 'ambience.wav', 'sfx.wav']);
-    for (const t of tracks) assert.ok(fs.existsSync(t.file), `missing ${t.file}`);
+    for (const t of tracks) {
+      const wav = fs.readFileSync(t.file);
+      assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
+      assert.equal(wav.readUInt32LE(40), Math.ceil(duration * 48000) * 4, 'stereo 16-bit track duration');
+    }
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 }

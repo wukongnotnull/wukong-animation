@@ -179,9 +179,7 @@
 
 ## 9. 示范片
 
-《七十二变》`examples/qishier/` · 14 秒 · 16:9 · 无人声。分镜见 [`examples/qishier/storyboard.md`](examples/qishier/storyboard.md)。
-
-四镜依次示范单句标题页（L01）、观点 + 界面（L04）、`hold` 接对象级神奇移动推近到一行（细节页）、用图形表达"多"（L05）。
+当前不附带示范片。新片使用通用工程模板，按本风格规范编写镜头。
 
 ## 10. 交付前质检
 

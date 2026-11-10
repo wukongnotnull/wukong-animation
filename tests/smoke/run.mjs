@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 冒烟测试：每个风格的示范片，用固定种子在 3 个时间点渲染预览静帧，
+// 冒烟测试：每个风格的示范片或独立图形夹具，渲染首、中、末镜静帧，
 //   1) 同一帧渲染两次必须一致（确定性）：允许个别像素的抗锯齿抖动（CI 上的 Chromium 偶尔会有），
 //      但不允许任何像素明显变化，也不允许平均差超过 DET_MEAN_MAX
 //   2) 与基准图比对：平均像素差 ≤ MEAN_MAX，且明显变化的像素占比 ≤ CHANGED_MAX
@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { BUILTIN_FIXTURE_STYLES, writeBuiltinFixture } from '../fixtures/performance.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WK = path.join(ROOT, 'plugin/engine/bin/wka.mjs');
@@ -27,6 +28,7 @@ process.env.WKA_NO_FONT_DOWNLOAD = '1'; // 统一用 fallback 字体，基准图
 
 function raw(png) {
   const r = spawnSync('ffmpeg', ['-v', 'error', '-i', png, '-vf', 'scale=320:-2', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 26 });
+  if (r.status !== 0 || !r.stdout?.length) throw new Error(`静帧解码失败：${r.stderr}`);
   return r.stdout;
 }
 function compare(a, b) {
@@ -57,13 +59,19 @@ const skills = path.join(ROOT, 'plugin/skills');
 for (const id of fs.readdirSync(skills)) {
   if (only.length && !only.includes(id)) continue;
   const ex = path.join(skills, id, 'examples');
-  if (!fs.existsSync(path.join(skills, id, 'style.json')) || !fs.existsSync(ex)) continue;
-  for (const name of fs.readdirSync(ex).filter((d) => fs.existsSync(path.join(ex, d, 'film.json')))) {
+  if (!fs.existsSync(path.join(skills, id, 'style.json'))) continue;
+  const examples = fs.existsSync(ex) ? fs.readdirSync(ex).filter((d) => fs.existsSync(path.join(ex, d, 'film.json'))) : [];
+  const synthetic = examples.length === 0;
+  if (synthetic && !BUILTIN_FIXTURE_STYLES[id]) {
+    console.log(`✗ ${id} 没有示范片或独立渲染夹具`);fail++;continue;
+  }
+  for (const name of synthetic ? ['fixture'] : examples) {
     tested++;
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-smoke-'));
     const film = path.join(tmp, name);
     initializeProduction(film);
-    fs.cpSync(path.join(ex, name), film, { recursive: true, filter: file => !['.wka', '.cache', 'review'].includes(path.basename(file)) });
+    if (synthetic) writeBuiltinFixture(film, BUILTIN_FIXTURE_STYLES[id], { audio: false });
+    else fs.cpSync(path.join(ex, name), film, { recursive: true, filter: file => !['.wka', '.cache', 'review'].includes(path.basename(file)) });
     const fj = JSON.parse(fs.readFileSync(path.join(film, 'film.json'), 'utf8'));
     // Historical examples supply visuals only, in a new independent smoke-test film.
     delete fj.audio;delete fj.subtitles;for(const v of Object.values(fj.variants||{})) delete v.subtitles;
@@ -83,6 +91,18 @@ for (const id of fs.readdirSync(skills)) {
           fail++;
         }
       });
+      if (synthetic) {
+        // Geometry fixture: probe well inside the moving white rectangle and dark background.
+        // This catches empty/incorrect frames independently of the determinism comparison.
+        const height = aspect ? 568 : 180;
+        first.forEach((a, i) => {
+          const pixel = (x, y) => a[Math.floor(y * height) * 320 + Math.floor(x * 320)];
+          const ok = a.length === 320 * height && pixel(0.32, 0.4) > 230 && pixel(0.1, 0.1) < 120 && pixel(0.7, 0.4) < 120;
+          if (!ok) fail++;
+          console.log(`  ${ok ? '✓' : '✗'} ${label} ${points[i].shot} 图形位置、前景/背景与重复渲染检查`);
+        });
+        continue;
+      }
       const dir = path.join(BASE, id, `${name}${suffix}`);
       fs.mkdirSync(dir, { recursive: true });
       first.forEach((a, i) => {
@@ -110,8 +130,8 @@ for (const id of fs.readdirSync(skills)) {
   }
 }
 if (!tested) {
-  console.log('✗ 没有找到任何示范片（plugin/skills/<风格>/examples/<片名>/film.json），冒烟测试什么都没测');
+  console.log('✗ 没有找到任何示范片或独立渲染夹具，冒烟测试什么都没测');
   fail++;
 }
-console.log(fail ? `\n✗ ${fail} 项失败` : `\n✓ 冒烟测试通过（${tested} 支示范片）`);
+console.log(fail ? `\n✗ ${fail} 项失败` : `\n✓ 冒烟测试通过（${tested} 组渲染素材）`);
 process.exit(fail ? 1 : 0);

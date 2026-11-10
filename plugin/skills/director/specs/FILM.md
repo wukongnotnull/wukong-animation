@@ -5,7 +5,6 @@
 - **工序**：第 2 道 `wka init` 生成，第 4 道起各道工序往里填字段
 - **模板**：`engine/templates/film/film.json`
 - **完整字段**：`engine/schemas/film.schema.json`，引擎按它校验
-- **示例**：各风格的示范片，如 `ink-wash/examples/chunjiang/film.json`
 
 ## 一、结构一览
 

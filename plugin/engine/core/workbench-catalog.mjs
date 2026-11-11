@@ -125,7 +125,7 @@ export function workbenchDependencies(dir, item, film) {
     const sound = [5, 6, 7, 8].includes(item.step) && item.kind !== 'image';
     const picture = [5, 6, 7, 8].includes(item.step);
     if (sound) {
-      projections.audio = film.audio || {}; add(film.audio?.build); add('.wka/voice-alignment.json');
+      projections.audio = film.audio || {}; add(film.audio?.build); add('.wka/voice-alignment.json'); add('.wka/word-timeline.json');
       for (const track of [...(film.audio?.tracks || []), ...(film.audio?.voices || [])]) add(track.file);
     }
     if (picture) {

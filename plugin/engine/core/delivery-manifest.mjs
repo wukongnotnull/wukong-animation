@@ -39,7 +39,7 @@ function sourceFiles(dir, film) {
       files.push(ext ? shot.file.slice(0, -ext.length) + mark + ext : shot.file + mark);
     }
   }
-  files.push('.wka/voice-alignment.json', 'sync-points.json', 'review-notes.json');
+  files.push('.wka/voice-alignment.json', '.wka/word-timeline.json', 'sync-points.json', 'review-notes.json');
   return files.map(file => relative(dir, file)).filter(file => exists(dir, file));
 }
 function entry(dir, rel) {

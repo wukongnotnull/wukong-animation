@@ -51,6 +51,10 @@ const chars = s.cueChars('第四句');
 
 逐字同步点只是估算：停顿区间内仍按字数均分，静音检测不能证明词首时刻。不要把这种结果写成“逐词实测”。
 
+### 逐词时间表 cue
+
+`wka align-voice` 生成逐词时间表后，镜头可直接用 `word:<录音cue>:<序号>` 作为 cue（如 `s.cueFrame('word:v01:3')`、`s.cueIn/cueOut`），序号见 `review/逐词时间表.md`。词 cue 不写进 `film.json`；pending 或过期的词渲染时报错，不会改用估算时间。
+
 ### 列举词和步骤：词锚点
 
 需要“念到有素材，文字就出现”时，在片目录的 `sync-points.json` 声明词点，格式见 `engine/schemas/sync-points.schema.json`。先运行 `wka soundtrack`，从 `.cache/voice-sources.json` 读取当前人声的 audio_sha256/text_sha256；manual 或 aligned 的 range 是相对该句原始音频的秒数，必须来自实际听审或可核对的对齐结果，不能由字数均分伪装成测量。

@@ -41,7 +41,7 @@ export function reconcileSegments(rows, transcript, duration) {
   // Timings come from recognition, never from distributing manuscript characters.
   return { status: issues.length ? 'pending' : 'matched', method: expected ? 'local-recognition-text-match' : 'local-recognition', segments, issues };
 }
-function sources(ctx) {
+export function voiceSources(ctx, { checkTotal = true } = {}) {
   const audio = ctx.film.audio || {}, voices = audio.voices || [];
   if (audio.voice_source === 'none' || (!audio.voice_source && !voices.length)) return {};
   if (!voices.length) throw new Error('需要用户录音，请先提供素材');
@@ -54,13 +54,13 @@ function sources(ctx) {
     if (!fs.existsSync(file)) throw new Error(`用户录音不存在：${v.file}`);
     const duration = probeDuration(file);
     if (!Number.isFinite(duration) || duration <= 0) throw new Error(`录音损坏或没有可用时长：${v.file}`);
-    if (!Number.isFinite(v.at) || v.at < 0 || v.at + duration > ctx.totalDuration + .001) throw new Error(`录音 ${id} 超出已批准的影片时长，请确认调整；不会截断或变速。`);
+    if (!Number.isFinite(v.at) || v.at < 0 || (checkTotal && v.at + duration > ctx.totalDuration + .001)) throw new Error(`录音 ${id} 超出已批准的影片时长，请确认调整；不会截断或变速。`);
     result[id] = { file: v.file, audioSha256: fileDigest(file), textSha256: digest(v.text || ''), at: v.at, duration, text: v.text || '' };
   });
   return result;
 }
 export function voiceAlignmentStatus(dir) {
-  const ctx = loadFilm(dir, { requireShots: false }), data = ledger(ctx.filmDir), current = sources(ctx), voices = {};
+  const ctx = loadFilm(dir, { requireShots: false }), data = ledger(ctx.filmDir), current = voiceSources(ctx), voices = {};
   for (const [id, source] of Object.entries(current)) {
     const saved = data.voices[id];
     if (saved) validateSegments(saved.segments, saved.source?.duration);
@@ -147,6 +147,34 @@ function recognize(binary, args, log) {
     child.on('close', code => { clearInterval(timer);code === 0 ? resolve() : reject(new Error(`本地识别失败（${code}）：${errors}`)); });
   });
 }
+export async function recognizeVoice(dir, id, source, setup, log = console.log, { dtw = false, prompt = null } = {}) {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-speech-'));
+  try {
+    const wav = path.join(temp, 'audio.wav'), output = path.join(temp, 'recognition');
+    await run(['-i', scopedPath(dir, source.file), '-vn', '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wav]);
+    log(`本地识别 ${id}（${source.duration.toFixed(1)} 秒，CPU，不上传录音）`);
+    const preset = dtw ? dtwPreset(setup.model) : null;
+    await recognize(setup.binary, ['-m', setup.model, '-f', wav, '-l', 'auto', '-ojf', '-of', output, '--no-gpu', ...(preset ? ['--dtw', preset, '-nfa'] : []), ...(prompt ? ['--prompt', prompt] : [])], log);
+    return read(output + '.json');
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+}
+// whisper.cpp 的 DTW 词时间需要与模型规格对应的预设；按官方文件名识别，认不出就不启用。
+export function dtwPreset(model) {
+  const match = path.basename(String(model || '')).toLowerCase().match(/^ggml-(tiny|base|small|medium|large-v1|large-v2|large-v3-turbo|large-v3)(\.en)?(?:[-.]|$)/);
+  if (!match) return null;
+  const size = match[1].replace('large-v3-turbo', 'large.v3.turbo').replace(/^large-v/, 'large.v');
+  return size + (match[2] || '');
+}
+/** token 列表；有 DTW 时间时用它作为 token 起点（比解码器时间戳更贴近声学）。 */
+export function recognitionTokens(raw) {
+  const tokens = (raw?.transcription || []).flatMap(row => row.tokens || []).filter(token => typeof token.text === 'string' && !/^\[.*\]$/.test(token.text.trim()));
+  const dtw = tokens.length > 0 && tokens.every(token => Number.isFinite(token.t_dtw) && token.t_dtw >= 0);
+  return tokens.map((token, i) => {
+    const from = dtw ? token.t_dtw / 100 : token.offsets?.from / 1000;
+    const next = dtw ? tokens[i + 1]?.t_dtw / 100 : undefined;
+    return { text: token.text, from, to: dtw ? (Number.isFinite(next) && next > from ? next : from + Math.max(0.05, (token.offsets?.to - token.offsets?.from) / 1000 || 0.15)) : token.offsets?.to / 1000, p: token.p };
+  });
+}
 export async function alignVoice(dir, { binary, model, force = false, log = console.log } = {}) {
   const status = voiceAlignmentStatus(dir), data = ledger(dir);
   const targets = Object.entries(status.voices).filter(([, v]) => force || !['matched', 'confirmed'].includes(v.status));
@@ -156,21 +184,14 @@ export async function alignVoice(dir, { binary, model, force = false, log = cons
   const tool = { engine: setup.engine, binary: setup.binary, binarySha256: fileDigest(setup.binary), model: setup.model, modelSha256: fileDigest(setup.model), cpu: true };
   const updates = {};
   for (const [id, value] of targets) {
-    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-speech-'));
-    try {
-      const wav = path.join(temp, 'audio.wav'), output = path.join(temp, 'recognition');
-      await run(['-i', scopedPath(dir, value.source.file), '-vn', '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wav]);
-      log(`本地识别 ${id}（${value.source.duration.toFixed(1)} 秒，CPU，不上传录音）`);
-      await recognize(setup.binary, ['-m', setup.model, '-f', wav, '-l', 'auto', '-ojf', '-of', output, '--no-gpu'], log);
-      const raw = read(output + '.json');
-      const rows = (raw?.transcription || []).map(row => {
-        const probs = (row.tokens || []).filter(t => !/^\[.*\]$/.test(t.text?.trim())).map(t => t.p).filter(Number.isFinite);
-        return { text: row.text, start: row.offsets?.from / 1000, end: row.offsets?.to / 1000, confidence: probs.length ? probs.reduce((a, b) => a + b, 0) / probs.length : null };
-      });
-      updates[id] = { source: value.source, ...reconcileSegments(rows, value.source.text, value.source.duration), tool, evidence: raw, at: new Date().toISOString() };
-      const current = voiceAlignmentStatus(dir).voices[id]?.source;
-      if (digest(current) !== digest(value.source)) throw new Error('识别期间录音或原稿改变，结果未写入');
-    } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+    const raw = await recognizeVoice(dir, id, value.source, setup, log);
+    const rows = (raw?.transcription || []).map(row => {
+      const probs = (row.tokens || []).filter(t => !/^\[.*\]$/.test(t.text?.trim())).map(t => t.p).filter(Number.isFinite);
+      return { text: row.text, start: row.offsets?.from / 1000, end: row.offsets?.to / 1000, confidence: probs.length ? probs.reduce((a, b) => a + b, 0) / probs.length : null };
+    });
+    updates[id] = { source: value.source, ...reconcileSegments(rows, value.source.text, value.source.duration), tool, evidence: raw, at: new Date().toISOString() };
+    const current = voiceAlignmentStatus(dir).voices[id]?.source;
+    if (digest(current) !== digest(value.source)) throw new Error('识别期间录音或原稿改变，结果未写入');
   }
   data.voices = { ...data.voices, ...updates };writeReport(dir, data);
   return voiceAlignmentStatus(dir);

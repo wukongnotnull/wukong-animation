@@ -18,7 +18,7 @@ export const HELP = `wka —— wukong-animation 引擎命令行。
   wka render <片目录> [--proxy] [--only s01,s03] [--force] [--aspect 9:16]   渲染（--proxy 为小样；--aspect 出副版）
   wka preview <片目录> [--only s01,s03] [--native] [--force] [--aspect 9:16]   日常局部小样（--native 原画质与原帧率）
   wka clean <片目录> --render-cache [--aspect 9:16]   主动清理当前画幅的可再生渲染缓存
-  wka align-voice <片目录> [--prepare --binary 路径 --model 路径|--status|--import 时间点.json --confirm "用户确认说明"]  本地台词定位
+  wka align-voice <片目录> [--words|--prepare --binary 路径 --model 路径|--status|--import 时间点.json --confirm "用户确认说明"]  本地台词定位；默认同时生成逐词时间表，--words 只重算词表
   wka soundtrack <片目录>           制作小样内的声轨：用户录音 + 配乐 + 音效 + 环境声，写入声音同步点（不要求镜头文件已写好）
   wka sfx <片目录> [--list]         录音音效：--list 只列来源与大小（给用户确认），不带参数则下载并处理
   wka final <片目录> [--proxy] [--only ...] [--formats mp4,gif] [--aspect 9:16|all]   制作成片：渲染、混音和编码`;

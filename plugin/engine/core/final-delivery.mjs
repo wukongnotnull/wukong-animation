@@ -141,7 +141,7 @@ function dependencies(dir,slot,fontFiles=[]) {
     for(const file of scripts)if(fs.existsSync(file)&&/\b(?:fetch|XMLHttpRequest|WebSocket|require|import|process|readFile|Deno|Bun|eval)\b|https?:\/\/|new\s+(?:Image|Audio|Function)\b/.test(fs.readFileSync(file,'utf8')))unknown.push(`动态/外部来源覆盖不足：${file}`);
     const audio=ctx.film.audio||{};
     const refs=[...(audio.tracks||[]),...(audio.voices||[])].map(t=>t.file).filter(Boolean);
-    groups.audio={config:audio,alignment:json(path.join(dir,'.wka/voice-alignment.json'),null),files:files(refs),implementation:codeSource(path.join(ENGINE_ROOT,'audio'))};
+    groups.audio={config:audio,alignment:json(path.join(dir,'.wka/voice-alignment.json'),null),words:json(path.join(dir,'.wka/word-timeline.json'),null),files:files(refs),implementation:codeSource(path.join(ENGINE_ROOT,'audio'))};
     if(audio.build)unknown.push('audio.build 动态来源覆盖不足（旧阶段 signature 为 null）');
     groups.renderer={pipeline:codeSource(ctx.pipeline.dir),kits:ctx.kits.map(k=>codeSource(k.dir)),runtime:codeSource(path.join(ENGINE_ROOT,'runtime')),core:engineFiles(['core/cache.mjs','core/film-context.mjs','core/word-sync.mjs','core/timing.mjs','core/fonts.mjs'])};
     if(ctx.style.libs?.length)unknown.push('外部风格库的实际加载来源未存档，待核实');

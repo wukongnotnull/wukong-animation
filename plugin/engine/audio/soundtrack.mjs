@@ -1,4 +1,5 @@
 import { applyVoiceAlignment } from './voice-alignment.mjs';
+import { wordTimelineCues } from './word-timeline.mjs';
 // 混音：执行片子的 audio/build.mjs（生成配乐 / 音效）→ 准备人声 → 按时间点混合 → 响度标准化。
 import fs from 'node:fs';
 import path from 'node:path';
@@ -177,7 +178,9 @@ async function mixSoundtrackFresh(filmDir, { log = console.log } = {}) {
     // 风格有录音音效清单才有 sfx；没有时为 null
     lib = loadSfxLibrary(ctx.style);
     sfx = lib && createSfx(lib);
-    const res = await mod.default({ synth, sfx, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: ctx.film.cues || {}, log });
+    const words = wordTimelineCues(ctx), unavailable = Object.keys(words.unavailable).length;
+    if (unavailable) log(`  ! 逐词时间表有 ${unavailable} 项不可用（待确认或已过期），配乐脚本拿不到这些 word: cue`);
+    const res = await mod.default({ synth, sfx, duration: ctx.totalDuration, outDir: genDir, shots: ctx.shots, cues: { ...words.cues, ...(ctx.film.cues || {}) }, log });
     for (const t of res || []) tracks.push({ start: 0, gain: 0, ...t, role: 'build' });
     log(`  ✓ 配乐脚本生成 ${res?.length || 0} 条音轨`);
     for (const w of sfx ? densityWarnings(sfx.placements, ctx.shots) : []) log(`  ! 音效太密：${w}`);

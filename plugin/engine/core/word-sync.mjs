@@ -6,6 +6,7 @@ import { validate } from './validate.mjs';
 import { countChars } from './spoken-text.mjs';
 import { usedCueNames } from './cues.mjs';
 import { run, probeDuration } from './ffmpeg.mjs';
+import { wordTimelineCues, WORD_CUE } from '../audio/word-timeline.mjs';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const fileHash = file => hash(fs.readFileSync(file));
@@ -37,7 +38,7 @@ function matches(text,needle) {
   }
 }
 
-export function resolveWordSync(ctx) {
+function resolveSyncPoints(ctx) {
   const file=path.join(ctx.filmDir,'sync-points.json');
   if(!fs.existsSync(file)) return {cues:{},evidence:{},points:[]};
   const data=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -92,6 +93,11 @@ export function resolveWordSync(ctx) {
   return {cues,evidence,points:data.points};
 }
 
+export function resolveWordSync(ctx) {
+  const points=resolveSyncPoints(ctx), timeline=wordTimelineCues(ctx);
+  return {...points,cues:{...timeline.cues,...points.cues},evidence:{...timeline.evidence,...points.evidence},timeline};
+}
+
 /** fps 滤镜的近邻采样：输出 j 取原生 ceil((j+.5)*native/output)-1 帧。 */
 export function wordFrame(point,shot,{fps,nativeFps=fps,remotion=false}) {
   const target=Math.round(point.in*fps)-shot.startFrame;
@@ -111,11 +117,18 @@ export function prepareWordShots(job) {
   const shots=job.shots.map(shot=>{
     const files=[shot.path,...job.styleScripts,...job.filmScripts];
     const used=usedCueNames(files.filter(f=>fs.existsSync(f)).map(f=>fs.readFileSync(f,'utf8')));
+    for(const name of used || []) {
+      const voice=name.match(WORD_CUE)?.[1];
+      if(!voice || Object.hasOwn(resolved.cues,name)) continue;
+      const known=resolved.timeline.unavailable;
+      throw new Error(`镜头 ${shot.id} 用到的词 ${name} 不可用：${known[name] || known[voice] || '词表里没有这个序号，请查看 review/逐词时间表.md'}`);
+    }
     const keys=Object.keys(resolved.cues).filter(key=>!used || used.has(key));
     const wordFrames={}, points=[];
     for(const key of keys) {
       const loc=wordFrame({in:resolved.cues[key][0]},shot,{fps:job.fps});
       wordFrames[key]=loc.frame;
+      if(!used && Object.hasOwn(resolved.timeline.cues,key)) continue;
       points.push({key,...resolved.evidence[key],...loc,range:resolved.cues[key],shot:shot.id});
     }
     return {...shot,wordFrames,wordPoints:points,renderStart:shot.startFrame/job.fps};

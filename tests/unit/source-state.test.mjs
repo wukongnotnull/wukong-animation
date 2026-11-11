@@ -20,7 +20,7 @@ function oldTree(dir,exclude=()=>false) {
 }
 // Independent pre-optimization projection: duplicate declarations remain in the data.
 function legacy(dir) {
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,fs.existsSync(path.join(dir,rel))?oldFile(path.join(dir,rel)):null]);
   let film={};try{film=JSON.parse(fs.readFileSync(path.join(dir,'film.json'),'utf8'));}catch{}
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);

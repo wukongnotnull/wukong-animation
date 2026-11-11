@@ -50,7 +50,7 @@ export function sourceState(dir) {
     guards.push(()=>{if(shape(base,exclude)!==before)throw changed(base);});
     return treeEvidence(base,exclude,readDigest);
   };
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,source(path.join(dir,rel))]);
   const film=readJson(path.join(dir,'film.json'),{});
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);

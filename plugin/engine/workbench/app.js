@@ -94,7 +94,7 @@ async function loadReport(reset = false, nextVersion = false) {
   const film = ui.film, report = await api('/api/report?film=' + encodeURIComponent(film));
   if (film !== ui.film) return;
   ui.report = report;
-  ui.lastSync = new Date().toISOString(); connection('已连接 · 素材保留本机');
+  ui.lastSync = new Date().toISOString(); connection(report.producing ? '制作进行中 · 可查看上次登记的版本，正式提交暂不可用' : '已连接 · 素材保留本机', report.producing);
   if (reset) {
     const position = restorePosition(report, session?.get('position:' + film)); Object.assign(ui, position);
     if (position.message) notice(position.message, true);
@@ -250,7 +250,7 @@ function updateFilmChoices(listing) {
 async function poll() {
   try {
     const listing = await api('/api/films'); updateFilmChoices(listing);
-    if (!ui.film && listing.films.length) { ui.film = listing.films[0].id; $('films').value = ui.film; await loadReport(true); }
+    if (!ui.report && listing.films.length) { ui.film = ui.film || listing.films[0].id; $('films').value = ui.film; await loadReport(true); }
     if (!ui.film) { connection('已连接 · 等待加入影片'); return; }
     const film = ui.film, state = await api('/api/status?film=' + film); if (film !== ui.film) return;
     ui.busy = state.busy;

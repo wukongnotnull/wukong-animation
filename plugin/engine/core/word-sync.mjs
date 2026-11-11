@@ -136,37 +136,50 @@ export function prepareWordShots(job) {
   return {...job,film,shots,wordEvidence:resolved.evidence};
 }
 
-export async function writeWordReview(job,{video=null,renderStills=null}={}) {
-  const points=job.shots.flatMap(s=>s.wordPoints || []);
-  const stem=job.variant.review('词级同步.json').slice(0,-5)+(job.proxy?'-proxy':'');
+/**
+ * 词级检查帧与人声片段是中间证据，放在 .cache/ 下并按「镜头渲染哈希 + 帧位」增量复用；
+ * review/ 里只登记汇总报告。shots 给定时只检查这些镜头，报告另存为「-局部」，不覆盖整片报告。
+ */
+export async function writeWordReview(job,{video=null,renderStills=null,shots=null,shotKey=null}={}) {
+  const scoped=shots ? new Set(shots) : null;
+  const points=job.shots.filter(s=>!scoped || scoped.has(s.id)).flatMap(s=>s.wordPoints || []);
+  const stem=job.variant.review('词级同步.json').slice(0,-5)+(job.proxy?'-proxy':'')+(scoped?'-局部':'');
   const base=path.join(job.filmDir,'review',stem);
-  const dir=base;
-  const images=[];
-  atomic(base+'.json',{version:1,status:'证据生成中/未验证',points:[]});
-  fs.writeFileSync(base+'.md','# 词级同步\n\n证据生成中/未验证，旧结论不可复用。\n');
+  const dir=path.join(job.variant.cacheDir,'word-review');
+  const videoKey=video ? (st=>`${st.size}:${st.mtimeMs}`)(fs.statSync(video)) : '';
+  let reused=0,rendered=0;
   try {
   for(const p of points) {
     p.images=[];
     const shot=job.shots.find(s=>s.id===p.shot);
     if(!p.valid) continue;
     fs.mkdirSync(dir,{recursive:true});
+    const renderKey=hash(JSON.stringify([shotKey?shotKey(job,shot):null,p.key,p.frame,shot.startFrame,videoKey]));
     for(const delta of [-1,0,1]) {
       const local=p.outputFrame+delta;
       if(local<0 || local>=shot.frames) continue;
-      const out=path.join(dir,`${p.id}-${p.shot}-${delta+1}.png`);
-      if(video) await run(['-i',video,'-vf',`select=eq(n\\,${shot.startFrame+local})`,'-frames:v','1',out]);
-      else if(renderStills) {
-        const t=local/job.fps;
-        const files=await renderStills([{shot:shot.id,t}],dir);
-        fs.copyFileSync(files[0],out);
-      } else continue;
-      p.images.push(out);images.push(out);
+      const prefix=`${p.id}-${p.shot}-${delta+1}-`;
+      const out=path.join(dir,`${prefix}${hash(renderKey+':'+local).slice(0,12)}.png`);
+      if(fs.existsSync(out)) reused++;
+      else {
+        if(video) await run(['-i',video,'-vf',`select=eq(n\\,${shot.startFrame+local})`,'-frames:v','1',out]);
+        else if(renderStills) {
+          const work=path.join(dir,'.tmp');
+          fs.rmSync(work,{recursive:true,force:true});fs.mkdirSync(work,{recursive:true});
+          const files=await renderStills([{shot:shot.id,t:local/job.fps}],work);
+          fs.copyFileSync(files[0],out);
+          fs.rmSync(work,{recursive:true,force:true});
+        } else continue;
+        rendered++;
+        for(const old of fs.readdirSync(dir)) if(old.startsWith(prefix) && old.endsWith('.png') && path.join(dir,old)!==out) fs.rmSync(path.join(dir,old),{force:true});
+      }
+      p.images.push(out);
     }
     if(p.source) {
       const inPoint=p.range[0]-(job.film.audio.voices.find((v,i)=>voiceName(v,i)===p.voice)?.at || 0);
       const start=Math.max(0,inPoint-0.2), end=Math.min(p.source.duration,inPoint+0.6);
-      p.audio=path.join(dir,`${p.id}.wav`);
-      await run(['-ss',String(start),'-i',path.resolve(job.filmDir,p.source.file),'-t',String(end-start),p.audio]);
+      p.audio=path.join(dir,`${p.id}-${hash(`${p.source.audio_sha256}:${start}:${end}`).slice(0,12)}.wav`);
+      if(!fs.existsSync(p.audio)) await run(['-ss',String(start),'-i',path.resolve(job.filmDir,p.source.file),'-t',String(end-start),p.audio]);
     }
   }
   } catch(e) {
@@ -174,7 +187,8 @@ export async function writeWordReview(job,{video=null,renderStills=null}={}) {
     fs.writeFileSync(base+'.md','# 词级同步\n\n证据生成失败/未验证：'+e.message+'\n');
     throw e;
   }
-  const report={version:1,generatedAt:new Date().toISOString(),inputSignature:hash(JSON.stringify(points.map(p=>[p.key,p.input_sha256,p.range,p.frame,p.shot]))),aspect:job.variant.aspect,fps:job.fps,status:!points.length?'未声明词级检查':points.every(p=>p.valid && p.verified)?'来源有效/定位可验证；画面响应待人工核对':'存在未验证词点；画面响应待人工核对',points};
+  if(points.length) job.log(`  词级检查帧：新渲 ${rendered} 张，复用 ${reused} 张`);
+  const report={version:1,generatedAt:new Date().toISOString(),inputSignature:hash(JSON.stringify(points.map(p=>[p.key,p.input_sha256,p.range,p.frame,p.shot]))),aspect:job.variant.aspect,fps:job.fps,scope:scoped?[...scoped]:'all',status:!points.length?'未声明词级检查':points.every(p=>p.valid && p.verified)?'来源有效/定位可验证；画面响应待人工核对':'存在未验证词点；画面响应待人工核对',points};
   atomic(base+'.json',report);
   fs.writeFileSync(base+'.md',[`# 词级同步 · ${job.variant.aspect}`, '',report.status,'',
     ...points.flatMap(p=>[`- ${p.shot} ${p.text}：${p.method}；${p.reason}；全片 ${p.range[0].toFixed(3)}s；目标帧 ${p.globalFrame ?? '范围外'}。${p.valid?'':p.reason}`, ...p.images.map(f=>`  - [查看帧](<${f}>)`),...(p.audio?[`  - [听人声](<${p.audio}>)`]:[])]),'','源代码引用不是正确视觉响应的证明；请在既有审片节点核对。',''].join('\n'));

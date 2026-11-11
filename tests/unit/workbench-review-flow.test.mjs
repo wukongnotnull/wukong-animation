@@ -119,6 +119,12 @@ test('change detection sees source edits without capturing versions or running p
   assert.notEqual(ui.workbenchStatus(f.dir).revision, first.revision);
   assert.deepEqual(fs.readFileSync(file), before);
   const release = lockProduction(f.dir); try { assert.equal(ui.workbenchStatus(f.dir).busy, true); } finally { release(); }
+  const lock = path.join(f.dir, '.cache/operation.lock');
+  fs.writeFileSync(lock, JSON.stringify({ pid: 2 ** 22 + 12345, host: os.hostname(), token: 'dead-owner' }));
+  assert.equal(ui.workbenchStatus(f.dir).busy, false, '锁所有者进程已退出时不应显示制作进行中');
+  fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, host: os.hostname(), token: 'live-owner' }));
+  assert.equal(ui.workbenchStatus(f.dir).busy, true);
+  fs.rmSync(lock);
 });
 
 test('report stays viewable during production without writing, and submissions stay locked', async t => {

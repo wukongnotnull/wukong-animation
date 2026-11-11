@@ -10,7 +10,7 @@ import { commandsFor } from './commands.mjs';
 import { HELP } from './help.mjs';
 
 /** Run one invocation without changing process globals or exiting the host. */
-export async function runCli(argv, { log: write = console.log, error = console.error } = {}) {
+export async function runCli(argv, { log: write = console.log, error = console.error, interruptHost = null } = {}) {
   // Log callbacks may return values (for example Array.push); those are not exit codes.
   const log = (...args) => { write(...args); };
   try {
@@ -39,6 +39,12 @@ export async function runCli(argv, { log: write = console.log, error = console.e
     if (observe) assertWorkbenchScope(pos[0]);
     const needsLock = observe || command.lock === 'film' || (command.lock === 'final-record' && opt('final') && opt('record'));
     const unlock = needsLock && pos[0] ? lockProduction(pos[0]) : () => {};
+    // 只有进程入口传入 interruptHost：被中断时先释放自己持有的写入锁再退出，避免残留锁。
+    const interrupts = interruptHost ? ['SIGINT', 'SIGTERM'].map((signal) => {
+      const handler = () => { unlock(); interruptHost.exit(signal === 'SIGINT' ? 130 : 143); };
+      interruptHost.once(signal, handler);
+      return [signal, handler];
+    }) : [];
     try {
       if (command.active && pos[0]) atomicJson(path.join(path.resolve(pos[0]), '.cache/active-command.json'), { argv });
       const operationsFile = pos[0] ? path.join(path.resolve(pos[0]), '.cache/operations.json') : null;
@@ -53,6 +59,7 @@ export async function runCli(argv, { log: write = console.log, error = console.e
       }
       return Number.isInteger(code) ? code : 0;
     } finally {
+      for (const [signal, handler] of interrupts) interruptHost.off(signal, handler);
       unlock();
     }
   } catch (err) {

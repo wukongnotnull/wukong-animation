@@ -20,3 +20,6 @@ body{height:100dvh;display:flex;flex-direction:column;overflow:hidden}.topbar{mi
 .theme-switch{display:flex;flex-shrink:0;margin-left:auto}.theme-switch button{padding:6px 10px;font-size:11px}.theme-switch button+button{margin-left:-1px}.theme-switch button:first-child{border-radius:6px 0 0 6px}.theme-switch button:last-child{border-radius:0 6px 6px 0}:root[data-theme="dark"] .theme-switch [data-theme-choice="dark"],:root[data-theme="light"] .theme-switch [data-theme-choice="light"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}:root[data-theme="dark"] .theme-switch [data-theme-choice="dark"]:hover,:root[data-theme="light"] .theme-switch [data-theme-choice="light"]:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 @media(max-width:600px){.theme-switch button{padding:6px 8px;font-size:10px}}
 #batch .note-card{display:flex;align-items:flex-start;gap:8px}#batch .note-card p{margin:4px 0}#batch .note-card .quiet{margin-left:auto;flex-shrink:0}
+
+.sent-heading{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:650;margin:20px 0 10px}.sent-note p{margin:4px 0}.sent-note p.meta{font-size:10px}
+.sent-group h3{font-size:11px;font-weight:600;color:var(--muted);margin:14px 0 8px}.sent-group:first-child h3{margin-top:0}#sent-count{font-size:10px;font-weight:400}

@@ -218,6 +218,22 @@ function renderBatch() {
     $('batch').append(row);
   }
 }
+function renderSent() {
+  const file = item(), sent = [...file?.notes || []].reverse(), groups = [['pending', '待处理', '已发送，等 Agent 处理'], ['awaiting-review', '待复验', 'Agent 已改完，等你在对话里确认'], ['resolved', '已完成', '你已确认解决']];
+  $('sent-notes').replaceChildren(); $('sent-heading').hidden = !sent.length;
+  $('sent-count').textContent = groups.map(([status, name]) => name + ' ' + sent.filter(note => (note.status || 'pending') === status).length).join(' · ');
+  for (const [status, name, meaning] of groups) {
+    const rows = sent.filter(note => (note.status || 'pending') === status);
+    if (!rows.length) continue;
+    const group = el('section', undefined, 'sent-group'); group.append(el('h3', name + ' · ' + rows.length + ' 条　' + meaning));
+    for (const note of rows) {
+      const row = el('article', undefined, status === 'resolved' ? 'note-card sent-note resolved' : 'note-card sent-note'), number = file.versions.find(v => v.id === note.versionId)?.number;
+      const copy = el('div'); copy.append(el('p', anchorText(note.anchor), 'meta'), el('p', note.text), el('p', [number ? 'v' + number : '', date(note.at)].filter(Boolean).join(' · '), 'meta'));
+      row.append(copy); group.append(row);
+    }
+    $('sent-notes').append(group);
+  }
+}
 function renderInspector() {
   const file = item(), v = version();
   $('kind-label').textContent = kinds[file?.kind] || ''; $('versions').replaceChildren();
@@ -230,7 +246,7 @@ function renderInspector() {
   }
   else if (v) $('checks').append(el('p', '正在查看历史内容；意见仍属于这个版本。', 'hint'));
   if (file?.category === 'reference') $('checks').append(el('p', '参考资料不作为正式交付物。', 'hint'));
-  $('note-form').hidden = ui.report.readonly || !v; renderBatch();
+  $('note-form').hidden = ui.report.readonly || !v; renderBatch(); renderSent();
 }
 async function render() {
   if (!ui.report) return;

@@ -59,5 +59,5 @@ test('A4/A5/A11 real video and draft export bind existing signoff nodes and reta
   edited.name='验收后再次改变';fs.writeFileSync(content,JSON.stringify(edited));result=call('delivery',dir,'--final','--json');assert.equal(result.status,2);assert.equal(JSON.parse(result.stdout).items.find(i=>i.kind==='draft').acceptance,'changed-after-acceptance');
   assert.equal(report.items.some(i=>i.kind==='subtitle'),false);
   fs.writeFileSync(path.join(dir,'.wka/decisions.json'),'{ broken decisions');
-  const proxy=call('render',dir,'--proxy');ok(proxy);assert.match(proxy.stdout,/小样来源未取证/);
+  const proxy=call('render',dir,'--proxy');ok(proxy);
 });

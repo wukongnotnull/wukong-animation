@@ -101,19 +101,21 @@ test('A8 legacy final delivery cannot be adopted or written; state bytes remain 
   assert.deepEqual(fs.readFileSync(state),before);
 });
 
-test('A5 native variant inherits only approved exact source, never claims native playback',t=>{
+test('A5 variant approval binds the delivered high-definition video, not the preview',t=>{
   const dir=fixture(t),file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));film.variants={'9:16':{}};fs.writeFileSync(file,JSON.stringify(film));
   const decisions=JSON.parse(fs.readFileSync(path.join(dir,'.wka/decisions.json')));decisions.aspects.value.push('9:16');fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify(decisions));
   const font=path.join(dir,'font.ttf');fs.writeFileSync(font,'font');fs.mkdirSync(path.join(dir,'review'));
-  const proxy=path.join(dir,'review/小样-9x16.mp4');fs.writeFileSync(proxy,'proxy');
-  const slot='9:16/source/proxy',projection={slot};
-  final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot,fontFiles:[font],descriptor:{slot,aspect:'9:16',kind:'video',format:'mp4',flavor:'clean',projection,contractDigest:'source'}}),path:proxy,stage:'review:proxy',technical:{status:'passed',checks:['timing'],errors:[]}});
-  const revision=final.finalDeliveryReport(dir).reviewSets[7].deliveryRevision;
-  const prepared=final.prepareFinalApproval(dir,{id:'source-14',step:7,revision,source:'用户明确批准副版小样',note:'小样通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:7,approvalId:'source-14'}]}));final.commitFinalApproval(dir,prepared);
-  const native=path.join(dir,'影片-9x16.mp4');fs.writeFileSync(native,'native');
+  fs.writeFileSync(path.join(dir,'review/小样-9x16.mp4'),'proxy');
+  const native=path.join(dir,'影片-9x16.mp4');
+  assert.equal(final.finalDeliveryReport(dir).reviewSets[7].bindings.every(b=>b.slot.startsWith('9:16/video/')),true);
+  assert.throws(()=>final.prepareFinalApproval(dir,{id:'v-early',step:7,revision:final.finalDeliveryReport(dir).reviewSets[7].deliveryRevision,source:'用户',note:'通过'}),/缺失|不可读|没有实际产物/);
+  fs.writeFileSync(native,'native');
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'9:16/video/mp4/clean',fontFiles:[font]}),path:native,stage:'encode:mp4',technical:{status:'passed',checks:['timing'],errors:[]}});
-  let item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.equal(item.acceptance,'accepted');assert.equal(item.approval.type,'inherited');assert.equal(item.openStatus,'not-tested');
+  const revision=final.finalDeliveryReport(dir).reviewSets[7].deliveryRevision;
+  const prepared=final.prepareFinalApproval(dir,{id:'variant-7',step:7,revision,source:'用户明确批准副版成片',note:'副版成片通过'});
+  assert.equal(prepared.approval.type,'direct');assert.deepEqual(prepared.approval.bindings.map(b=>b.path),[native]);
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:7,approvalId:'variant-7'}]}));final.commitFinalApproval(dir,prepared);
+  let item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.equal(item.acceptance,'accepted');assert.equal(item.approval.type,'direct');
   fs.appendFileSync(path.join(dir,'shots/s01.js'),'// change');item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.notEqual(item.acceptance,'accepted');
 });
 

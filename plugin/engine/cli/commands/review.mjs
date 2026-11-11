@@ -72,7 +72,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
           const ctx = loadFilm(pos[0], { aspect });
           const checked = await checkMainUnchanged(pos[0], { aspect, log });
           if (checked && !checked.ok) fail('主版不变检查未通过，不能签批副版；先完成主版复核');
-          const proxy = fs.existsSync(path.join(ctx.variant.cacheDir, 'timing-proxy.json'));
+          const proxy = !fs.existsSync(path.join(ctx.variant.cacheDir, 'timing.json'));
           requireTiming(ctx, { proxy, fresh: true, log });
         }
       }

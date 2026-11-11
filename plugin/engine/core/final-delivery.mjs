@@ -167,20 +167,6 @@ export function captureFinalGeneration(dir,{slot,fontFiles=[],descriptor=null,in
   return {id:crypto.randomUUID(),slot,descriptor:target,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:deps,tool};
 }
 
-export function captureFinalProxy(dir,{aspect=null}={}) {
-  const ctx=loadFilm(dir,{requireShots:false,aspect}),slot=`${ctx.variant.aspect}/source/proxy`,projection={slot};
-  return captureFinalGeneration(dir,{slot,descriptor:{slot,aspect:ctx.variant.aspect,kind:'video',format:'mp4',flavor:'clean',projection,contractDigest:digest(projection)}});
-}
-export function withGenerationFonts(dir,generation,fontFiles,unknownReasons=[]) {
-  const current=dependencies(dir,generation.descriptor,fontFiles);
-  generation.dependencies.fontFiles=fontFiles;
-  generation.dependencies.groups.fonts=current.groups.fonts;
-  generation.dependencies.unknown=generation.dependencies.unknown.filter(r=>r!=='实际画面字体来源缺失');
-  if(current.unknown.includes('实际画面字体来源缺失'))generation.dependencies.unknown.push('实际画面字体来源缺失');
-  generation.dependencies.unknown.push(...unknownReasons);
-  return generation;
-}
-
 function sourceStatus(dir,slot,artifact) {
   if(!artifact)return {freshness:'unknown',reasons:['证据未存档，待核实']};
   if(artifact.contractDigest!==slot.contractDigest)return {freshness:'changed',reasons:['相关交付要求已变']};
@@ -290,23 +276,11 @@ function technicalStatus(dir,slot,artifact) {
 
 function reviewSets(dir,contract,items,data) {
   const result={};
-  for(const step of [6,8]) {
-    const chosen=items.filter(i=>step===6?i.aspect===contract.mainAspect&&i.kind!=='draft':i.kind==='draft');
+  for(const step of [6,7,8]) {
+    const chosen=items.filter(i=>step===8?i.kind==='draft':i.kind!=='draft'&&(step===6)===(i.aspect===contract.mainAspect));
     const bindings=chosen.map(i=>({slot:i.slot,path:i.path,artifactId:i.artifactId,snapshot:i.snapshot,contractDigest:i.contractDigest,source:sourceStatus(dir,i,data.artifacts.find(a=>a.id===i.artifactId)),dependencies:dependencies(dir,i,data.artifacts.find(a=>a.id===i.artifactId)?.dependencies?.fontFiles||[])}));
     result[step]={step,bindings,deliveryRevision:digest({flow:FLOW,step,bindings})};
   }
-  // 调整画幅仍先审小样。来源和实际小样字节一并绑定，高清生成后才可继承。
-  const operations=json(path.join(dir,'.cache/operations.json'),{stages:{}}),bindings=[];
-  for(const aspect of [...new Set(contract.slots.map(s=>s.aspect))].filter(a=>a!==contract.mainAspect)) {
-    const ctx=loadFilm(dir,{requireShots:false,aspect}),stage=Object.values(operations.stages||{}).find(s=>s.aspect===aspect&&s.proxy&&s.stage==='review:proxy'&&s.status==='completed');
-    const source=latestArtifact(data,`${aspect}/source/proxy`);
-    const file=source?.path||stage?.outputs?.[0]?.file||path.join(dir,'review',ctx.variant.review('小样.mp4'));
-    const obs=observed(file),target=contract.slots.find(s=>s.aspect===aspect&&s.kind==='video');
-    const deps=target?dependencies(dir,target,source?.dependencies?.fontFiles||[]):null;
-    const generated=source&&digest(source.snapshot)===digest(obs.snapshot)&&['picture','audio','renderer','fonts'].every(g=>digest(source.dependencies?.groups[g]||null)===digest(deps?.groups[g]||null));
-    bindings.push({slot:`${aspect}/source/proxy`,aspect,path:file,snapshot:obs.snapshot,stageId:generated?source.id:null,contract:contract.slots.filter(s=>s.aspect===aspect&&s.kind!=='draft').map(s=>s.projection),dependencies:deps});
-  }
-  result[7]={step:7,bindings,deliveryRevision:digest({flow:FLOW,step:7,bindings})};
   return result;
 }
 
@@ -323,7 +297,6 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
   const artifacts=[],bindings=[];
   for(const binding of set.bindings) {
     if(!binding.snapshot||!binding.path)throw new Error(`审阅产物缺失或不可读：${binding.slot}`);
-    if(step===7){if(!binding.stageId)throw new Error('副版小样缺少成功生成依据');bindings.push(binding);continue;}
     let artifact=data.artifacts.find(a=>a.id===binding.artifactId);
     if(!artifact&&step===8) {
       const item=report.items.find(i=>i.slot===binding.slot);
@@ -344,7 +317,7 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
     bindings.push({slot:binding.slot,artifactId:current.id,path:binding.path,snapshot:binding.snapshot,contractDigest:binding.contractDigest});
   }
   if(openEvidence&&!['opened','playback-confirmed'].includes(openEvidence.status))throw new Error('打开依据仅支持 opened / playback-confirmed');
-  return {artifacts,approval:{id,step,revision,bindings,source,note,openEvidence,at:new Date().toISOString(),type:step===7?'source':'direct'},review:set};
+  return {artifacts,approval:{id,step,revision,bindings,source,note,openEvidence,at:new Date().toISOString(),type:'direct'},review:set};
 }
 
 export function commitFinalApproval(dir,prepared) {
@@ -371,15 +344,6 @@ function acceptance(dir,item,artifact,data,history) {
     if(hasState&&item.freshness!=='changed'&&binding.artifactId===artifact?.id&&binding.contractDigest===item.contractDigest&&digest(binding.snapshot)===digest(item.snapshot))return {acceptance:'accepted',approval:{id:old.id,type:old.type,source:old.source,at:old.at},openStatus:old.openEvidence?.status||'not-tested'};
     if(binding.snapshot&&digest(binding.snapshot)!==digest(item.snapshot))return {acceptance:'changed-after-acceptance',changedFiles:changedEntries(binding.snapshot,item.snapshot),reason:'验收后磁盘文件变化，待复核'};
     return {acceptance:'historical-only',reason:'历史已验收，当前相关版本或要求待核实'};
-  }
-  // 高清只继承实际批准的小样来源；生成证据与相关契约必须逐组匹配。
-  if(artifact?.provenance==='generated'&&item.aspect!==finalContract(dir).mainAspect&&item.kind!=='draft'&&item.freshness==='current'&&artifact.technical.status==='passed') {
-    for(const approval of [...data.approvals].reverse().filter(a=>a.step===7)) {
-      const binding=approval.bindings.find(b=>b.aspect===item.aspect);
-      if(!binding||binding.dependencies?.unknown.length||!history.some(h=>h.approvalId===approval.id&&h.step===7)||!binding.contract.some(p=>digest(p)===digest(item.projection)))continue;
-      const groups=['picture','audio'];
-      if(groups.every(g=>digest(binding.dependencies?.groups[g]||null)===digest(artifact.dependencies?.groups[g]||null)))return {acceptance:'accepted',approval:{id:approval.id,type:'inherited',source:approval.source,at:approval.at},openStatus:'not-tested',reason:'来源已批准，高清生成核验通过'};
-    }
   }
   const step=item.kind==='draft'?8:item.aspect===finalContract(dir).mainAspect?6:7;
   return history.some(h=>h.step===step)?{acceptance:'historical-only',reason:'历史已验收，当前版本待核实：缺少确切产物绑定链'}:{acceptance:'pending'};

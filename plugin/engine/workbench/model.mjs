@@ -55,3 +55,12 @@ export function playbackContext(item, version) {
   }
   return version.context;
 }
+const THREAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const validThreadId = value => typeof value === 'string' && THREAD_ID.test(value);
+export function chatPrompt({ film, label, notes }) {
+  const head = `处理工作台里的待办。影片：${film}；交付物：${label}。共 ${notes.length} 条批注：`;
+  return [head, ...notes.map((note, index) => `${index + 1}. 【${note.where}】${note.text}`)].join('\n');
+}
+export function chatLink(thread, prompt) {
+  return (validThreadId(thread) ? 'codex://threads/' + thread : 'codex://threads/new') + '?prompt=' + encodeURIComponent(prompt);
+}

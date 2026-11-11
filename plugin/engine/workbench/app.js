@@ -1,4 +1,4 @@
-import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock } from './model.mjs';
+import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
 
@@ -287,7 +287,7 @@ function selectedText() { const root = $('document'); if (!root || ui.documentTe
 document.addEventListener('mouseup', selectedText); document.addEventListener('keyup', event => { if (event.key === 'Shift' || event.key.startsWith('Arrow')) selectedText(); });
 $('add-note').onclick = () => { const text = $('note-text').value.trim(); if (!text) { notice('先写下这一条批注。'); return; } const batch = [...(draftRecord().batch || []), { requestId: crypto.randomUUID(), text, anchor: structuredClone(ui.anchor), send: true }]; $('note-text').value = ''; setAnchor({ type: 'general' }); writeDraft(batch, '', { type: 'general' }); renderBatch(); };
 $('note-form').onsubmit = event => { event.preventDefault(); action(async () => {
-  captureDrafts(); const film = ui.film, artifactId = ui.item, versionId = ui.version, draft = draftRecord();
+  captureDrafts(); const film = ui.film, artifactId = ui.item, versionId = ui.version, label = item()?.label || ui.item, draft = draftRecord();
   const batch = [...(draft.batch || [])];
   if ($('note-text').value.trim()) batch.push({ requestId: draft.requestId || crypto.randomUUID(), text: $('note-text').value.trim(), anchor: ui.anchor, send: true });
   const chosen = batch.filter(item => item.send !== false && item.text?.trim());
@@ -298,7 +298,9 @@ $('note-form').onsubmit = event => { event.preventDefault(); action(async () => 
     const remain = batch.filter(item => item.send === false);
     if (ui.noteDraftKey) { $('note-text').value = ''; setAnchor({ type: 'general' }); writeDraft(remain, '', { type: 'general' }); }
     if (film === ui.film) { stash(); await loadReport(); }
-    notice('已发送 ' + chosen.length + ' 条批注。回到对话说“处理工作台里的待办”。');
+    const link = document.createElement('a'); link.href = chatLink(new URLSearchParams(location.search).get('thread'), chatPrompt({ film, label, notes: chosen.map(note => ({ where: anchorText(note.anchor), text: note.text.trim() })) }));
+    document.body.append(link); link.click(); link.remove();
+    notice('已把 ' + chosen.length + ' 条批注放进对话输入框，回到对话确认后发送。');
   } finally { submit.disabled = false; }
 }); };
 document.querySelectorAll('button[data-panel]').forEach(b => b.onclick = () => showPanel(b.dataset.panel));

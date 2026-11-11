@@ -44,6 +44,8 @@ export function formatSpan(start, end) {
   if (!Number.isFinite(Number(end)) || Math.abs(Number(end) - Number(start)) < 0.005) return from;
   return from + '–' + formatClock(end);
 }
+export const SEEK_TOLERANCE = 0.05;
+export const inSpan = (time, start, end) => time >= start - SEEK_TOLERANCE && time < end - SEEK_TOLERANCE;
 export function playbackContext(item, version) {
   if (!version?.context?.shots) return null;
   const shots = version.context.shots;

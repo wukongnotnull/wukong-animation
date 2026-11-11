@@ -1,4 +1,4 @@
-import { allItems, restorePosition, noteKey, playbackContext, formatClock, formatSpan, parseClock } from './model.mjs';
+import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
 
@@ -174,7 +174,7 @@ async function renderViewer(serial) {
     const update = () => {
       const duration = Number.isFinite(media.duration) ? media.duration : v.duration || context?.duration || 1;
       $('seek').max = duration; $('seek').value = media.currentTime; $('play-time').textContent = time(media.currentTime) + ' / ' + time(duration);
-      document.querySelectorAll('.clip').forEach(clip => clip.classList.toggle('active', media.currentTime >= Number(clip.dataset.start) && media.currentTime < Number(clip.dataset.end)));
+      document.querySelectorAll('.clip').forEach(clip => clip.classList.toggle('active', inSpan(media.currentTime, Number(clip.dataset.start), Number(clip.dataset.end))));
       const track = $('shot-track'), playing = track.querySelector('.clip.active');
       if (!playing) return;
       const pad = 12, view = track.getBoundingClientRect(), box = playing.getBoundingClientRect();
@@ -276,7 +276,7 @@ for (const id of ['time-start', 'time-end']) {
   $(id).addEventListener('keydown', event => { if (event.key !== 'Enter') return; event.preventDefault(); commitTime(); });
   $(id).addEventListener('blur', () => commitTime());
 }
-$('mark-time').onclick = () => { if (ui.media && !ui.report.readonly) { const at = ui.media.currentTime, shot = (playbackContext(item(), version())?.shots || []).find(s => at >= s.start && at < s.start + s.duration); setAnchor(shot ? { type: 'time', start: shot.start, end: shot.start + shot.duration } : { type: 'time', start: at, end: at }); captureDrafts(); showPanel('notes'); $('note-text').focus(); } };
+$('mark-time').onclick = () => { if (ui.media && !ui.report.readonly) { const at = ui.media.currentTime, shot = (playbackContext(item(), version())?.shots || []).find(s => inSpan(at, s.start, s.start + s.duration)); setAnchor(shot ? { type: 'time', start: shot.start, end: shot.start + shot.duration } : { type: 'time', start: at, end: at }); captureDrafts(); showPanel('notes'); $('note-text').focus(); } };
 $('seek').oninput = () => { if (ui.media) ui.media.currentTime = Number($('seek').value); };
 $('speed').onchange = () => { if (ui.media) { ui.media.playbackRate = Number($('speed').value); rememberPosition(); } };
 $('fullscreen').onclick = () => action(() => document.fullscreenElement ? document.exitFullscreen() : $('viewer').requestFullscreen());

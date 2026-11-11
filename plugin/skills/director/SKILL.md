@@ -46,7 +46,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka sfx <片目录> [--list]` | 风格带录音音效清单时用：`--list` 只列来源与大小给用户确认，不带参数则下载并处理到本机缓存 |
 | `wka align-voice <片目录> [--words\|--prepare --binary 路径 --model 路径\|--status\|--import 时间点.json --confirm "用户确认说明"]` | 本地台词定位；默认同时生成逐词时间表（`--words` 只重算词表，`--words --status` 查看）；首次准备与人工补点见 [录音定位](references/LOCAL-SPEECH.md) |
 | `wka soundtrack <片目录>` | 合成配乐、音效和环境声，接入用户录音，写入声音同步点，输出声轨 `.cache/mix.wav` 和审听用的 `review/声轨.m4a`；不要求镜头文件已写好 |
-| `wka still <片目录> [--frames N] [--at s02:1.5] [--aspect 9:16]` | 渲染静帧 + 接触表 |
+| `wka still <片目录> [--frames N] [--at s02:1.5] [--word-review] [--aspect 9:16]` | 渲染静帧 + 接触表；带 `--at` 时默认不做词级检查 |
 | `wka animatic <片目录> [--proxy] [--aspect 9:16]` | 动态分镜：每镜代表帧按镜头时长停留、配上声轨，输出 `review/动态分镜.mp4` + `review/接触表.jpg` |
 | `wka preview <片目录> [--only s03] [--native] [--aspect 9:16]` | 日常局部预览，只更新受影响镜头，不拼接整片；`--native` 检查原帧率动作 |
 | `wka clean <片目录> --render-cache [--aspect 9:16]` | 用户需要空间时主动清理可再生渲染缓存，保留声音、成片和签批快照 |

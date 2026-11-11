@@ -245,8 +245,9 @@ export async function writeReview(filmDir, file, args) {
  * 渲染静帧。
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
  * contactSheet: 把所有静帧拼成一张接触表，方便一次看完
+ * wordReview: 指定 at 时默认不做词级检查（只渲请求的帧）；为 true 时只检查 at 涉及的镜头。未指定 at 时检查整片（增量复用）。
  */
-export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, log = console.log } = {}) {
+export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, wordReview = false, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
   // 静帧只取一张，保留Remotion原生时间定位精度，不必跟随视频小样降帧。
   const job = createRenderJob(ctx, { proxy, nativeFps: ctx.pipeline.name === 'remotion', log });
@@ -263,7 +264,9 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
   }
   const outDir = ensureDir(ctx.variant.stillsDir);
   const files = await mod.renderStills(job, points, outDir);
-  await writeWordReview(job, { renderStills: (points, dir) => mod.renderStills(job, points, dir) });
+  if (!at || wordReview) {
+    await writeWordReview(job, { renderStills: (pts, dir) => mod.renderStills(job, pts, dir), shotKey: shotHash, shots: at ? [...new Set(points.map((point) => point.shot))] : null });
+  } else log('  已跳过词级检查（只渲了 --at 指定的帧）；需要时加 --word-review，或不带 --at 跑整片静帧');
   log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {

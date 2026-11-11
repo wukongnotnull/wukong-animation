@@ -22,7 +22,7 @@ export function mediaCommands({ pos, opt, log, aspectOpt }) {
           })
         : null;
       await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
-      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), log });
+      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), wordReview: !!opt('word-review'), log });
       registerReview(pos[0],'stills',[...r.files,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       return;

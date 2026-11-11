@@ -13,6 +13,11 @@ export function readWorkbenchUI(dir) {
   return value;
 }
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+function operationBusy(file) {
+  let owner;
+  try { owner = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { return error.code !== 'ENOENT'; }
+  return !(owner && owner.host === os.hostname() && Number.isInteger(owner.pid) && !alive(owner.pid));
+}
 export function writeWorkbenchUI(dir, { key, expected, value }) {
   const root = scope(dir);
   if (inspectProduction(root).mode === 'archive') assertActiveProduction(root);
@@ -53,5 +58,5 @@ export function workbenchStatus(dir) {
   const ledger = workbenchJson(scopedPath(root, '.wka/workbench.json'), { registrations: [], artifacts: [] });
   const external = new Set([...ledger.registrations || [], ...ledger.artifacts || []].filter(x => x.external).map(x => x.path));
   for (const file of external) walk(file, 'external:' + file);
-  return { revision: digest(rows), busy: fs.existsSync(scopedPath(root, '.cache/operation.lock')), at: new Date().toISOString() };
+  return { revision: digest(rows), busy: operationBusy(scopedPath(root, '.cache/operation.lock')), at: new Date().toISOString() };
 }

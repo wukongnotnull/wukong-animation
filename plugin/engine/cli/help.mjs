@@ -13,7 +13,7 @@ export const HELP = `wka —— wukong-animation 引擎命令行。
   wka delivery <片目录> --host codex|claude|generic [--aspect all|9:16] [--json]  生成存在性与新旧状态交付清单
   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
   wka qc <片目录> [--proxy] [--aspect 9:16]       量化技术质检（QC）
-  wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--proxy] [--aspect 9:16]   静帧 + 接触表
+  wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--word-review] [--proxy] [--aspect 9:16]   静帧 + 接触表
   wka animatic <片目录> [--proxy] [--aspect 9:16]   动态分镜：代表帧按镜头时长排成粗片并配上声轨
   wka render <片目录> [--proxy] [--only s01,s03] [--force] [--aspect 9:16]   渲染（--proxy 为小样；--aspect 出副版）
   wka preview <片目录> [--only s01,s03] [--native] [--force] [--aspect 9:16]   日常局部小样（--native 原画质与原帧率）

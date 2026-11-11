@@ -4,7 +4,7 @@ import { createSession } from './session.mjs';
 
 const $ = id => document.getElementById(id);
 if (location.hash) history.replaceState(null, '', '/');
-const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, panel: 'preview', raw: false, mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
+const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, panel: 'preview', raw: false, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, pollTimer;
 const labels = { archived: '历史档案 · 只读', pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
 const categories = { formal: '正式交付物', reference: '参考资料', history: '历史交付物' };
@@ -126,13 +126,30 @@ function renderStages() {
     node.append(el('span', String(row.step).padStart(2, '0'), 'number'), el('span', row.label, 'label'), el('span', row.status === 'approved' ? '✓' : row.status === 'needs-review' ? '↻' : row.status === 'not-applicable' ? '—' : '·', 'stage-dot')); $('stages').append(node);
   }
 }
+const fileTabs = { text: '文档', image: '图片', audio: '音频', video: '视频', directory: '工程', file: '其他' };
 function renderFiles() {
   const selected = stage();
   if (!selected.items.some(i => i.id === ui.item)) { ui.item = selected.items.find(i => i.availability === 'present')?.id || selected.items[0]?.id || null; ui.version = item()?.current?.id || null; }
   if (ui.item && !item().versions.some(v => v.id === ui.version)) ui.version = item().current?.id;
-  $('files').replaceChildren(); $('file-count').textContent = selected.items.length + ' 项';
+  if (ui.fileKind !== 'all' && !selected.items.some(i => i.kind === ui.fileKind)) ui.fileKind = 'all';
+  renderFileList();
+}
+function renderFileList() {
+  const selected = stage(), term = ui.fileQuery.trim().toLocaleLowerCase();
+  const searched = selected.items.filter(i => !term || [i.label, i.relativePath || i.path || ''].join(' ').toLocaleLowerCase().includes(term));
+  const shown = searched.filter(i => ui.fileKind === 'all' || i.kind === ui.fileKind);
+  $('file-count').textContent = (shown.length === selected.items.length ? '' : shown.length + ' / ') + selected.items.length + ' 项';
+  $('file-tabs').replaceChildren();
+  const tabs = [['all', '全部', searched.length], ...Object.keys(fileTabs).filter(kind => selected.items.some(i => i.kind === kind)).map(kind => [kind, fileTabs[kind], searched.filter(i => i.kind === kind).length])];
+  $('file-tabs').hidden = tabs.length < 3;
+  for (const [kind, label, count] of tabs) {
+    const node = el('button', undefined, 'file-tab' + (ui.fileKind === kind ? ' active' : '')); node.type = 'button'; node.setAttribute('role', 'tab'); node.setAttribute('aria-selected', String(ui.fileKind === kind));
+    node.append(label, el('span', String(count), 'file-tab-count')); node.addEventListener('click', () => { ui.fileKind = kind; renderFileList(); }); $('file-tabs').append(node);
+  }
+  $('files').replaceChildren();
+  if (!shown.length) { $('files').append(el('p', term || ui.fileKind !== 'all' ? '没有符合条件的交付物。' : '这一阶段还没有交付物。', 'hint file-empty')); return; }
   for (const category of ['formal', 'reference', 'history']) {
-    const group = selected.items.filter(i => i.category === category); if (!group.length) continue;
+    const group = shown.filter(i => i.category === category); if (!group.length) continue;
     $('files').append(el('p', categories[category], 'category-label'));
     for (const file of group) {
       const node = button('', () => choose(file), 'file' + (ui.item === file.id ? ' active' : '')), copy = el('span', undefined, 'file-copy');
@@ -295,6 +312,8 @@ for (const id of ['time-start', 'time-end']) {
 $('mark-time').onclick = () => { if (ui.media && !ui.report.readonly) { const at = ui.media.currentTime, shot = (playbackContext(item(), version())?.shots || []).find(s => inSpan(at, s.start, s.start + s.duration)); setAnchor(shot ? { type: 'time', start: shot.start, end: shot.start + shot.duration } : { type: 'time', start: at, end: at }); captureDrafts(); showPanel('notes'); $('note-text').focus(); } };
 $('seek').oninput = () => { if (ui.media) ui.media.currentTime = Number($('seek').value); };
 $('speed').onchange = () => { if (ui.media) { ui.media.playbackRate = Number($('speed').value); rememberPosition(); } };
+$('file-search').addEventListener('input', () => { ui.fileQuery = $('file-search').value; if (ui.report) renderFileList(); });
+$('file-search').addEventListener('keydown', event => { if (event.key === 'Escape' && $('file-search').value) { event.preventDefault(); $('file-search').value = ''; ui.fileQuery = ''; renderFileList(); } });
 $('fullscreen').onclick = () => action(() => document.fullscreenElement ? document.exitFullscreen() : $('viewer').requestFullscreen());
 $('locate').onclick = () => action(async () => notice((await api('/api/locate', { artifactId: ui.item })).message));
 $('read-mode').onclick = () => action(async () => { captureDrafts(); ui.raw = !ui.raw; await render(); rememberPosition(); });

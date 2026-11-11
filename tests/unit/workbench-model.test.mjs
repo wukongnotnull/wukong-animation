@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inSpan, chatPrompt, chatLink } from '../../plugin/engine/workbench/model.mjs';
+import { inSpan, chatPrompt, chatLink, lineDiff, formatLineDiff, versionChanges } from '../../plugin/engine/workbench/model.mjs';
 
 test('镜头选中态容忍跳转后落在起点前一帧内的播放位置', () => {
   const shots = [{ id: 's008', start: 14.57, end: 16.08 }, { id: 's009', start: 16.08, end: 18 }];
@@ -18,4 +18,28 @@ test('批注发送到对话时生成带位置的预填文字，并回到发起�
   assert.equal(chatLink(thread, prompt), 'codex://threads/' + thread + '?prompt=' + encodeURIComponent(prompt));
   assert.equal(chatLink('bad', 'x'), 'codex://threads/new?prompt=x');
   assert.equal(chatLink(null, 'x'), 'codex://threads/new?prompt=x');
+});
+
+const snap = (kind, entries) => ({ kind, entries: entries.map(([path, sha256, size]) => ({ path, sha256, size })), digest: entries.map(e => e[1]).join() });
+
+test('版本日志：首次保存、单文件更新、依赖更新与媒体变化', () => {
+  const first = { snapshot: snap('file', [['a.mp4', 'h1', 1048577]]), duration: 10, context: { shots: [1, 2] } };
+  const second = { snapshot: snap('file', [['a.mp4', 'h2', 2097153]]), duration: 12.5, context: { shots: [1, 2, 3] } };
+  const same = { snapshot: snap('file', [['a.mp4', 'h2', 2097153]]), duration: 12.5, context: { shots: [1, 2, 3] } };
+  assert.deepEqual(versionChanges(first), ['首次保存 · 1 个文件 · 1.0 MB']);
+  assert.deepEqual(versionChanges(second, first), ['内容已更新 · 1.0 MB → 2.0 MB', '时长 10.0 秒 → 12.5 秒', '镜头 2 → 3 个']);
+  assert.deepEqual(versionChanges(same, second), ['文件内容没有变化，上游依赖已更新']);
+});
+
+test('版本日志：工程目录列出新增、修改与删除的文件', () => {
+  const before = { snapshot: snap('directory', [['a', 'h1', 10], ['b', 'h2', 10], ['c', 'h3', 10]]) };
+  const after = { snapshot: snap('directory', [['a', 'h1', 10], ['b', 'h9', 20], ['d', 'h4', 5]]) };
+  assert.deepEqual(versionChanges(after, before), ['新增 1 个文件：d', '修改 1 个文件：b', '删除 1 个文件：c', '总大小 30 B → 35 B']);
+});
+
+test('版本日志：文字版本按行统计新增与删除', () => {
+  assert.deepEqual(lineDiff('一\n二\n三', '一\n三\n四\n五'), { added: 2, removed: 1 });
+  assert.deepEqual(lineDiff('x', 'x'), { added: 0, removed: 0 });
+  assert.equal(formatLineDiff({ added: 2, removed: 1 }), '文字内容：新增 2 行，删除 1 行');
+  assert.equal(formatLineDiff({ added: 0, removed: 0 }), '');
 });

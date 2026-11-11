@@ -64,3 +64,47 @@ export function chatPrompt({ film, label, notes }) {
 export function chatLink(thread, prompt) {
   return (validThreadId(thread) ? 'codex://threads/' + thread : 'codex://threads/new') + '?prompt=' + encodeURIComponent(prompt);
 }
+export const formatBytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
+export function lineDiff(before, after) {
+  const a = String(before).split('\n'), b = String(after).split('\n');
+  let start = 0, endA = a.length, endB = b.length;
+  while (start < endA && start < endB && a[start] === b[start]) start++;
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
+  const left = a.slice(start, endA), right = b.slice(start, endB);
+  let common = 0;
+  if (left.length * right.length > 4e6) {
+    const counts = new Map();
+    for (const line of left) counts.set(line, (counts.get(line) || 0) + 1);
+    for (const line of right) if (counts.get(line) > 0) { counts.set(line, counts.get(line) - 1); common++; }
+  } else {
+    let row = new Uint32Array(right.length + 1);
+    for (const line of left) {
+      const next = new Uint32Array(right.length + 1);
+      for (let j = 0; j < right.length; j++) next[j + 1] = line === right[j] ? row[j] + 1 : Math.max(row[j + 1], next[j]);
+      row = next;
+    }
+    common = row[right.length];
+  }
+  return { added: right.length - common, removed: left.length - common };
+}
+export const formatLineDiff = ({ added, removed }) => added || removed ? '文字内容：' + [added && '新增 ' + added + ' 行', removed && '删除 ' + removed + ' 行'].filter(Boolean).join('，') : '';
+const seconds = value => (Math.round(value * 10) / 10).toFixed(1) + ' 秒';
+export function versionChanges(version, previous) {
+  const entries = version.snapshot.entries, total = entries.reduce((n, e) => n + e.size, 0);
+  if (!previous) return ['首次保存 · ' + entries.length + ' 个文件 · ' + formatBytes(total)];
+  const before = new Map(previous.snapshot.entries.map(e => [e.path, e])), after = new Map(entries.map(e => [e.path, e]));
+  const added = entries.filter(e => !before.has(e.path)), removed = previous.snapshot.entries.filter(e => !after.has(e.path));
+  const changed = entries.filter(e => before.has(e.path) && before.get(e.path).sha256 !== e.sha256);
+  const lines = [], previousTotal = previous.snapshot.entries.reduce((n, e) => n + e.size, 0);
+  if (!added.length && !removed.length && !changed.length) lines.push('文件内容没有变化，上游依赖已更新');
+  else if (version.snapshot.kind === 'file' && previous.snapshot.kind === 'file') lines.push('内容已更新 · ' + formatBytes(previousTotal) + ' → ' + formatBytes(total));
+  else {
+    const names = list => list.slice(0, 3).map(e => e.path).join('、') + (list.length > 3 ? ' 等 ' + list.length + ' 个' : '');
+    for (const [label, list] of [['新增', added], ['修改', changed], ['删除', removed]]) if (list.length) lines.push(label + ' ' + list.length + ' 个文件：' + names(list));
+    lines.push('总大小 ' + formatBytes(previousTotal) + ' → ' + formatBytes(total));
+  }
+  if (Number.isFinite(version.duration) && Number.isFinite(previous.duration) && Math.abs(version.duration - previous.duration) >= 0.05) lines.push('时长 ' + seconds(previous.duration) + ' → ' + seconds(version.duration));
+  const shots = version.context?.shots?.length, previousShots = previous.context?.shots?.length;
+  if (shots !== undefined && previousShots !== undefined && shots !== previousShots) lines.push('镜头 ' + previousShots + ' → ' + shots + ' 个');
+  return lines;
+}

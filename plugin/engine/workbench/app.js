@@ -1,17 +1,17 @@
-import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink } from './model.mjs';
+import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineDiff, formatLineDiff, versionChanges } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
 
 const $ = id => document.getElementById(id);
 if (location.hash) history.replaceState(null, '', '/');
-const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, panel: 'preview', raw: false, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
+const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, panel: 'preview', raw: false, logSerial: 0, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, pollTimer;
 const labels = { archived: '历史档案 · 只读', pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
 const categories = { formal: '正式交付物', reference: '参考资料', history: '历史交付物' };
 const kinds = { text: '文档', image: '图片', audio: '音频', video: '视频', directory: '专用软件工程', file: '附件' };
 const icons = { text: '▤', image: '▧', audio: '♫', video: '▶', directory: '▱', file: '◇' };
 const time = value => { const n = Math.max(0, Number(value) || 0); return String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(Math.floor(n % 60)).padStart(2, '0'); };
-const bytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
+const bytes = formatBytes;
 const date = at => !at ? '日期未记录' : new Date(at).toLocaleString('zh-CN', { hour12: false });
 function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, fn, className) { const node = el('button', text, className); node.type = 'button'; node.addEventListener('click', () => action(fn)); return node; }
@@ -251,12 +251,41 @@ function renderSent() {
     $('sent-notes').append(group);
   }
 }
+const textChanges = new Map();
+function textChange(file, version, previous) {
+  const key = ui.film + '/' + file.id + '/' + previous.id + '/' + version.id;
+  if (!textChanges.has(key)) textChanges.set(key, Promise.all([previous, version].map(row => fetch(mediaUrl(file, row)).then(response => response.ok ? response.text() : Promise.reject(new Error('读取失败'))))).then(([before, after]) => formatLineDiff(lineDiff(before, after))).catch(() => { textChanges.delete(key); return ''; }));
+  return textChanges.get(key);
+}
+function renderVersionLog(file) {
+  const log = $('version-log'), serial = ++ui.logSerial; log.replaceChildren();
+  const rows = file?.versions || []; if (!rows.length) return;
+  log.append(el('p', '版本日志', 'field-label'));
+  const list = el('ol', undefined, 'version-log-list');
+  rows.forEach((row, index) => {
+    const previous = rows[index - 1], isCurrent = row.id === file.current.id && file.availability !== 'historical';
+    const entry = el('li'), node = el('button', undefined, 'version-log-entry' + (row.id === ui.version ? ' active' : '')); node.type = 'button';
+    if (row.id === ui.version) node.setAttribute('aria-current', 'true');
+    const head = el('span', undefined, 'version-log-head'); head.append(el('strong', 'v' + row.number), el('span', date(row.at), 'muted'));
+    if (isCurrent) head.append(el('span', '当前', 'tag good'));
+    node.append(head);
+    const changes = versionChanges(row, previous); for (const line of changes) node.append(el('span', line, 'version-log-line'));
+    if (file.kind === 'text' && previous && row.snapshot.digest !== previous.snapshot.digest && rows.length - index <= 20 && row.snapshot.kind === 'file' && previous.snapshot.kind === 'file') {
+      const slot = el('span', undefined, 'version-log-line'); node.append(slot);
+      textChange(file, row, previous).then(text => { if (serial === ui.logSerial && text) slot.textContent = text; });
+    }
+    node.addEventListener('click', () => action(async () => { if (row.id === ui.version) return; stash(); ui.version = row.id; await render(); rememberPosition(); }));
+    entry.append(node); list.prepend(entry);
+  });
+  log.append(list);
+}
 function renderInspector() {
   const file = item(), v = version();
   $('kind-label').textContent = kinds[file?.kind] || ''; $('versions').replaceChildren();
   for (const row of [...file?.versions || []].reverse()) { const option = el('option', 'v' + row.number + ' · ' + date(row.at) + (row.id === file.current.id && file.availability !== 'historical' ? ' · 当前' : ' · 历史')); option.value = row.id; $('versions').append(option); }
   $('versions').value = ui.version || ''; $('versions').disabled = !v;
   $('version-detail').textContent = v ? v.snapshot.entries.length + ' 个文件 · ' + bytes(v.snapshot.entries.reduce((n, e) => n + e.size, 0)) + ' · ' + categories[file.category] : '尚无保存版本';
+  renderVersionLog(file);
   $('checks').replaceChildren();
   if (file && current()) {
     for (const message of [file.availability !== 'present' && labels[file.availability], file.problem]) if (message) $('checks').append(el('p', message, 'status-line warn'));

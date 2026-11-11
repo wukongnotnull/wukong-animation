@@ -93,6 +93,8 @@ test('page keeps a light and dark theme switch in the browser', async t => {
   const f = await fixture(t);
   const headers = { 'Sec-Fetch-Site': 'same-origin', Origin: f.server.origin };
   const html = await (await fetch(f.server.origin + '/', { headers })).text();
+  const pluginVersion = JSON.parse(fs.readFileSync(new URL('../../plugin/plugin.json', import.meta.url), 'utf8')).version.replaceAll('.', '\\.');
+  assert.match(html, new RegExp(`id="plugin-version"[^>]*>审阅工作台<span class="rev">v${pluginVersion}</span><`));
   assert.match(html, /data-theme-choice="light"/);
   assert.match(html, /data-theme-choice="dark"/);
   assert.match(html, /src="\/theme\.js"/);

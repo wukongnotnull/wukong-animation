@@ -15,6 +15,20 @@ import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, a
 import { readWorkbenchUI, writeWorkbenchUI, workbenchStatus } from '../core/workbench-ui.mjs';
 
 const assets = fileURLToPath(new URL('../workbench/', import.meta.url));
+function pluginVersion() {
+  const root = path.resolve(assets, '../..');
+  const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+  const version = read(path.join(root, 'plugin.json'))?.version ?? read(path.join(root, 'bundle.json'))?.pluginVersion;
+  return typeof version === 'string' && /^\d+\.\d+\.\d+$/.test(version) ? 'v' + version : '';
+}
+function workbenchPage() {
+  const marker = '<span id="plugin-version">审阅工作台</span>';
+  const html = fs.readFileSync(path.join(assets, 'index.html'), 'utf8');
+  if (!html.includes(marker)) throw new Error('工作台页面缺少插件版本位置');
+  const version = pluginVersion();
+  const label = version ? `审阅工作台<span class="rev">${version}</span>` : '审阅工作台';
+  return Buffer.from(html.replace(marker, `<span id="plugin-version">${label}</span>`));
+}
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.flac': 'audio/flac', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.srt': 'text/plain; charset=utf-8', '.vtt': 'text/plain; charset=utf-8' };
 function send(res, code, value) { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); }
 function streamFile(req, res, file, name, size) {
@@ -135,8 +149,13 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
         }
         send(res, 404, { error: '未知工作台控制入口' }); return;
       }
-      if (['/', '/app.js', '/app.css', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
-        const file = path.join(assets, route === '/' ? 'index.html' : route.slice(1));
+      if (route === '/' && ['GET', 'HEAD'].includes(req.method)) {
+        const page = workbenchPage();
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': page.length });
+        res.end(req.method === 'HEAD' ? undefined : page); return;
+      }
+      if (['/app.js', '/app.css', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
+        const file = path.join(assets, route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }
       // Trust this loopback page, not requests initiated by other websites or ports.

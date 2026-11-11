@@ -120,3 +120,16 @@ test('change detection sees source edits without capturing versions or running p
   assert.deepEqual(fs.readFileSync(file), before);
   const release = lockProduction(f.dir); try { assert.equal(ui.workbenchStatus(f.dir).busy, true); } finally { release(); }
 });
+
+test('report stays viewable during production without writing, and submissions stay locked', async t => {
+  const f = fixture(t); const registered = f.report(), file = path.join(f.dir, '.wka/workbench.json'), before = fs.readFileSync(file);
+  f.put('shots/s01.js', 'rendering source');
+  const release = lockProduction(f.dir);
+  try {
+    const view = api.captureWorkbench(f.dir);
+    assert.equal(view.producing, true); assert.equal(view.stages.length, registered.stages.length);
+    assert.deepEqual(fs.readFileSync(file), before);
+    assert.throws(() => api.addWorkbenchNote(f.dir, { artifactId: 'x', versionId: 'x', text: '意见', anchor: { type: 'general' }, requestId: "00000000-0000-4000-8000-000000000000" }), /工程正在写入|工程忙/);
+  } finally { release(); }
+  assert.equal(api.captureWorkbench(f.dir).producing, undefined);
+});

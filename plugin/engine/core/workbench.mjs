@@ -66,7 +66,7 @@ function mediaDuration(item) {
 }
 
 // Caller holds the production lock; repeated capture never rewrites the film or migrates state.
-function capture(dir, { producedPaths = [] } = {}) {
+function capture(dir, { producedPaths = [], observeOnly = false } = {}) {
   const data = ledger(dir), before = digest(data), catalog = workbenchCatalog(dir, data.registrations);
   for (const item of catalog.items) {
     let artifact = data.artifacts.find(a => a.id === item.id);
@@ -74,6 +74,7 @@ function capture(dir, { producedPaths = [] } = {}) {
     Object.assign(artifact, item);
     artifact.dependencies = workbenchDependencies(dir, item, catalog.film);
     artifact.error = null;
+    if (observeOnly) { artifact.availability = artifact.versions.length ? 'present' : 'not-generated'; continue; }
     if (!fs.existsSync(item.path)) { artifact.availability = artifact.versions.length ? 'missing' : 'not-generated'; continue; }
     try {
       const snap = snapshot(dir, item), old = artifact.versions.at(-1);
@@ -91,8 +92,8 @@ function capture(dir, { producedPaths = [] } = {}) {
   }
   // Keep earlier records even when configuration no longer lists them.
   for (const artifact of data.artifacts) if (!catalog.items.some(i => i.id === artifact.id)) artifact.availability = 'historical';
-  if (digest(data) !== before || !fs.existsSync(ledgerPath(dir))) save(dir, data);
-  return report(dir, data, catalog);
+  if (!observeOnly && (digest(data) !== before || !fs.existsSync(ledgerPath(dir)))) save(dir, data);
+  return { ...report(dir, data, catalog), ...(observeOnly ? { producing: true } : {}) };
 }
 
 function normalizedNote(note) { return { ...note, status: note.status || (note.resolved ? 'resolved' : 'pending'), history: note.history || [] }; }
@@ -145,7 +146,12 @@ function report(dir, data, catalog) {
 export function captureWorkbench(dir, options = {}) {
   dir = rootOf(dir); const identity = inspectProduction(dir);
   if (identity.mode === 'archive') return archiveWorkbench(dir, ledger(dir), identity);
-  return locked(dir, root => capture(root, options));
+  try { return locked(dir, root => capture(root, options)); }
+  catch (error) {
+    // Production holds the write lock for a whole render; keep viewing the last registered versions without writing.
+    if (!/工程正在写入|工程忙/.test(error.message)) throw error;
+    return capture(dir, { observeOnly: true });
+  }
 }
 export function assertWorkbenchScope(dir) { return rootOf(dir); }
 // Only the CLI pipeline can use this while it already owns the same production lock.

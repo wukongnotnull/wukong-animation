@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { freeDraftName, jianyingRunning } from '../../plugin/engine/exporters/jianying/guards.mjs';
+import { freeDraftName, jianyingProcesses, jianyingRunning } from '../../plugin/engine/exporters/jianying/guards.mjs';
 
 const root = (...taken) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-jyname-'));
@@ -55,4 +55,14 @@ test('an explicit process override also exercises the real Linux process guard',
     if (old === undefined) delete process.env.WKA_JIANYING_PROCESS;
     else process.env.WKA_JIANYING_PROCESS = old;
   }
+});
+
+test('jianyingProcesses lists exact main-process PIDs only', () => {
+  const old = process.env.WKA_JIANYING_PROCESS;
+  try {
+    process.env.WKA_JIANYING_PROCESS = path.basename(process.execPath);
+    if (['darwin', 'linux'].includes(process.platform)) assert.ok(jianyingProcesses().every(Number.isInteger) && jianyingProcesses().length > 0);
+    process.env.WKA_JIANYING_PROCESS = path.basename(process.execPath).slice(0, -1);
+    assert.deepEqual(jianyingProcesses(), []);
+  } finally { if (old === undefined) delete process.env.WKA_JIANYING_PROCESS; else process.env.WKA_JIANYING_PROCESS = old; }
 });

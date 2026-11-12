@@ -9,10 +9,15 @@ const MAC_PROCESS = 'VideoFusion-macOS';
 const MAX_VERSION = 99;
 
 /** macOS 检查默认剪映；已有进程名覆盖也可在 Linux 用真实 pgrep 验证，Linux 不猜默认桌面进程。 */
-export function jianyingRunning() {
-  if (process.platform !== 'darwin' && !(process.platform === 'linux' && process.env.WKA_JIANYING_PROCESS)) return false;
+export function jianyingProcesses() {
+  if (process.platform !== 'darwin' && !(process.platform === 'linux' && process.env.WKA_JIANYING_PROCESS)) return [];
   const name = process.env.WKA_JIANYING_PROCESS || MAC_PROCESS;
-  return spawnSync('pgrep', ['-x', name], { stdio: 'ignore' }).status === 0;
+  const result = spawnSync('pgrep', ['-x', name], { encoding: 'utf8' });
+  return result.status === 0 ? result.stdout.split('\n').filter(Boolean).map(Number) : [];
+}
+
+export function jianyingRunning() {
+  return jianyingProcesses().length > 0;
 }
 
 /** 草稿根目录里第一个没被占用的名字：<name>、<name>_v2、<name>_v3…… */

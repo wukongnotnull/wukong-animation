@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildDraftPlan } from './plan.mjs';
-import { freeDraftName, jianyingRunning } from './guards.mjs';
+import { freeDraftName, jianyingProcesses } from './guards.mjs';
 import { detectSoundRanges } from './silence.mjs';
 import { probeDuration } from '../../core/ffmpeg.mjs';
 import crypto from 'node:crypto';
@@ -51,8 +51,9 @@ export async function encodeOutput({ out, proxy, timeline, force=false }) {
     if(owner?.operation===previous.operation) fs.rmSync(previous.path,{recursive:true,force:true});
     else throw new Error(`needs-review：无法核实本次草稿是否完整，不自动重导或清理：${previous.path}`);
   }
-  if (jianyingRunning()) {
-    throw new Error('剪映正在运行。剪映退出时会把内存里的旧草稿写回草稿目录，覆盖这次导出的内容。\n  请先完全退出剪映（⌘Q），再重新运行 wka final <片目录> --formats jianying');
+  const running = jianyingProcesses();
+  if (running.length) {
+    throw new Error(`剪映正在运行（主进程 PID ${running.join('、')}；菜单栏小图标的辅助进程不算）。剪映退出时会把内存里的旧草稿写回草稿目录，覆盖这次导出的内容。\n  请先完全退出剪映（⌘Q），再重新运行 wka final <片目录> --formats jianying`);
   }
   checkPython();
   // 同名草稿已存在时换个新名字，旧草稿和用户在剪映里的改动都不动

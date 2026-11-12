@@ -1,5 +1,5 @@
 // 画幅变体：一部片的主版（film.json 的 size）和副版（film.json 的 variants）。
-// 主版的路径全部保持原样；副版的缓存、静帧放子目录，其余文件名带画幅后缀（如 9x16）。
+// 每个画幅的缓存、静帧、报告和成片都带画幅后缀（如 9x16）；镜头源文件主版不带后缀，副版覆盖带后缀。
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -55,51 +55,44 @@ function checkVariants(film, style) {
   }
 }
 
+/** 成片文件名里不能出现的字符换成下划线 */
+const safeName = (text) => String(text ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim() || 'film';
+
 /**
  * 解析要处理的画幅版本。aspect 缺省或等于主版画幅 = 主版。
- * @returns {{aspect, isMain, orientation, size, suffix, cacheDir, stillsDir, review: (name: string) => string,
+ * 所有画幅的输出产物都带画幅后缀（主版也带）；镜头源文件不带：主版 s03.tsx，副版覆盖 s03.9x16.tsx。
+ * @returns {{aspect, isMain, orientation, size, suffix, cacheDir, stillsDir, qcFramesDir, review: (name: string) => string,
  *   exportName, title, overrides}}
  */
 export function resolveVariant({ film, style, filmDir }, aspect = null) {
   checkVariants(film, style);
   const main = aspectOf(film.size);
-  const exportName = film.export?.name || 'out';
-  if (!aspect || aspect === main) {
+  const exportBase = safeName(film.export?.name || film.title);
+  const common = (name, size, overrides, isMain) => {
+    const suffix = suffixOf(name);
     return {
-      aspect: main,
-      isMain: true,
-      orientation: orientationOf(film.size),
-      size: film.size,
-      suffix: null,
-      cacheDir: path.join(filmDir, '.cache'),
-      stillsDir: path.join(filmDir, 'stills'),
-      review: (name) => name,
-      exportName,
-      title: film.title,
-      overrides: {},
+      aspect: name,
+      isMain,
+      orientation: orientationOf(size),
+      size,
+      suffix,
+      cacheDir: path.join(filmDir, '.cache', suffix),
+      stillsDir: path.join(filmDir, 'review', '静帧', suffix),
+      qcFramesDir: path.join(filmDir, 'review', 'QC', '异常帧', suffix),
+      review: (file) => insertBeforeExt(file, `-${suffix}`),
+      exportName: overrides.export?.name || `${exportBase}-${suffix}`,
+      title: isMain ? film.title : `${film.title}-${suffix}`,
+      overrides,
     };
-  }
+  };
+  if (!aspect || aspect === main) return common(main, film.size, {}, true);
   parseAspect(aspect);
   const declared = Object.keys(film.variants || {});
   if (!declared.includes(aspect)) {
     throw new Error(`film.json 的 variants 里没有 ${aspect}。可用：${[`${main}（主版）`, ...declared].join('、')}`);
   }
   const overrides = film.variants[aspect] || {};
-  const size = sizeOf(aspect, film.size);
-  const suffix = suffixOf(aspect);
-  return {
-    aspect,
-    isMain: false,
-    orientation: orientationOf(size),
-    size,
-    suffix,
-    cacheDir: path.join(filmDir, '.cache', suffix),
-    stillsDir: path.join(filmDir, 'stills', suffix),
-    review: (name) => insertBeforeExt(name, `-${suffix}`),
-    exportName: overrides.export?.name || `${exportName}-${suffix}`,
-    title: `${film.title}-${suffix}`,
-    overrides,
-  };
+  return common(aspect, sizeOf(aspect, film.size), overrides, false);
 }
 
 /** 副版的覆盖镜头文件：shots/s03.tsx → shots/s03.9x16.tsx（存在时） */

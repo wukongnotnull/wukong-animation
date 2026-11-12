@@ -36,17 +36,18 @@ test('sizeOf keeps the short edge of the main size', () => {
   assert.deepEqual(sizeOf('1:1', [1920, 1080]), [1080, 1080]);
 });
 
-test('without an aspect the main version keeps every existing path', () => {
+test('without an aspect the main version is resolved, and its outputs carry the aspect suffix too', () => {
   const v = resolveVariant({ film: FILM, style: STYLE, filmDir: DIR });
   assert.equal(v.isMain, true);
   assert.equal(v.aspect, '16:9');
   assert.equal(v.orientation, 'landscape');
   assert.deepEqual(v.size, [1920, 1080]);
-  assert.equal(v.suffix, null);
-  assert.equal(v.cacheDir, path.join(DIR, '.cache'));
-  assert.equal(v.stillsDir, path.join(DIR, 'stills'));
-  assert.equal(v.review('小样.mp4'), '小样.mp4');
-  assert.equal(v.exportName, 'variant-fixture');
+  assert.equal(v.suffix, '16x9');
+  assert.equal(v.cacheDir, path.join(DIR, '.cache', '16x9'));
+  assert.equal(v.stillsDir, path.join(DIR, 'review', '静帧', '16x9'));
+  assert.equal(v.qcFramesDir, path.join(DIR, 'review', 'QC', '异常帧', '16x9'));
+  assert.equal(v.review('小样.mp4'), '小样-16x9.mp4');
+  assert.equal(v.exportName, 'variant-fixture-16x9');
   assert.equal(v.title, '画幅测试');
   assert.deepEqual(v.overrides, {});
 });
@@ -54,7 +55,7 @@ test('without an aspect the main version keeps every existing path', () => {
 test('naming the main aspect is the same as naming none', () => {
   const v = resolveVariant({ film: { ...FILM, variants: { '9:16': {} } }, style: STYLE, filmDir: DIR }, '16:9');
   assert.equal(v.isMain, true);
-  assert.equal(v.cacheDir, path.join(DIR, '.cache'));
+  assert.equal(v.cacheDir, path.join(DIR, '.cache', '16x9'));
 });
 
 test('a variant gets its own size, cache, stills, review names and export name', () => {
@@ -66,7 +67,7 @@ test('a variant gets its own size, cache, stills, review names and export name',
   assert.deepEqual(v.size, [1080, 1920]);
   assert.equal(v.suffix, '9x16');
   assert.equal(v.cacheDir, path.join(DIR, '.cache', '9x16'));
-  assert.equal(v.stillsDir, path.join(DIR, 'stills', '9x16'));
+  assert.equal(v.stillsDir, path.join(DIR, 'review', '静帧', '9x16'));
   assert.equal(v.review('小样.mp4'), '小样-9x16.mp4');
   assert.equal(v.review('主版不变报告.md'), '主版不变报告-9x16.md');
   assert.equal(v.exportName, 'variant-fixture-9x16');
@@ -169,4 +170,10 @@ test('loadFilm with a variant aspect swaps the size and picks override shot file
 test('loadFilm rejects an aspect the film does not declare', async () => {
   const { loadFilm } = await import('../../plugin/engine/core/job.mjs');
   assert.throws(() => loadFilm(inkFilm(), { aspect: '9:16' }), /variants/);
+});
+
+test('export.name replaces the film-name part of every output name; a variant override replaces the whole name', () => {
+  const film = { ...FILM, export: { name: '春晓' }, variants: { '9:16': { export: { name: '春晓-竖屏' } } } };
+  assert.equal(resolveVariant({ film, style: STYLE, filmDir: DIR }).exportName, '春晓-16x9');
+  assert.equal(resolveVariant({ film, style: STYLE, filmDir: DIR }, '9:16').exportName, '春晓-竖屏');
 });

@@ -17,7 +17,7 @@ function fixture(t) {
   const lock = path.join(cache, 'operation.lock'), active = path.join(cache, 'active-command.json');
   const run = args => spawnSync(process.execPath, [cli, ...args], {
     cwd: root, encoding: 'utf8', timeout: 15000,
-    env: { ...process.env, WUKONG_ANIMATION_HOME: path.join(root, 'home'), WKA_NO_FONT_DOWNLOAD: '1' },
+    env: { ...process.env, WUKONG_ANIMATION_HOME: path.join(root, 'home'), WKA_NO_FONT_DOWNLOAD: '1', WKA_LOCK_WAIT_MS: '0' },
   });
   return { root, film, cache, lock, active, run };
 }
@@ -63,7 +63,7 @@ test('a refused lock preserves the other owner and the previous recovery command
   fs.writeFileSync(f.active, 'previous command');
   const result = f.run(['signoff', f.film, 'invalid-step probe', '--step', '999']);
   assert.equal(result.status, 1, result.stderr);
-  assert.equal(result.stderr, `✗ 工程正在写入或锁所有者无法核实，请稍后检查：${f.lock}\n`);
+  assert.equal(result.stderr, `✗ 工程正在写入：pid ${process.pid}。等它结束后重试，或确认该进程已无用后结束它：${f.lock}\n`);
   assert.equal(fs.readFileSync(f.lock, 'utf8'), owner);
   assert.equal(fs.readFileSync(f.active, 'utf8'), 'previous command');
 });

@@ -167,6 +167,22 @@ export function captureFinalGeneration(dir,{slot,fontFiles=[],descriptor=null,in
   return {id:crypto.randomUUID(),slot,descriptor:target,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:deps,tool};
 }
 
+function snapshotHashes(value,into=new Map()) {
+  if(Array.isArray(value))for(const item of value)snapshotHashes(item,into);
+  else if(value&&typeof value==='object'){
+    if(typeof value.path==='string'&&value.snapshot?.entries)for(const e of value.snapshot.entries)into.set(value.snapshot.kind==='directory'?path.join(value.path,e.path):value.path,e.sha256);
+    else for(const child of Object.values(value))snapshotHashes(child,into);
+  }
+  return into;
+}
+function changedDetail(dir,old,now) {
+  const before=snapshotHashes(old),after=snapshotHashes(now),names=[];
+  for(const key of new Set([...before.keys(),...after.keys()]))if(before.get(key)!==after.get(key))names.push(key.startsWith(ENGINE_ROOT)?'引擎/'+path.relative(ENGINE_ROOT,key):path.relative(path.resolve(dir),key));
+  if(!names.length)return '';
+  names.sort();
+  return `（${names.slice(0,3).join('、')}${names.length>3?` 等 ${names.length} 项`:''}）`;
+}
+
 function sourceStatus(dir,slot,artifact) {
   if(!artifact)return {freshness:'unknown',reasons:['证据未存档，待核实']};
   if(artifact.contractDigest!==slot.contractDigest)return {freshness:'changed',reasons:['相关交付要求已变']};
@@ -176,7 +192,7 @@ function sourceStatus(dir,slot,artifact) {
   if(artifact.dependencies.groups.actualInputs)now.groups.actualInputs=artifact.dependencies.groups.actualInputs.map(e=>sourceFile(e.path));
   for(const [name,old] of Object.entries(artifact.dependencies.groups))if(digest(old)!==digest(now.groups[name]))changed.push(name);
   if(artifact.contractDigest!==slot.contractDigest)changed.push('相关交付要求');
-  if(changed.length)return {freshness:'changed',reasons:changed.map(n=>`相关输入已变：${n}`)};
+  if(changed.length)return {freshness:'changed',reasons:changed.map(n=>`相关输入已变：${n}${changedDetail(dir,artifact.dependencies.groups[n],now.groups[n])}`)};
   const unknown=[...artifact.dependencies.unknown,...now.unknown];
   if(!artifact.tool||artifact.tool.node!==process.version||artifact.tool.platform!==process.platform||artifact.tool.arch!==process.arch)unknown.push('生成工具/运行环境身份变化或缺失，待核实');
   for(const saved of artifact.tool?.executables||[])if(digest(saved)!==digest(executable(saved.name)))unknown.push(`生成工具身份变化：${saved.name}，待核实`);

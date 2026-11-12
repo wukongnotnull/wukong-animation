@@ -129,6 +129,7 @@ test('A6 variant overrides and notes do not stale main; shared picture does',t=>
   fs.appendFileSync(path.join(dir,'shots/s01.9x16.js'),' changed');fs.writeFileSync(path.join(dir,'review-notes.json'),'{"version":1}');
   let report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'current');assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='9:16').freshness,'changed');
   fs.appendFileSync(path.join(dir,'shots/s01.js'),' changed');report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'changed');
+  assert.match(JSON.stringify(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9')),/相关输入已变：picture（shots\/s01\.js）/);
 });
 
 test('A10 identical successful export reuses evidence identity and record retries preserve approval',t=>{

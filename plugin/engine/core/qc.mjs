@@ -194,7 +194,7 @@ async function runQcMeasured(filmDir, { proxy = false, fps = 10, aspect = null, 
       const cols = Math.min(3, files.length);
       const th = Math.round((640 * H0) / W0 / 2) * 2;
       const layout = files.map((_, i) => `${(i % cols) * 640}_${Math.floor(i / cols) * th}`).join('|');
-      await run([...files.flatMap((f) => ['-i', f]), '-filter_complex', `${files.map((_, i) => `[${i}:v]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`, '-frames:v', '1', contactSheet]);
+      await run([...files.flatMap((f) => ['-i', f]), '-filter_complex_threads', '1', '-filter_complex', `${files.map((_, i) => `[${i}:v]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`, '-frames:v', '1', contactSheet]);
     }
   }
 

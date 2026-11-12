@@ -299,3 +299,17 @@ test('without drawtext the QC contact sheet still carries labels (drawn by Chrom
   assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest is still paper');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('镜头很多时动态分镜分批出片、帧数精确，接触表在无 drawtext 时也能出图', opts, () => {
+  const shots = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`s${String(i + 1).padStart(2, '0')}`, SHOT(`ctx.fillStyle = '#C0392B'; ctx.fillRect(${i}, 20, 30, 30);`)]));
+  const dir = makeFilm(shots);
+  try {
+    const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
+    assert.equal(r.status, 0, r.stderr);
+    const out = path.join(dir, 'review', '动态分镜.mp4');
+    const probe = JSON.parse(spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames', '-of', 'json', out], { encoding: 'utf8' }).stdout);
+    assert.equal(Number(probe.streams[0].nb_read_frames), 40 * 12);
+    assert.ok(fs.statSync(path.join(dir, 'review', '接触表.jpg')).size > 0);
+    assert.equal(fs.readdirSync(path.join(dir, '.cache/work')).filter((name) => name.startsWith('animatic-')).length, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

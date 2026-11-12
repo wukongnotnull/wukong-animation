@@ -246,6 +246,18 @@ export async function writeReview(filmDir, file, args) {
   return out;
 }
 
+/** 接触表版式：张数不多时每行 3 张（或每镜 frames 张）；张数多时排成接近方形、总宽不超过 4096。 */
+export function contactSheetLayout(count, width, height, frames = 1) {
+  if (count <= 12) {
+    const cols = Math.min(count, frames > 1 ? frames : 3);
+    const tw = 640;
+    return { cols, rows: Math.ceil(count / cols), tw, th: Math.round((tw * height) / width) };
+  }
+  const cols = Math.min(count, Math.max(1, Math.ceil(Math.sqrt(count * height / width))));
+  const tw = Math.max(160, Math.floor(4096 / cols / 2) * 2);
+  return { cols, rows: Math.ceil(count / cols), tw, th: Math.round((tw * height) / width) };
+}
+
 /**
  * 渲染静帧。
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
@@ -275,11 +287,8 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
   log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {
-    const cols = Math.min(files.length, frames > 1 ? frames : 3);
-    const rows = Math.ceil(files.length / cols);
+    const { cols, rows, tw, th } = contactSheetLayout(files.length, job.W, job.H, frames);
     contactSheetFile = path.join(outDir, 'sheet.jpg');
-    const tw = 640;
-    const th = Math.round((tw * job.H) / job.W);
     // 标注取自静帧文件名（s02-2.70s.png）：管线按镜头分组渲染，文件顺序和 --at 的顺序可能不同，时间也可能被夹到镜头末尾
     const tags = files.map((f) => path.basename(f, '.png').replace('-', ' '));
     const labels = await labelPngs(tags, { size: 20, workDir: job.workDir, log, what: '接触表' });
@@ -294,13 +303,15 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
     const filter = files.length === 1
       ? `${scaled};[v0]null`
       : `${scaled};${files.map((_, i) => `[v${i}]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`;
-    await run([...inputs, '-filter_complex', filter, '-frames:v', '1', '-q:v', '3', contactSheetFile]);
+    // 每个滤镜分支各开线程，上百张时会耗尽系统线程（swscaler 报 Resource temporarily unavailable）：滤镜图单线程
+    await run([...inputs, '-filter_complex_threads', '1', '-filter_complex', filter, '-frames:v', '1', '-q:v', '3', contactSheetFile]);
     log(`  接触表 → ${path.relative(ctx.filmDir, contactSheetFile)} (${cols}×${rows})`);
   }
   return { files, contactSheet: contactSheetFile };
 }
 
 const ANIMATIC_FPS = 12;
+const ANIMATIC_BATCH = 16;
 
 /**
  * 动态分镜：每镜一张代表帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
@@ -313,22 +324,34 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
   const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
   const contactSheet = sheet ? path.join(reviewDir, ctx.variant.review('接触表.jpg')) : null;
   if (sheet) fs.copyFileSync(sheet, contactSheet);
-  const inputs = files.flatMap((f, i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String((timeline.shots[i].frames + 1) / ANIMATIC_FPS), '-i', f]);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
   const hasAudio = fs.existsSync(audio);
-  if (hasAudio) inputs.push('-i', audio);
-  else log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
-  // 标注 PNG 排在图片和声轨之后，声轨的输入序号（files.length）不变
-  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir: path.join(ctx.variant.cacheDir, 'work'), log, what: '动态分镜' });
-  const labelBase = files.length + (hasAudio ? 1 : 0);
-  if (labels) inputs.push(...labels.flatMap((f) => ['-i', f]));
-  const frame = (i) => (labels
-    ? `[${i}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p[f${i}];[f${i}][${labelBase + i}:v]overlay=20:20,format=yuv420p[v${i}]`
-    : `[${i}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${i}]`);
-  const filter = files.map((_, i) => frame(i)).join(';') + `;${files.map((_, i) => `[v${i}]`).join('')}concat=n=${files.length}:v=1:a=0[v]`;
-  const audioArgs = hasAudio ? ['-map', `${files.length}:a`, '-c:a', 'aac', '-b:a', '192k'] : [];
+  if (!hasAudio) log('  ! 没有 .cache/mix.wav，动态分镜不带声轨（先运行 wka soundtrack）');
+  const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
+  const labels = await labelPngs(ctx.shots.map((s) => s.id), { size: 28, workDir, log, what: '动态分镜' });
+  // 上百镜塞进一个滤镜图会极慢甚至耗尽线程：分批出片段，再按时间轴拼接
+  const segments = [];
+  for (let first = 0; first < files.length; first += ANIMATIC_BATCH) {
+    const indexes = files.map((_, i) => i).slice(first, first + ANIMATIC_BATCH);
+    const inputs = [
+      ...indexes.flatMap((i) => ['-loop', '1', '-framerate', String(ANIMATIC_FPS), '-t', String((timeline.shots[i].frames + 1) / ANIMATIC_FPS), '-i', files[i]]),
+      ...(labels ? indexes.flatMap((i) => ['-i', labels[i]]) : []),
+    ];
+    const frame = (i, slot) => (labels
+      ? `[${slot}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p[f${slot}];[f${slot}][${indexes.length + slot}:v]overlay=20:20,format=yuv420p[v${slot}]`
+      : `[${slot}:v]trim=end_frame=${timeline.shots[i].frames},setpts=PTS-STARTPTS,format=yuv420p${drawLabel(ctx.shots[i].id, { x: 20, y: 20, size: 28 })}[v${slot}]`);
+    const filter = indexes.map((i, slot) => frame(i, slot)).join(';') + `;${indexes.map((_, slot) => `[v${slot}]`).join('')}concat=n=${indexes.length}:v=1:a=0[v]`;
+    const segment = path.join(workDir, `animatic-${String(segments.length + 1).padStart(3, '0')}.mp4`);
+    await run([...inputs, '-filter_complex_threads', '1', '-filter_complex', filter, '-map', '[v]', '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', String(ANIMATIC_FPS), segment]);
+    segments.push(segment);
+  }
+  const silent = path.join(workDir, 'animatic-video.mp4');
+  await concatVideo(segments, { fps: ANIMATIC_FPS, list: path.join(workDir, 'animatic-concat.txt'), out: silent });
   const out = path.join(reviewDir, ctx.variant.review('动态分镜.mp4'));
-  await run([...inputs, '-filter_complex', filter, '-map', '[v]', ...audioArgs, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', out]);
+  await run(hasAudio
+    ? ['-i', silent, '-i', audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', out]
+    : ['-i', silent, '-c:v', 'copy', out]);
+  for (const file of [...segments, silent, path.join(workDir, 'animatic-concat.txt')]) fs.rmSync(file, { force: true });
   checkAnimaticTiming(ctx, out, timeline, log);
   log(`  动态分镜 → ${path.relative(ctx.filmDir, out)}（${files.length} 镜 · ${ctx.totalDuration.toFixed(1)}s${hasAudio ? ' · 含声轨' : ''}）`);
   return { file: out, contactSheet, hasAudio };

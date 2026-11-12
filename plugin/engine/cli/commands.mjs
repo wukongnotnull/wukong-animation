@@ -31,6 +31,8 @@ export function commandsFor(context) {
     'signoff': { preflight: 'film', lock: 'film', active: true, run: groups['review']['signoff'] },
     'status': { preflight: 'none', lock: 'none', active: false, run: groups['project']['status'] },
     'qc': { preflight: 'film', lock: 'film', active: true, run: groups['review']['qc'] },
+    'estimate': { preflight: 'film', lock: 'none', active: false, run: groups['media']['estimate'] },
+    'materials': { preflight: 'film', lock: 'film', active: false, run: groups['media']['materials'] },
     'still': { preflight: 'film', lock: 'film', active: true, run: groups['media']['still'] },
     'animatic': { preflight: 'film', lock: 'film', active: true, run: groups['media']['animatic'] },
     'preview': { preflight: 'film', lock: 'film', active: true, run: groups['media']['preview'] },

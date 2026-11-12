@@ -6,6 +6,8 @@ import { cleanRenderCache } from '../../core/cache.mjs';
 import { checkMainUnchanged } from '../../core/approval.mjs';
 import { generatedMixPadding } from '../../core/ffmpeg.mjs';
 import { checkOutputTiming } from '../../core/timing.mjs';
+import { estimateFilm, formatEstimate } from '../../core/estimate.mjs';
+import { inventoryMaterials } from '../../core/materials.mjs';
 import { fail } from '../context.mjs';
 import { reviewArtifacts } from '../review-artifacts.mjs';
 
@@ -13,6 +15,22 @@ export function mediaCommands({ pos, opt, log, aspectOpt }) {
   const { registerReview } = reviewArtifacts(log);
 
   return {
+    'estimate': async () => {
+      if (!pos[0]) fail('用法：wka estimate <片目录> [--max-shot 秒] [--aspect 9:16]');
+      const maxShot = opt('max-shot') === undefined ? null : Number(opt('max-shot'));
+      if (maxShot !== null && !(maxShot > 0)) fail('--max-shot 必须是正数（秒）');
+      const result = estimateFilm(pos[0], { aspect: aspectOpt(), maxShot });
+      log(formatEstimate(result));
+      return result.over.length ? 2 : 0;
+    },
+    'materials': async () => {
+      if (!pos[0]) fail('用法：wka materials <片目录> [--frames N]');
+      const frames = opt('frames') === undefined ? 3 : Number(opt('frames'));
+      if (!Number.isInteger(frames) || frames < 0) fail('--frames 必须是非负整数');
+      const { file, items } = inventoryMaterials(pos[0], { frames });
+      log(`素材清单：${file}（${items.length} 项${items.some(item => item.frames.length) ? '，视频已抽帧到 review/素材抽帧/' : ''}）`);
+      return;
+    },
     'still': async () => {
       if (!pos[0]) fail('用法：wka still <片目录>');
       const at = opt('at')

@@ -59,7 +59,7 @@ test('retained command policies stay stable; removed capabilities are absent', a
   assert.ok(fs.existsSync(file), 'the single command catalog is not yet implemented');
   const { commandsFor } = await import(pathToFileURL(file));
   const commands = commandsFor({ pos: [], opt: (_name, fallback = null) => fallback, log() {} });
-  assert.deepEqual(Object.entries(commands).filter(([name]) => !['workbench','align-voice'].includes(name)).map(([command, { preflight, lock, active, run }]) => {
+  assert.deepEqual(Object.entries(commands).filter(([name]) => !['workbench','align-voice','estimate','materials'].includes(name)).map(([command, { preflight, lock, active, run }]) => {
     assert.equal(typeof run, 'function', command);
     return { command, preflight, lock, active };
   }), baseline.policies.filter(p => !['audition','subtitles'].includes(p.command)));

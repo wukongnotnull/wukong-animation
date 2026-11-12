@@ -20,6 +20,7 @@ import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFa
 import { captureFinalGeneration, recordFinalArtifact } from './final-delivery.mjs';
 import { assertActiveProduction } from './state.mjs';
 
+import { recordRenderSpeed } from './estimate.mjs';
 import { outputSize, proxySampling, renderWorkers } from './render-profile.mjs';
 export { outputSize } from './render-profile.mjs';
 
@@ -179,7 +180,9 @@ export async function render(filmDir, { proxy = false, only = null, selected = n
       timingFailure(ctx, e, { proxy, log });
       throw e;
     }
-    log(`  渲染 ${todo.length} 个镜头用时 ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    const elapsed = Date.now() - t0;
+    recordRenderSpeed(ctx.filmDir, { proxy, pipeline: job.pipeline.name, width: job.W, height: job.H, frames: todo.reduce((sum, item) => sum + item.shot.frames, 0), ms: elapsed });
+    log(`  渲染 ${todo.length} 个镜头用时 ${(elapsed / 1000).toFixed(1)}s`);
   }
 
   const list = path.join(job.workDir, proxy ? 'concat-proxy.txt' : 'concat.txt');

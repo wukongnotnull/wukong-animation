@@ -54,7 +54,7 @@ export function workbenchStatus(dir) {
     } else if (st.isFile()) rows.push([key, st.size, st.mtimeMs, st.ctimeMs]);
   };
   walk(root, '.');
-  for (const rel of ['.wka/workbench.json', '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.cache/operations.json']) walk(scopedPath(root, rel), rel);
+  for (const rel of ['.wka/workbench.json', '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/operations.json']) walk(scopedPath(root, rel), rel);
   const ledger = workbenchJson(scopedPath(root, '.wka/workbench.json'), { registrations: [], artifacts: [] });
   const external = new Set([...ledger.registrations || [], ...ledger.artifacts || []].filter(x => x.external).map(x => x.path));
   for (const file of external) walk(file, 'external:' + file);

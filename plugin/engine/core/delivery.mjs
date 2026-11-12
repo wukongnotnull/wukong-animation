@@ -1,5 +1,6 @@
 // 交付核验与明确制作决定（FR-7）。
 import fs from 'node:fs';
+import { reviewFile, finalFile, REVIEW_DIR, FINAL_DIR } from './layout.mjs';
 import path from 'node:path';
 import { recoveryStatus } from './operations.mjs';
 import { atomicJson, readJson, treeEvidence } from './evidence.mjs';
@@ -14,18 +15,18 @@ export { finalDeliveryReport, writeFinalDelivery } from './final-delivery.mjs';
 function expectedFiles(dir,ctx,aspect) {
   const active=readJson(path.join(dir,'.cache/active-command.json'));
   const {cmd,opt}=parseArgs(active?.argv||(readProgress(dir).step>=6?['final',dir]:[]));
-  const proxy=!!opt('proxy'),review=name=>path.join(dir,'review',ctx.variant.review(name));
-  if(cmd==='soundtrack')return ctx.film.audio?.build||ctx.film.audio?.tracks?.length||(ctx.film.audio?.voice_source!=='none'&&ctx.film.audio?.voices?.length)?[review('声轨.m4a')]:[];
+  const proxy=!!opt('proxy'),review=name=>reviewFile(dir,ctx.variant.review(name));
+  if(cmd==='soundtrack')return ctx.film.audio?.build||ctx.film.audio?.tracks?.length||(ctx.film.audio?.voice_source!=='none'&&ctx.film.audio?.voices?.length)?[reviewFile(dir,'声轨.m4a')]:[];
   if(cmd==='animatic')return [review('动态分镜.mp4'),review('接触表.jpg')];
   if(cmd==='render')return proxy?[review('小样.mp4')]:[];
   if(cmd!=='final')return [];
   const raw=typeof opt('formats')==='string'?opt('formats').split(','):ctx.film.export?.formats||['mp4'];
   const visual=raw.filter(f=>f!=='jianying'),out=[];
-  const add=(format,suffix)=>{const exporter=ctx.registry.exporters.get(format);if(exporter)out.push(path.join(dir,`${ctx.variant.exportName}${suffix}${proxy?'-proxy':''}.${exporter.ext}`));};
+  const add=(format,suffix)=>{const exporter=ctx.registry.exporters.get(format);if(exporter)out.push(finalFile(dir,`${ctx.variant.exportName}${suffix}${proxy?'-proxy':''}.${exporter.ext}`));};
   for(const f of visual)add(f,'');
   if(raw.includes('jianying')){
     const stage=recoveryStatus(dir).stages.find(s=>s.stage==='draft-export'&&s.aspect===(aspect||ctx.variant.aspect));
-    out.push(stage?.value||path.join(dir,'review','草稿完成回执缺失'));
+    out.push(stage?.value||reviewFile(dir,'草稿完成回执缺失'));
   }
   return out;
 }
@@ -41,8 +42,8 @@ export function deliveryReport(dir,{aspect=null,host='codex',required=[]}={}) {
     items.push({path:file,kind:exists?kind(file):'缺失',aspect:info.aspect||null,proxy:!!info.proxy,status,stage:info.stage||null,generatedAt:info.completedAt||null,sha256:info.sha256||null,openStatus:'not-tested',...(host==='generic'?{previewStatus:'unverified'}:status==='current'?{link:fileLink(file,{host})}:{})});
   };
   for(const s of recoveryStatus(dir).stages.filter(s=>(!selected||s.aspect===selected)&&(/^(review:|encode:)/.test(s.stage)||s.stage==='draft-export'))) for(const out of s.outputs||[]) add(out.file,{...s,sha256:out.sha256,status:s.status==='completed'?'current':s.status==='stale'||s.status==='user-modified'?'stale':'unverified'});
-  for(const root of ['review','stills']) for(const f of treeEvidence(path.join(dir,root))) if(!/交付清单/.test(f.path)) add(path.join(dir,root,f.path));
-  for(const f of fs.readdirSync(dir)) if(/\.(mp4|gif|webm|srt)$/.test(f)) add(path.join(dir,f));
+  for(const root of [REVIEW_DIR]) for(const f of treeEvidence(path.join(dir,root))) if(!/交付清单/.test(f.path)) add(path.join(dir,root,f.path));
+  if(fs.existsSync(path.join(dir,FINAL_DIR)))for(const f of fs.readdirSync(path.join(dir,FINAL_DIR))) if(/\.(mp4|gif|webm|srt)$/.test(f)) add(path.join(dir,FINAL_DIR,f));
   const frames=aspect==='all'?[aspectOf(ctx.film.size),...Object.keys(ctx.film.variants||{})]:[ctx.variant.aspect];
   const expected=frames.flatMap(a=>expectedFiles(dir,loadFilm(dir,{requireShots:false,aspect:a}),a));
   required=[...required,...expected];
@@ -56,7 +57,7 @@ export function deliveryReport(dir,{aspect=null,host='codex',required=[]}={}) {
 export function writeDelivery(dir,options={}) {
   assertActiveProduction(dir);
   const report=deliveryReport(dir,options),suffix=options.aspect&&options.aspect!=='all'?'-'+options.aspect.replace(':','x'):'';
-  const base=path.join(path.resolve(dir),'review','交付清单'+suffix);
+  const base=reviewFile(dir,'交付清单'+suffix,{ensure:true});
   atomicJson(base+'.json',report);
   fs.writeFileSync(base+'.md',['# 交付清单','',...(report.host==='generic'?report.items.filter(i=>i.status==='current').map(i=>'- '+i.path+'（'+i.kind+'；previewStatus: unverified）'):report.links.map(link=>'- '+link)),'',...report.items.filter(i=>i.status!=='current').map(i=>`- ${i.status}：${i.path}`),'',...report.errors.map(e=>'- '+e),'',report.hostValidation,''].join('\n'));
   return report;

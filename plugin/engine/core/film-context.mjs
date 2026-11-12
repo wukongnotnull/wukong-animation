@@ -41,7 +41,7 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
 
   let t = 0;
   const shots = film.shots.map((s) => {
-    const shot = { ...s, start: t, path: overrideShotPath(path.join(filmDir, s.file), variant.suffix) };
+    const shot = { ...s, start: t, path: overrideShotPath(path.join(filmDir, s.file), variant.isMain ? null : variant.suffix) };
     if (requireShots && !fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
     t += s.duration;
     return shot;

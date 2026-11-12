@@ -4,9 +4,9 @@ import crypto from 'node:crypto';
 import { shotHashes } from '../../core/job.mjs';
 import { loadFilm } from '../../core/film-context.mjs';
 import { snapshotMain, checkMainUnchanged } from '../../core/approval.mjs';
-import { commitPaths } from '../../core/project.mjs';
+import { commitPaths, dirtyReviewPaths } from '../../core/project.mjs';
 import { readProgress, PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, commitSignoff, nextProductionStep, assertActiveProduction } from '../../core/state.mjs';
-import { buildManifest, writeManifest, verifyManifest } from '../../core/delivery-manifest.mjs';
+import { buildManifest, writeManifest, verifyManifest, MANIFEST } from '../../core/delivery-manifest.mjs';
 import { runQc } from '../../core/qc.mjs';
 import { requireTiming } from '../../core/timing.mjs';
 import { checkShotSizes } from '../../core/shot-sizes.mjs';
@@ -67,7 +67,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       if (!['approved', 'changes-requested'].includes(decision)) throw new Error('审阅结论无效');
       const manifest = buildManifest(pos[0], step);
       writeManifest(pos[0], manifest);
-      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','stills','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===6||step===7?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
+      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','成片','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===6||step===7?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
       if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
       const deliveryProof=deliveryApproval?{deliveryApproval:deliveryApproval.existing&&pending?.deliveryApproval?.review?pending.deliveryApproval:deliveryApproval}:{};
       atomicJson(pendingFile,{id,step,note,signature,status:'prepared',...deliveryProof});
@@ -90,7 +90,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       }
       const label = path.basename(path.resolve(pos[0]));
       const receipts = fs.existsSync(path.join(pos[0], '.wka/final-delivery-receipts')) ? fs.readdirSync(path.join(pos[0], '.wka/final-delivery-receipts')).map(name => '.wka/final-delivery-receipts/' + name) : [];
-      const reviewPaths = [...manifest.tracked, 'delivery-manifest.json', '.wka/state.json', '.wka/pending-approval.json', ...receipts].concat(['.wka/decisions.json', '.wka/final-delivery.json'].filter(file => fs.existsSync(path.join(pos[0], file))));
+      const reviewPaths = [...manifest.tracked, MANIFEST, '.wka/state.json', '.wka/pending-approval.json', ...receipts].concat(['.wka/decisions.json', '.wka/final-delivery.json'].filter(file => fs.existsSync(path.join(pos[0], file))));
       const current = readProgress(pos[0]);
       if (current.history.some(h => h.decision === 'changes-requested' && h.reviewSha)) {
         const closed = new Set(current.history.filter(h => h.decision === 'changes-requested').map(h => h.reviewSha));
@@ -103,7 +103,7 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       let main=null,variants=null;
       if(!prior&&decision==='approved'&&step===FINAL_REVIEW_STEP){const snapshot=snapshotMain(pos[0],{log});if(snapshot.missing.length)throw new Error('缺少完整定稿快照，签批存档未提交');main=snapshot.hashes;}
       if(!prior&&decision==='approved'&&step===VARIANT_STEP){const {film}=loadFilm(pos[0]);variants=Object.fromEntries(Object.keys(film.variants||{}).map(aspect=>[aspect,shotHashes(pos[0],{aspect})]));}
-      const prepared = [...reviewPaths, ...receipts, '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/pending-approval.json'].filter((file, index, all) => all.indexOf(file) === index && fs.existsSync(path.join(pos[0], file)));
+      const prepared = [...reviewPaths, ...dirtyReviewPaths(pos[0]), ...receipts, '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/pending-approval.json'].filter((file, index, all) => all.indexOf(file) === index && fs.existsSync(path.join(pos[0], file)));
       const review = commitPaths(pos[0], { message: `${label}: 待审 ${PRODUCTION_STEPS[step]}`, paths: prepared }, { log });
       if (readProgress(pos[0]).history.some(h => h.reviewSha === review.sha && h.decision === 'changes-requested')) throw new Error('这一版已经退回，请重新提交后再签批');
       commitSignoff(pos[0],{id,step,note,signature,main,variants,decision,reviewSha:review.sha,advanced:decision==='approved'?nextProductionStep(pos[0],step):null});

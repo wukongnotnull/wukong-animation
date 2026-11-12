@@ -14,6 +14,7 @@ import { checkTiming } from './timing.mjs';
 import { run, drawLabel } from './ffmpeg.mjs';
 import { ensureDir } from './paths.mjs';
 import { labelPngs } from './labels.mjs';
+import { reviewFile } from './layout.mjs';
 import { checkShotSizes, describeShotSizes } from './shot-sizes.mjs';
 
 
@@ -86,7 +87,7 @@ export async function runQc(filmDir,options={}) {
     disposition.accepted.map(i=>`\n- 人工接受 ${i.id}：${i.review.reason}；${i.review.reviewer}；${i.review.evidence}`).join('')+
     disposition.invalidNotes.map(i=>`\n- 无效处置 ${i.finding}：${i.error}`).join('')+
     (disposition.staleNotes.length?'\n旧备注本轮无匹配项（未再检出或来源已变，不等于确认已修复）。':'');
-  const base=path.join(ctx.filmDir,'review',ctx.variant.review('QC报告.json').slice(0,-5)+(proxy?'-proxy':''));
+  const base=reviewFile(ctx.filmDir,ctx.variant.review('QC报告.json').slice(0,-5)+(proxy?'-proxy':''),{ensure:true});
   atomicJson(base+'.json',result);fs.writeFileSync(base+'.md',result.report+'\n');
   const machineFile=path.join(ctx.variant.cacheDir,'qc.json');
   const measured=fs.existsSync(machineFile)?JSON.parse(fs.readFileSync(machineFile,'utf8')):{};
@@ -174,7 +175,7 @@ async function runQcMeasured(filmDir, { proxy = false, fps = 10, aspect = null, 
   let contactSheet = null;
   const picks = merged.filter((m) => m.t0 !== null).slice(0, 9);
   if (picks.length) {
-    const dir = ensureDir(path.join(ctx.variant.stillsDir, 'qc'));
+    const dir = ensureDir(ctx.variant.qcFramesDir);
     const files = [];
     const texts = picks.map((m) => `${m.shot} ${m.t0}s ${m.kind}`);
     const labels = await labelPngs(texts, {

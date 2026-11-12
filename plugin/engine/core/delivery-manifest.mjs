@@ -3,6 +3,7 @@ import path from 'node:path';
 import { hashFile } from './file-hash.mjs';
 import { loadFilm } from './film-context.mjs';
 import { resolveVariant, suffixOf } from './variants.mjs';
+import { reviewFile, finalFile } from './layout.mjs';
 import { assertActiveProduction } from './state.mjs';
 
 const TEXT = {
@@ -10,7 +11,7 @@ const TEXT = {
   3: ['brief.md', 'story.md'],
   4: ['brief.md', 'story.md', 'storyboard.md'],
 };
-const MANIFEST = 'delivery-manifest.json';
+export const MANIFEST = 'review/交付/delivery-manifest.json';
 
 function relative(dir, file) {
   const rel = path.relative(dir, path.resolve(dir, file)).split(path.sep).join('/');
@@ -24,8 +25,8 @@ function generated(dir, ctx, proxy) {
   const names = proxy
     ? ['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md']
     : ['QC报告.json', 'QC报告.md'];
-  const files = names.map(name => relative(dir, path.join(dir, 'review', ctx.variant.review(name))));
-  if (!proxy) files.push(`${ctx.variant.exportName}.mp4`);
+  const files = names.map(name => relative(dir, reviewFile(dir, ctx.variant.review(name))));
+  if (!proxy) files.push(relative(dir, finalFile(dir, `${ctx.variant.exportName}.mp4`)));
   return files.filter(file => exists(dir, file));
 }
 function sourceFiles(dir, film) {
@@ -39,7 +40,7 @@ function sourceFiles(dir, film) {
       files.push(ext ? shot.file.slice(0, -ext.length) + mark + ext : shot.file + mark);
     }
   }
-  files.push('.wka/voice-alignment.json', '.wka/word-timeline.json', 'sync-points.json', 'review-notes.json');
+  files.push('.wka/voice-alignment.json', '.wka/word-timeline.json', 'sync-points.json', '.wka/review-notes.json');
   return files.map(file => relative(dir, file)).filter(file => exists(dir, file));
 }
 function entry(dir, rel) {
@@ -61,8 +62,8 @@ export function buildManifest(dir, step) {
     if (stepNumber === 7) {
       for (const aspect of Object.keys(ctx.film.variants || {})) {
         const variant = resolveVariant(ctx, aspect);
-        media.push(...['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md'].map(name => relative(dir, path.join(dir, 'review', variant.review(name)))));
-        media.push(`${variant.exportName}.mp4`);
+        media.push(...['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md'].map(name => relative(dir, reviewFile(dir, variant.review(name)))));
+        media.push(relative(dir, finalFile(dir, `${variant.exportName}.mp4`)));
       }
       media = media.filter(file => exists(dir, file));
     }
@@ -75,6 +76,7 @@ export function buildManifest(dir, step) {
 }
 export function writeManifest(dir, manifest) {
   const file = path.join(path.resolve(dir), MANIFEST);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
   return MANIFEST;
 }

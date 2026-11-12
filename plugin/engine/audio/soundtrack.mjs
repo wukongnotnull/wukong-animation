@@ -19,6 +19,7 @@ import { digest, fileDigest, treeEvidence } from '../core/evidence.mjs';
 import { ENGINE_ROOT } from '../core/paths.mjs';
 import { saveAudioReview,saveSfxReview } from '../core/review-evidence.mjs';
 import { rememberArtifacts } from '../core/operations.mjs';
+import { reviewFile } from '../core/layout.mjs';
 
 // 风格没写 style.json 的 loudness 时，声轨标准化到的整体响度（LUFS）
 const DEFAULT_LOUDNESS = -18;
@@ -145,12 +146,12 @@ export async function mixSoundtrack(filmDir, { log = console.log } = {}) {
   const signature=audio.build?null:digest({audio,shots:ctx.shots.map(s=>[s.id,s.duration]),style:ctx.style.loudness,files:files.map(file=>[file,fileDigest(file)]),engine:treeEvidence(path.join(ENGINE_ROOT,'audio'))});
   const value=await runStage(ctx.filmDir,{stage:'soundtrack',aspect:ctx.variant.aspect,signature,log,onReuse:()=>{if(audio.voices?.length)log('  · 声音同步点未变化（完整声轨与同步点文件已核对）');},run:async()=>{
     const value=await mixSoundtrackFresh(filmDir,{log});
-    return {value,outputs:[path.join(ctx.filmDir,'film.json'),...(value.mix?[value.mix]:[]),path.join(ctx.filmDir,'.cache/voice-sources.json'),...value.tracks.map(t=>t.file)]};
+    return {value,outputs:[path.join(ctx.filmDir,'film.json'),...(value.mix?[value.mix]:[]),path.join(ctx.filmDir,'.wka/voice-sources.json'),...value.tracks.map(t=>t.file)]};
   }});
   const report=saveAudioReview(ctx,value.mix);
-  const outputs=['声轨审听.md','声轨审听.json'].map(f=>path.join(ctx.filmDir,'review',f));
+  const outputs=['声轨审听.md','声轨审听.json'].map(f=>reviewFile(ctx.filmDir,f));
   saveSfxReview(ctx,value.mix,value.sfxAudit);
-  if(value.sfxAudit)outputs.push(path.join(ctx.filmDir,'review','音效电平审计.json'));
+  if(value.sfxAudit)outputs.push(reviewFile(ctx.filmDir,'音效电平审计.json'));
   rememberArtifacts(ctx.filmDir,{stage:'review:audio-notes',aspect:ctx.variant.aspect,signature:report.sha256,outputs,value:outputs});
   if(report.errors.length)throw new Error(report.errors.join('；'));
   log(`声轨审听状态：${report.status}（测量不代表实际听过）`);return value;

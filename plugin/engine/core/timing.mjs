@@ -1,5 +1,6 @@
 // 累计切点量化：每镜帧数取相邻切点之差，禁止独立舍入后再求和。
 import fs from 'node:fs';
+import { reviewFile } from './layout.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -123,7 +124,7 @@ function atomicJson(file, data) {
 
 function writeReport(ctx, report, { proxy = false, purpose = '', log = () => {} } = {}) {
   report.ok = report.errors.length === 0;
-  const base = path.join(ctx.filmDir, 'review', reportBase(ctx, proxy, purpose));
+  const base = reviewFile(ctx.filmDir, reportBase(ctx, proxy, purpose), { ensure: true });
   atomicJson(base + '.json', report);
   const rows = (report.shots || []).map(s => `| ${s.id} | ${s.plannedStart.toFixed(6)} | ${s.startFrame}–${s.endFrame} | ${s.actualStartFrame ?? '—'}–${s.actualEndFrame ?? '—'} | ${s.actualEndFrame == null ? '—' : s.actualEndFrame - s.endFrame} |`);
   fs.writeFileSync(base + '.md', [
@@ -197,7 +198,7 @@ export function checkTiming(ctx, { proxy = false, fresh = false, log = () => {} 
     });
     const video = path.resolve(ctx.filmDir, m.video.file);
     if (fileSha(video) !== m.video.sha256) throw new Error('拼接视频已变化，需重新渲染/拼接');
-    const previous = path.join(ctx.filmDir, 'review', reportBase(ctx, proxy) + '.json');
+    const previous = reviewFile(ctx.filmDir, reportBase(ctx, proxy)) + '.json';
     const old = fs.existsSync(previous) ? JSON.parse(fs.readFileSync(previous, 'utf8')) : null;
     report = { ...measure(ctx, timeline, segments, video, fresh), purpose: report.purpose, signature: sig, outputs: old?.signature === sig ? (old.outputs || []).map(o => checkedVideo(o.file, { fps: timeline.fps, frames: timeline.totalFrames }, { cacheDir: ctx.variant.cacheDir, fresh })) : [] };
   } catch (e) { report.errors.push(e.message); }

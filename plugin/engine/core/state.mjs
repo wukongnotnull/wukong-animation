@@ -12,10 +12,10 @@ export const PRODUCTION_STEPS = {
 };
 export const LAST_STEP = 8;
 export const REVIEW_GATES = { 2: '①方案简报', 3: '②剧本', 4: '③分镜稿', 5: '④小样', 6: '⑤成片', 7: '⑥调整画幅', 8: '⑦剪映草稿' };
-export const FLOW = 6;
+export const FLOW = 7;
 export const PRODUCTION_ROLES = { storyboard: 4, proxy: 5, final: 6, variant: 7, draft: 8 };
 export const PRODUCTION_DELIVERABLES = { 1: '环境检查结果', 2: '方案简报', 3: '剧本', 4: '分镜稿', 5: '小样视频', 6: '成片视频', 7: '画幅成片', 8: '剪映草稿' };
-const HISTORY_FILES = ['brief.md', 'film.json', '.wka/workbench.json', '.wka/final-delivery.json', '.wka/pending-approval.json', '.wka/decisions.json', '.cache/operations.json'];
+const HISTORY_FILES = ['brief.md', 'film.json', '.wka/workbench.json', '.wka/final-delivery.json', '.wka/pending-approval.json', '.wka/decisions.json', '.wka/operations.json', '.cache/operations.json'];
 const fileOf = dir => path.join(path.resolve(dir), '.wka', 'state.json');
 
 function flowError(code, flow, stateFile = null) {

@@ -7,6 +7,7 @@ import { loadFilm } from '../core/film-context.mjs';
 import { atomicJson, digest, fileDigest } from '../core/evidence.mjs';
 import { probeDuration, run } from '../core/ffmpeg.mjs';
 import { scopedPath } from '../core/workbench-catalog.mjs';
+import { reviewFile } from '../core/layout.mjs';
 
 const recordPath = dir => scopedPath(dir, '.wka/voice-alignment.json');
 const normalized = value => String(value || '').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
@@ -76,7 +77,7 @@ export function voiceAlignmentStatus(dir) {
 function writeReport(dir, data) {
   atomicJson(recordPath(dir), data);
   const rows = Object.entries(data.voices).flatMap(([id, v]) => [`## ${id} · ${v.status}`, `来源：${v.method}；不改变原始录音`, ...(v.issues || []).map(x => '- 待确认：' + x), ...v.segments.map((s, i) => `- ${i + 1}. ${(v.source.at + s.start).toFixed(3)}–${(v.source.at + s.end).toFixed(3)} 秒：${s.text}`), '']);
-  const file = scopedPath(dir, 'review/台词定位.md');fs.mkdirSync(path.dirname(file), { recursive: true });fs.writeFileSync(file, '# 台词定位\n\n仅用于声画编排；识别时间仍需结合小样听审。\n\n' + rows.join('\n'));
+  const file = reviewFile(scopedPath(dir, '.'), '台词定位.md', { ensure: true });fs.writeFileSync(file, '# 台词定位\n\n仅用于声画编排；识别时间仍需结合小样听审。\n\n' + rows.join('\n'));
   return data;
 }
 export function importVoiceTiming(dir, input, { confirmation } = {}) {

@@ -1,6 +1,7 @@
 import { qcSource } from './qc-source.mjs';
 // 最终交付：查询不执行制作代码、不迁移流程、不刷新阶段缓存。
 import fs from 'node:fs';
+import { reviewFile, finalFile, REVIEW_DIR } from './layout.mjs';
 import path from 'node:path';
 import { digest, atomicJson, treeEvidence, fileDigest } from './evidence.mjs';
 import { loadFilm } from './film-context.mjs';
@@ -69,7 +70,7 @@ export function finalContract(dir,{aspect=null}={}) {
       const slot=[a,kind,format,...(flavor?[flavor]:[])].join('/');
       const ext=ctx.registry.exporters.get(format)?.ext;
       if(kind==='video'&&!ext)errors.push(`未注册的导出格式：${format}`);
-      const file=kind==='draft'||!ext?null:path.join(dir,ctx.variant.exportName+suffix+'.'+ext);
+      const file=kind==='draft'||!ext?null:finalFile(dir,ctx.variant.exportName+suffix+'.'+ext);
       const projection={slot,name:ctx.variant.exportName,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{})};
       const stage=kind==='draft'?'draft-export':`encode:${format}${suffix}`;
       slots.push({slot,aspect:a,kind,format,flavor:flavor||null,path:file,stage,projection,contractDigest:digest(projection)});
@@ -86,7 +87,7 @@ function observed(file) {
   catch(e){return {availability:e.code==='ENOENT'?'missing':'unreadable',snapshot:null,reasons:[e.message]};}
 }
 function legacyPath(dir,slot) {
-  const stages=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{});
+  const stages=Object.values(json(path.join(dir,'.wka/operations.json'),{stages:{}}).stages||{});
   const stage=stages.find(s=>s.stage===slot.stage&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
   const file=typeof stage?.value==='string'?stage.value:stage?.outputs?.[0]?.file;
   return typeof file==='string'?path.resolve(dir,file):null;
@@ -132,7 +133,7 @@ function dependencies(dir,slot,fontFiles=[]) {
     const names=usedCueNames(scripts.filter(f=>fs.existsSync(f)).map(f=>fs.readFileSync(f,'utf8')));
     if(!names||[...names].some(n=>n.startsWith('word:'))) {
       const sync=json(path.join(dir,'sync-points.json'),{points:[]}),points=(sync.points||[]).filter(p=>!names||names.has('word:'+p.id));
-      const saved=json(path.join(dir,'.cache/voice-sources.json'),{voices:{}});
+      const saved=json(path.join(dir,'.wka/voice-sources.json'),{voices:{}});
       groups.wordSync={points,voices:points.map(p=>({voice:p.voice,source:saved.voices?.[p.voice]||null})),files:points.flatMap(p=>[...(p.method==='aligned'&&p.evidence?[p.evidence]:[]),...(saved.voices?.[p.voice]?.file?[saved.voices[p.voice].file]:[])]).map(f=>sourceFile(path.resolve(dir,f)))};
       if(!names)unknown.push('动态 cue 使用范围无法确定，词锚点来源待核实');
       if(points.some(p=>!saved.voices?.[p.voice]))unknown.push('词锚点实际人声来源未登记，待核实');
@@ -323,7 +324,7 @@ function technicalStatus(dir,slot,artifact) {
   if(base.errors?.length)return {...base,status:'hard-error'};
   if(slot.kind!=='video')return base;
   const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect});
-  const stage=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{}).find(s=>s.stage==='review:qc'&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
+  const stage=Object.values(json(path.join(dir,'.wka/operations.json'),{stages:{}}).stages||{}).find(s=>s.stage==='review:qc'&&s.aspect===slot.aspect&&!s.proxy&&s.status==='completed');
   const signature=qcSource(ctx.variant.cacheDir);
   if(!stage||stage.signature!==signature||!outputsMatch(stage.outputs))return base;
   const reportFile=stage.outputs.find(o=>o.file.endsWith('.json'))?.file;
@@ -412,7 +413,7 @@ function acceptance(dir,item,artifact,data,history) {
 }
 
 function evidencedCandidates(dir,data,items,host) {
-  const stages=Object.values(json(path.join(dir,'.cache/operations.json'),{stages:{}}).stages||{});
+  const stages=Object.values(json(path.join(dir,'.wka/operations.json'),{stages:{}}).stages||{});
   const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
   for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^encode:/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':'video'});
   const seen=new Set(items.map(i=>i.path)),result=[];
@@ -456,9 +457,9 @@ export function finalDeliveryReport(dir,{host='codex',aspect=null}={}) {
   if(accepted.length===items.length&&items.length&&!contract.errors.length)status='accepted';
   if(contract.errors.length)status='needs-verification';
   const files=[],auditDiagnostics=[];
-  for(const root of ['review','stills'])try{files.push(...treeEvidence(path.join(dir,root)).filter(e=>!/^最终交付(?:清单|审计)/.test(path.basename(e.path))).map(e=>({...e,path:path.join(dir,root,e.path)})));}catch(e){auditDiagnostics.push(`${root} 附录无法完整读取：${e.message}`);}
+  for(const root of [REVIEW_DIR])try{files.push(...treeEvidence(path.join(dir,root)).filter(e=>!/^最终交付(?:清单|审计)/.test(path.basename(e.path))).map(e=>({...e,path:path.join(dir,root,e.path)})));}catch(e){auditDiagnostics.push(`${root} 附录无法完整读取：${e.message}`);}
   const candidates=contract.errors.length?evidencedCandidates(dir,data,items,host):[];
-  const references=['.wka/state.json','.cache/operations.json','.wka/decisions.json'].filter(rel=>fs.existsSync(path.join(dir,rel))).map(rel=>sourceFile(path.join(dir,rel)));
+  const references=['.wka/state.json','.wka/operations.json','.wka/decisions.json'].filter(rel=>fs.existsSync(path.join(dir,rel))).map(rel=>sourceFile(path.join(dir,rel)));
   return {version:2,ok:status==='accepted',scope:contract.scope,status,summary:{ready:ready.length,accepted:accepted.length,total:items.length},host,contract,items,candidates,reviewSets:reviewSets(dir,contract,items,data),history:data.artifacts.filter(a=>!items.some(i=>i.artifactId===a.id)),blocks,errors:contract.errors,links:[...items,...candidates].map(i=>i.link).filter(Boolean),audit:{files,ledger:data,references,diagnostics:auditDiagnostics},hostValidation:'未实际打开的文件均为 not-tested；文件指纹不证明播放成功'};
 }
 
@@ -488,7 +489,7 @@ export function formatFinalDelivery(report) {
 export function writeFinalDelivery(dir,options={}) {
   assertActiveProduction(dir);
   const report=finalDeliveryReport(dir,options),suffix=report.scope==='all'?'':'-'+report.scope.replace(':','x');
-  const base=path.join(path.resolve(dir),'review','最终交付清单'+suffix),audit=path.join(path.resolve(dir),'review','最终交付审计'+suffix);
+  const base=reviewFile(dir,'最终交付清单'+suffix,{ensure:true}),audit=reviewFile(dir,'最终交付审计'+suffix,{ensure:true});
   report.appendix={json:audit+'.json',markdown:audit+'.md'};
   atomicJson(audit+'.json',report.audit);atomicText(audit+'.md','# 最终交付审计\n\n'+JSON.stringify(report.audit,null,2)+'\n');
   const {audit:details,...brief}=report;void details;

@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { loadFilm } from '../core/film-context.mjs';
 import { atomicJson, digest, fileDigest } from '../core/evidence.mjs';
 import { scopedPath } from '../core/workbench-catalog.mjs';
+import { reviewFile } from '../core/layout.mjs';
 import { dtwPreset, prepareVoiceAlignment, recognitionTokens, recognizeVoice, voiceAlignmentStatus, voiceSources } from './voice-alignment.mjs';
 import { buildWordTimeline, envelopeOf, unitsOf, WORD_CONFIDENCE } from './word-alignment.mjs';
 
@@ -78,8 +79,7 @@ function writeReport(dir, data) {
     if (pending.length) lines.push('', ...pending.map(word => `- 待确认 #${word.n} ${word.text}：${(word.issues || []).join('；')}`));
     lines.push('');
   }
-  const file = scopedPath(dir, 'review/逐词时间表.md');
-  fs.mkdirSync(path.dirname(file), { recursive: true });fs.writeFileSync(file, lines.join('\n'));
+  const file = reviewFile(scopedPath(dir, '.'), '逐词时间表.md', { ensure: true });fs.writeFileSync(file, lines.join('\n'));
   return data;
 }
 

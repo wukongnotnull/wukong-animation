@@ -1,5 +1,6 @@
 // 词锚点的来源与定位；旧逐字点始终只作为估算使用。
 import fs from 'node:fs';
+import { reviewFile } from './layout.mjs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { validate } from './validate.mjs';
@@ -10,7 +11,7 @@ import { wordTimelineCues, WORD_CUE } from '../audio/word-timeline.mjs';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const fileHash = file => hash(fs.readFileSync(file));
-const sourceFile = ctx => path.join(ctx.filmDir,'.cache','voice-sources.json');
+const sourceFile = ctx => path.join(ctx.filmDir,'.wka','voice-sources.json');
 const voiceName = (v,i) => v.cue || `vo${i+1}`;
 const requestHash = (audio,v) => hash(JSON.stringify({source:audio.voice_source || ((audio.voices || []).some(v=>v.file)?'user':'none'),text:v.text,voice:v.voice,rate:v.rate,pitch:v.pitch,file:v.file,kind:v.kind || 'vo'}));
 function atomic(file,data) {
@@ -121,7 +122,7 @@ export function prepareWordShots(job) {
       const voice=name.match(WORD_CUE)?.[1];
       if(!voice || Object.hasOwn(resolved.cues,name)) continue;
       const known=resolved.timeline.unavailable;
-      throw new Error(`镜头 ${shot.id} 用到的词 ${name} 不可用：${known[name] || known[voice] || '词表里没有这个序号，请查看 review/逐词时间表.md'}`);
+      throw new Error(`镜头 ${shot.id} 用到的词 ${name} 不可用：${known[name] || known[voice] || '词表里没有这个序号，请查看 review/台词/逐词时间表.md'}`);
     }
     const keys=Object.keys(resolved.cues).filter(key=>!used || used.has(key));
     const wordFrames={}, points=[];
@@ -145,7 +146,7 @@ export async function writeWordReview(job,{video=null,renderStills=null,shots=nu
   const scoped=shots ? new Set(shots) : null;
   const points=job.shots.filter(s=>!scoped || scoped.has(s.id)).flatMap(s=>s.wordPoints || []);
   const stem=job.variant.review('词级同步.json').slice(0,-5)+(job.proxy?'-proxy':'')+(scoped?'-局部':'');
-  const base=path.join(job.filmDir,'review',stem);
+  const base=reviewFile(job.filmDir,stem,{ensure:true});
   const dir=path.join(job.variant.cacheDir,'word-review');
   const videoKey=video ? (st=>`${st.size}:${st.mtimeMs}`)(fs.statSync(video)) : '';
   let reused=0,rendered=0;

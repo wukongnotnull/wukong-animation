@@ -1,11 +1,12 @@
 // 实际审听与 QC 人工处置（FR-8）；数值测量不能代替实际审阅。
 import fs from 'node:fs';
+import { reviewFile } from './layout.mjs';
 import path from 'node:path';
 import { digest, fileDigest, atomicJson } from './evidence.mjs';
 import { validate } from './validate.mjs';
 
 export function readReviewNotes(dir) {
-  const file=path.join(dir,'review-notes.json');
+  const file=path.join(dir,'.wka/review-notes.json');
   if(!fs.existsSync(file))return {version:1};
   let notes;try{notes=JSON.parse(fs.readFileSync(file,'utf8'));}catch(e){throw new Error(`review-notes.json：${e.message}`);}
   const errors=validate('review-notes',notes,'review-notes.json');
@@ -63,7 +64,7 @@ export function saveAudioReview(ctx,mix) {
   let report;
   try{report=audioReview({mix,duration:ctx.totalDuration,notes:readReviewNotes(ctx.filmDir)});}
   catch(e){report={version:1,status:'invalid',sha256:mix?fileDigest(mix):null,errors:[e.message],windows:[],manualRequired:[],boundary:'审听记录无效，本次未完成检查'};}
-  const base=path.join(ctx.filmDir,'review','声轨审听');atomicJson(base+'.json',report);
+  const base=reviewFile(ctx.filmDir,'声轨审听',{ensure:true});atomicJson(base+'.json',report);
   fs.writeFileSync(base+'.md',['# 声轨审听','',mix?`实际音频：${mix}`:'无声轨；没有可播放音频','',`状态：${report.status}`,report.boundary,'',...report.windows.map(w=>`- ${w.label} ${w.range.join('–')}s：${w.status}${w.review?'；'+w.review.note:''}`),...report.manualRequired,...report.errors,''].join('\n'));
   return report;
 }
@@ -71,12 +72,12 @@ export function saveSfxReview(ctx,mix,rows) {
   if(!rows)return null;
   const issues=rows.filter(r=>!r.missing&&r.diff< -3).map(r=>({kind:'音效相对电平',shot:'音效',t0:r.at,t1:Math.min(ctx.totalDuration,r.at+0.2),msg:`${r.name} ${r.diff.toFixed(1)}dB`,designQuiet:!!r.quiet}));
   const report={measurements:rows,...qcReview(issues,{source:mix?fileDigest(mix):'silent',cfg:{margin:-3,duration:ctx.totalDuration},notes:readReviewNotes(ctx.filmDir)})};
-  const file=path.join(ctx.filmDir,'review','音效电平审计.json');atomicJson(file,report);return report;
+  const file=reviewFile(ctx.filmDir,'音效电平审计.json',{ensure:true});atomicJson(file,report);return report;
 }
 export function draftAudioDifference(ctx,tracks,measured=null) {
   const fade=0,hasAudio=tracks.length>0;
   const report={version:1,aspect:ctx.variant.aspect,hasAudio,tracks:tracks.map(t=>({file:t.file,start:t.start||0,gain:t.gain||0,ducked:!!t.duckApplied})),master:hasAudio?{fadeOut:fade,targetLUFS:ctx.style.loudness??-18,measuredLUFS:measured}:null,note:hasAudio?'草稿保留当前分轨音量与已烘焙的人声闪避；未应用与成片相同的整体响度标准化，请在剪映核对。':'无音轨，草稿与成片均无声。'};
-  const base=path.join(ctx.filmDir,'review',ctx.variant.review('草稿声音差异.json').slice(0,-5));atomicJson(base+'.json',report);
+  const base=reviewFile(ctx.filmDir,ctx.variant.review('草稿声音差异.json').slice(0,-5),{ensure:true});atomicJson(base+'.json',report);
   fs.writeFileSync(base+'.md',['# 草稿声音差异（导出前）','',report.note,'',...(hasAudio?[`成片目标 ${report.master.targetLUFS} LUFS；${measured===null?'当前响度未测量':'实测 '+measured+' LUFS'}；保留完整录音，不统一淡出。`]:[]),...report.tracks.map(t=>`- ${t.file}：起点 ${t.start}s，音量 ${t.gain}dB，闪避烘焙 ${t.ducked?'是':'否'}`),''].join('\n'));
   return {report,files:[base+'.md',base+'.json']};
 }

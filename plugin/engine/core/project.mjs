@@ -6,17 +6,29 @@ import { spawnSync } from 'node:child_process';
 import { assertActiveProduction, assertProjectCompatible, inspectProduction } from './state.mjs';
 
 const IGNORE_BLOCK = `# >>> wukong-animation >>>
-# 渲染缓存、中间帧、风格帧、审阅副本、成片都可以由源文件重新生成，不进版本库
+# 缓存、定稿快照、生成的音频，以及审阅副本和成片里的大媒体，都可以由源文件重新生成，不进版本库
+# review/ 里的文字报告、.wka/ 里的签批记录仍然纳入版本管理；本机的执行记录和中间状态不进
 films/*/.cache/
-films/*/stills/
+films/*/.wka/approved/
+films/*/.wka/operations.json
+films/*/.wka/voice-sources.json
+films/*/.wka/main-check.json
 films/*/audio/generated/
-films/*/review/
-films/*/*.mp4
-films/*/*.gif
-films/*/*.webm
+films/*/review/**/*.mp4
+films/*/review/**/*.m4a
+films/*/review/**/*.png
+films/*/review/**/*.jpg
+films/*/review/**/*.jpeg
+films/*/review/QC/异常帧/
+films/*/review/素材/素材抽帧/
+films/*/成片/*.mp4
+films/*/成片/*.gif
+films/*/成片/*.webm
+films/*/成片/*.mov
+films/*/成片/**/*.png
 node_modules/
 .DS_Store
-# 想把成片也纳入版本管理，建议用 Git LFS：git lfs track "films/*/*.mp4"
+# 想把成片也纳入版本管理，建议用 Git LFS：git lfs track "films/*/成片/*.mp4"
 # <<< wukong-animation <<<
 `;
 
@@ -89,7 +101,7 @@ export function initProject(dir, { log = console.log } = {}) {
   const userEdits = hasCommit && !git(dir, ['diff', '--quiet', 'HEAD', '--', '.gitignore']).ok;
   if (next !== old) {
     fs.writeFileSync(gi, next);
-    log(old.includes(BLOCK_BEGIN) ? '  ✓ 已更新 .gitignore 的 wukong-animation 段落' : '  ✓ 已写入 .gitignore（忽略渲染缓存、中间帧和成片）');
+    log(old.includes(BLOCK_BEGIN) ? '  ✓ 已更新 .gitignore 的 wukong-animation 段落' : '  ✓ 已写入 .gitignore（忽略缓存、定稿快照、审阅大媒体和成片）');
   }
 
   if (hasCommit && next !== old) commitIgnoreUpdate(dir, userEdits, log);
@@ -164,6 +176,15 @@ function gitRoot(dir) {
   if (!r.ok) throw new Error('项目不是 git 仓库，先运行 wka init-project');
   return path.resolve(r.out);
 }
+const EVIDENCE_PREFIXES = ['review/', 'media/', 'audio/voice/', '资料/'];
+
+/** review/ 里的文字报告和输入素材（media/、audio/voice/、资料/）里还没提交的文件：签批时随待审版本一起提交。 */
+export function dirtyReviewPaths(filmDir) {
+  filmDir = fs.realpathSync(path.resolve(filmDir));
+  if (!hasGit() || !git(filmDir, ['rev-parse', '--is-inside-work-tree']).ok) return [];
+  return changedPaths(filmDir).map(file => file.split(path.sep).join('/')).filter(file => file === '.wka/materials-origin.json' || EVIDENCE_PREFIXES.some(prefix => file.startsWith(prefix)));
+}
+
 function changedPaths(dir) {
   const root = gitRoot(dir), prefix = path.relative(root, dir).split(path.sep).filter(Boolean).join('/');
   const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '-uall'], { cwd: root, encoding: 'utf8' });
@@ -206,7 +227,7 @@ export function commitPaths(filmDir, { message, paths } = {}, { log = console.lo
   }
   const rooted = allowed.map(file => prefix ? prefix + '/' + file : file);
   const added = git(root, ['add', '--', ...rooted]);
-  if (!added.ok) throw new Error(`暂存待审文件失败：${added.err}`);
+  if (!added.ok) throw new Error(`暂存待审文件失败：${added.err}${/ignored/.test(added.err) ? '\n  .gitignore 规则太旧会挡住 review/ 里的待审文件，运行 wka init-project 更新 wukong-animation 段落后重试' : ''}`);
   const committed = git(root, ['commit', '-m', message, '--', ...rooted]);
   if (!committed.ok) throw new Error(`提交失败：${committed.err}`);
   const sha = git(filmDir, ['rev-parse', 'HEAD']);

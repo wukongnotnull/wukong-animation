@@ -29,7 +29,7 @@ function checkPython() {
   if (r.status !== 0) throw new Error(`导出剪映草稿需要 python3 + pyJianYingDraft：pip install ${PY_DEP}`);
 }
 
-export async function encodeOutput({ out, proxy, timeline, force=false }) {
+export async function encodeOutput({ out, filmDir = path.dirname(out), proxy, timeline, force=false }) {
   if (proxy) throw new Error('剪映草稿用于后期接着剪，不能用预览（--proxy）素材导出，请去掉 --proxy');
   if (!timeline) throw new Error('jianying 导出器需要时间线，请用 wka final 导出');
   const root = draftsRoot();
@@ -37,7 +37,7 @@ export async function encodeOutput({ out, proxy, timeline, force=false }) {
   const tracks = timeline.tracks.map((t) => (t.role === 'voice' ? t : { ...t, ranges: detectSoundRanges(t.file, probeDuration(t.file)) }));
   const base = buildDraftPlan({ ...timeline, tracks });
   const signature=digest({root,base,files:[...timeline.shots,...tracks].map(t=>[t.file,fileDigest(t.file)]),writer:treeEvidence(HERE)});
-  const receiptFile=path.join(path.dirname(out),'.wka/export-receipts',signature+'.json');
+  const receiptFile=path.join(filmDir,'.wka/export-receipts',signature+'.json');
   const previous=readJson(receiptFile);
   if(!force&&previous&&fs.existsSync(previous.path)) {
     const marker=readJson(path.join(previous.path,'.wka-complete.json'));
@@ -63,7 +63,7 @@ export async function encodeOutput({ out, proxy, timeline, force=false }) {
   atomicJson(receiptFile,{version:1,operation,signature,path:draftDir,status:'prepared'});
   if (plan.name !== base.name) console.log(`  · 剪映里已有草稿「${base.name}」，这次导出为「${plan.name}」，旧草稿没动`);
 
-  const planFile = path.join(path.dirname(out), '.cache', 'work', 'jianying-plan.json');
+  const planFile = path.join(filmDir, '.cache', 'work', 'jianying-plan.json');
   fs.mkdirSync(path.dirname(planFile), { recursive: true });
   fs.writeFileSync(planFile, JSON.stringify(plan, null, 2));
   const r = spawnSync('python3', [path.join(HERE, 'write_draft.py'), planFile, root], { encoding: 'utf8' });

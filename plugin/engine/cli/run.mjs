@@ -47,7 +47,7 @@ export async function runCli(argv, { log: write = console.log, error = console.e
     }) : [];
     try {
       if (command.active && pos[0]) atomicJson(path.join(path.resolve(pos[0]), '.cache/active-command.json'), { argv });
-      const operationsFile = pos[0] ? path.join(path.resolve(pos[0]), '.cache/operations.json') : null;
+      const operationsFile = pos[0] ? path.join(path.resolve(pos[0]), '.wka/operations.json') : null;
       const before = observe ? workbenchJson(operationsFile, { stages: {} }).stages : null;
       if (observe) captureWorkbenchLocked(pos[0]);
       const code = await command.run();

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { digest, fileDigest } from './evidence.mjs';
 import { finalContract } from './final-delivery.mjs';
 import { pickCues } from './cues.mjs';
+import { aspectOf, suffixOf } from './variants.mjs';
+import { FINAL_DIR } from './layout.mjs';
 
 export function workbenchJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
@@ -52,7 +54,7 @@ function inferredStep(file) {
 export function workbenchCatalog(dir, registrations = []) {
   const configured = fs.existsSync(scopedPath(dir, 'film.json'));
   const film = workbenchJson(scopedPath(dir, 'film.json'), {}), items = new Map(), warnings = [];
-  const stages = workbenchJson(scopedPath(dir, '.cache/operations.json'), { stages: {} }).stages || {};
+  const stages = workbenchJson(scopedPath(dir, '.wka/operations.json'), { stages: {} }).stages || {};
   const ledger = workbenchJson(scopedPath(dir, '.wka/final-delivery.json'), { artifacts: [] });
   const add = (file, step, extra = {}) => {
     const absolute = extra.external ? path.resolve(file) : scopedPath(dir, file);
@@ -64,17 +66,18 @@ export function workbenchCatalog(dir, registrations = []) {
   };
   if (fs.existsSync(scopedPath(dir, 'review/环境检查.md'))) add('review/环境检查.md', 1, { label: '环境检查结果', required: false });
   add('brief.md', 2, { label: '方案简报' }); add('story.md', 3, { label: '剧本' }); add('storyboard.md', 4, { label: '分镜稿' });
-  add('review/小样.mp4', 5, { label: '小样视频' }); add('review/QC报告-proxy.json', 5, { label: '检查结果' });
-  for (const file of [...walk(dir, 'review'), ...walk(dir, 'stills')]) {
+  const mainSuffix = Array.isArray(film.size) && film.size.length === 2 ? suffixOf(aspectOf(film.size)) : null;
+  if (mainSuffix) { add(`review/小样/小样-${mainSuffix}.mp4`, 5, { label: '小样视频' }); add(`review/QC/QC报告-${mainSuffix}-proxy.json`, 5, { label: '检查结果' }); }
+  for (const file of walk(dir, 'review')) {
     if (!['text', 'image', 'audio', 'video'].includes(workbenchKind(file))) continue;
     if (/交付清单|交付审计|字幕|subtitles/.test(file)) continue;
     // A directory may also contain user references; discovery alone is not a review contract.
     if (!items.has(scopedPath(dir, file))) {
-      const formal = /^(?:review\/(?:小样|QC报告|主版不变)[-.])/u.test(file.split(path.sep).join('/'));
+      const formal = /^review\/(?:(?:小样|QC)\/)?(?:小样|QC报告|主版不变)[-.]/u.test(file.split(path.sep).join('/'));
       add(file, inferredStep(file), { required: formal });
     }
   }
-  for (const file of fs.readdirSync(dir)) if (/\.(mp4|webm|gif)$/.test(file) && !/^subtitles/.test(file)) add(file, /-\d+x\d+/.test(file) ? 7 : 6, { required: false });
+  for (const file of walk(dir, FINAL_DIR)) if (/\.(mp4|webm|gif)$/.test(file) && !/subtitles/.test(file)) add(file, mainSuffix && file.endsWith(`-${mainSuffix}${path.extname(file)}`) ? 6 : /-\d+x\d+/.test(file) ? 7 : 6, { required: false });
   for (const operation of Object.values(stages).filter(s => s.status === 'completed')) {
     for (const output of operation.outputs || []) {
       if (!output.file || /字幕|subtitles/.test(output.file)) continue;

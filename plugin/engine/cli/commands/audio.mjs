@@ -39,7 +39,7 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
         try {
           const result = await alignWords(pos[0], { binary: opt('binary'), model: opt('model'), force: !!opt('force'), log });
           const pending = Object.values(result.voices).reduce((sum, voice) => sum + (voice.words || []).filter(word => !['measured', 'confirmed'].includes(word.status)).length, 0);
-          log(pending ? `逐词时间表有 ${pending} 个待确认词，请查看 review/逐词时间表.md；待确认词不能用于完整小样。` : '逐词时间表已生成：review/逐词时间表.md（请随小样听审）。');
+          log(pending ? `逐词时间表有 ${pending} 个待确认词，请查看 review/台词/逐词时间表.md；待确认词不能用于完整小样。` : '逐词时间表已生成：review/台词/逐词时间表.md（请随小样听审）。');
           return result;
         } catch (error) {
           if (words) throw error;
@@ -60,7 +60,7 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
       if (words) { const result = await reportWords();return result?.ready ? 0 : 2; }
       const result = await alignVoice(pos[0], { binary: opt('binary'), model: opt('model'), force: !!opt('force'), log });
       if (result.ready) applyVoiceAlignment(pos[0]);
-      log(result.ready ? '台词定位可用于制作小样；请随小样检查声画对齐。' : '台词定位仍有待确认项，请查看 review/台词定位.md。');
+      log(result.ready ? '台词定位可用于制作小样；请随小样检查声画对齐。' : '台词定位仍有待确认项，请查看 review/台词/台词定位.md。');
       if (Object.keys(result.voices).length) await reportWords();
       return result.ready ? 0 : 2;
     },
@@ -68,7 +68,7 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
       if (!pos[0]) fail('用法：wka soundtrack <片目录>');
       loadFilm(pos[0], { requireShots: false });
       const { mix } = await (await import('../../audio/soundtrack.mjs')).mixSoundtrack(pos[0], { log });
-      // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/ 交给用户审听
+      // WAV 体积大，聊天里播放会卡：另存一份 AAC 放进 review/声轨/ 交给用户审听
       if (mix) {const out=await writeReview(pos[0], '声轨.m4a', ['-i', mix, '-c:a', 'aac', '-b:a', '192k']);registerReview(pos[0],'soundtrack',[out]);log(`声轨审听：${out}`);}
       return;
     },

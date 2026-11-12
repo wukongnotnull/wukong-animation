@@ -8,6 +8,7 @@ import { generatedMixPadding } from '../../core/ffmpeg.mjs';
 import { checkOutputTiming } from '../../core/timing.mjs';
 import { estimateFilm, formatEstimate } from '../../core/estimate.mjs';
 import { inventoryMaterials } from '../../core/materials.mjs';
+import { planDeepClean, runDeepClean, formatBytes } from '../../core/usage.mjs';
 import { fail } from '../context.mjs';
 import { reviewArtifacts } from '../review-artifacts.mjs';
 
@@ -24,11 +25,14 @@ export function mediaCommands({ pos, opt, log, aspectOpt }) {
       return result.over.length ? 2 : 0;
     },
     'materials': async () => {
-      if (!pos[0]) fail('用法：wka materials <片目录> [--frames N]');
-      const frames = opt('frames') === undefined ? 3 : Number(opt('frames'));
+      if (!pos[0]) fail('用法：wka materials <片目录> [--add <文件或目录>[,<文件或目录>...]] [--frames N]');
+      const frames = opt('frames') == null ? 3 : Number(opt('frames'));
       if (!Number.isInteger(frames) || frames < 0) fail('--frames 必须是非负整数');
-      const { file, items } = inventoryMaterials(pos[0], { frames });
-      log(`素材清单：${file}（${items.length} 项${items.some(item => item.frames.length) ? '，视频已抽帧到 review/素材抽帧/' : ''}）`);
+      const add = opt('add') == null ? [] : String(opt('add')).split(',').map(item => item.trim()).filter(Boolean);
+      if (opt('add') != null && !add.length) fail('--add 要给出文件或目录路径');
+      const { file, items, warnings } = inventoryMaterials(pos[0], { frames, add, log });
+      log(`素材清单：${file}（${items.length} 项${items.some(item => item.frames.length) ? '，视频已抽帧到 review/素材/素材抽帧/' : ''}）`);
+      for (const text of warnings) log(`  ! ${text}`);
       return;
     },
     'still': async () => {
@@ -58,7 +62,22 @@ export function mediaCommands({ pos, opt, log, aspectOpt }) {
       return preview(pos[0], { only: opt('only') ? String(opt('only')).split(',') : null, proxy: !opt('native'), aspect: aspectOpt(), force: !!opt('force'), log });
     },
     'clean': async () => {
-      if (!pos[0] || !opt('render-cache')) fail('用法：wka clean <片目录> --render-cache [--aspect 9:16]');
+      if (!pos[0] || !(opt('render-cache') || opt('deep'))) fail('用法：wka clean <片目录> --render-cache [--aspect 9:16]');
+      if (opt('deep')) {
+        const plan = planDeepClean(pos[0]);
+        if (!plan.length) return log('没有可深度清理的内容');
+        const groups = new Map();
+        for (const item of plan) groups.set(item.group, [...(groups.get(item.group) || []), item]);
+        for (const [group, items] of groups) {
+          log(`${group}：${items.length} 项，${formatBytes(items.reduce((sum, item) => sum + item.bytes, 0))}`);
+          for (const item of items.slice(0, 8)) log(`  - ${path.relative(path.resolve(pos[0]), item.file)}（${formatBytes(item.bytes)}）`);
+          if (items.length > 8) log(`  … 另有 ${items.length - 8} 项`);
+        }
+        const total = plan.reduce((sum, item) => sum + item.bytes, 0);
+        if (!opt('yes')) return log(`共可释放 ${formatBytes(total)}；成片、素材、源文件、签批与交付记录引用的文件都不会删。确认后加 --yes 重新运行`);
+        runDeepClean(plan);
+        return log(`已深度清理 ${plan.length} 项，释放 ${formatBytes(total)}；成片、素材、源文件、签批与交付记录引用的文件保留`);
+      }
       const ctx = loadFilm(pos[0], { requireShots: false, aspect: aspectOpt() });
       const removed = cleanRenderCache(ctx.variant.cacheDir);
       log(`已清理 ${removed.length} 项可再生渲染缓存；声音、素材、审阅文件、成片和签批快照保留`);

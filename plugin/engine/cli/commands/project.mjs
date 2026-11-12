@@ -6,6 +6,7 @@ import { copyTemplate, NAME_RE } from '../../core/scaffold.mjs';
 import { initProject } from '../../core/project.mjs';
 import { recordProgress, listProductions, PRODUCTION_STEPS, LAST_STEP, flowDiagnostic, inspectProduction, initializeProduction } from '../../core/state.mjs';
 import { recoveryStatus } from '../../core/operations.mjs';
+import { filmUsage, formatBytes } from '../../core/usage.mjs';
 import { fail } from '../context.mjs';
 
 const STYLE_SCHEMA = path.join(ENGINE_ROOT, 'schemas', 'style.schema.json');
@@ -101,6 +102,8 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
         if(f.compatible===false){log(`  ${f.error}`);exitCode=1;continue;}
         if (f.readonly) { log('  历史项目（只读） · 续作请新建项目并复用素材'); continue; }
         log(`  进度 ${f.step}/${LAST_STEP}${f.step ? ` 「${PRODUCTION_STEPS[f.step]}」` : ''}  →  下一步：${f.next ? `${f.next}. ${f.nextLabel}` : '已完成'}`);
+        const usage = filmUsage(f.dir);
+        if (usage.length) log(`  占用：${usage.map(item => `${item.name} ${formatBytes(item.bytes)}`).join(' · ')}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
         for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 6 道重新签批过，要复核第 7 道「调整画幅」`);
       }

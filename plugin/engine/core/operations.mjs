@@ -8,7 +8,7 @@ import { fileVersion } from './file-hash.mjs';
 import { ENGINE_ROOT } from './paths.mjs';
 import { assertCompatibleProgress, assertActiveProduction, inspectProduction } from './state.mjs';
 
-const ledgerFile=dir=>path.join(path.resolve(dir),'.cache/operations.json');
+const ledgerFile=dir=>path.join(path.resolve(dir),'.wka/operations.json');
 const keyOf=({stage,aspect,proxy})=>`${aspect}|${proxy?'proxy':'full'}|${stage}`;
 const load=dir=>{
   const data=readJson(ledgerFile(dir));
@@ -50,7 +50,7 @@ export function sourceState(dir) {
     guards.push(()=>{if(shape(base,exclude)!==before)throw changed(base);});
     return treeEvidence(base,exclude,readDigest);
   };
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','.wka/review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,source(path.join(dir,rel))]);
   const film=readJson(path.join(dir,'film.json'),{});
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);

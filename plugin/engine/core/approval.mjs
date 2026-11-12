@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ShotCache } from './cache.mjs';
 import { ensureDir } from './paths.mjs';
+import { reviewFile } from './layout.mjs';
 import { loadFilm, render, shotHashes, mainCheckConditions } from './job.mjs';
 import { readProgress } from './state.mjs';
 import { digest, fileEvidence, atomicJson, readJson } from './evidence.mjs';
@@ -40,15 +41,15 @@ export async function psnrMin(a, b) {
   }
 }
 
-const SNAPSHOT_DIR = (filmDir) => path.join(path.resolve(filmDir), '.cache', 'approved');
+const SNAPSHOT_DIR = (filmDir) => path.join(path.resolve(filmDir), '.wka', 'approved');
 
 /**
- * 第 6 道签批时调用：主版每镜复制一份定稿快照到 .cache/approved/（不进 git），返回每镜哈希。
+ * 第 6 道签批时调用：主版每镜复制一份定稿快照到 .wka/approved/（不进 git），返回每镜哈希。
  * 还没按当前代码渲染过全分辨率的镜头没有快照，列在 missing 里。
  */
 export function snapshotMain(filmDir, { log = console.log } = {}) {
   const hashes = shotHashes(filmDir);
-  const cache = new ShotCache(path.resolve(filmDir));
+  const cache = new ShotCache(path.resolve(filmDir), loadFilm(filmDir, { requireShots: false }).variant.cacheDir);
   const dir = SNAPSHOT_DIR(filmDir);
   const next=dir+'.next',backup=dir+'.previous';
   if(!fs.existsSync(dir)&&fs.existsSync(backup)) fs.renameSync(backup,dir);
@@ -60,7 +61,7 @@ export function snapshotMain(filmDir, { log = console.log } = {}) {
     else missing.push(id);
   }
   if (missing.length) log(`  ! ${missing.join('、')} 还没按当前代码渲染全分辨率，没存下定稿快照；做副版时这几镜要目视复核主版（先 wka final 再签批可避免）`);
-  else log(`  ✓ 主版定稿快照 ${Object.keys(hashes).length} 镜 → .cache/approved/`);
+  else log(`  ✓ 主版定稿快照 ${Object.keys(hashes).length} 镜 → .wka/approved/`);
   if(!missing.length){
     fs.rmSync(backup,{recursive:true,force:true});
     if(fs.existsSync(dir)) fs.renameSync(dir,backup);
@@ -110,7 +111,7 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   if (!approved) { log('  ! 主版还没在第 6 道签批，跳过主版不变比对'); return null; }
   const ctx=loadFilm(filmDir),current=shotHashes(filmDir),native=buildFrameTimeline(ctx.shots,ctx.film.fps);
   const ids=[...new Set([...Object.keys(approved),...Object.keys(current)])];
-  const cache=new ShotCache(ctx.filmDir),proofFile=path.join(ctx.filmDir,'.cache/main-check.json');
+  const cache=new ShotCache(ctx.filmDir,ctx.variant.cacheDir),proofFile=path.join(ctx.filmDir,'.wka/main-check.json');
   const conditions=mainCheckConditions(filmDir);
   const probe=(id,file)=>{
     const shot=native.shots.find(s=>s.id===id);
@@ -141,7 +142,7 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
       log('  · 主版重新比对：渲染变化输入，不代表重新签批');
       await render(filmDir,{log});
       // render 更新 manifest；同一实例不自动刷新，重新读取。
-      cache.data=new ShotCache(ctx.filmDir).data;
+      cache.data=new ShotCache(ctx.filmDir,ctx.variant.cacheDir).data;
       files=collect();key=keyOf();
     }
     for(const f of files) {
@@ -158,7 +159,7 @@ export async function checkMainUnchanged(filmDir, { aspect, log = console.log } 
   const ok=rows.every(r=>r.result==='same'||r.result==='pass');
   const result={version:1,ok,key,reused,checkedAt,verifiedAt,timingChanged,rows};
   if(ok&&conditions&&!reused) atomicJson(proofFile,result);
-  const file=path.join(ensureDir(path.join(ctx.filmDir,'review')),variant.review('主版不变报告.md'));
+  const file=reviewFile(ctx.filmDir,variant.review('主版不变报告.md'),{ensure:true});
   atomicJson(file.replace(/\.md$/,'.json'),result);
   fs.writeFileSync(file,reportText(variant.aspect,rows)+`\n检查：${checkedAt}；原测量：${verifiedAt}；复用：${reused?'是':'否'}。范围：主版镜头画面，声音另行审听。\n`);
   log(`${ok?'  ✓ 主版画面没有变化':'  ! 主版不变比对有问题'}：${file}`);

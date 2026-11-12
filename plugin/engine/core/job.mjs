@@ -23,6 +23,7 @@ import { assertActiveProduction } from './state.mjs';
 import { recordRenderSpeed } from './estimate.mjs';
 import { outputSize, proxySampling, renderWorkers } from './render-profile.mjs';
 import { contactSheetLayout } from './contact-sheet.mjs';
+import { reviewFile, finalFile } from './layout.mjs';
 export { outputSize } from './render-profile.mjs';
 
 import { loadFilm } from './film-context.mjs';
@@ -211,7 +212,7 @@ export async function preview(filmDir, { only = null, proxy = true, aspect = nul
   const mix = path.join(job.filmDir, '.cache', 'mix.wav');
   const audio = fs.existsSync(mix) ? fileDigest(mix) : null;
   if (!audio) log('  ! 没有现成声轨，局部小样为无声；需要声音请先运行 wka soundtrack');
-  const directory = path.join(job.filmDir, 'review', job.variant.review(proxy ? '局部小样' : '局部原画质'));
+  const directory = reviewFile(job.filmDir, job.variant.review(proxy ? '局部小样' : '局部原画质'));
   ensureDir(directory);
   const outputs = [];
   for (const segment of segments) {
@@ -242,7 +243,7 @@ export async function preview(filmDir, { only = null, proxy = true, aspect = nul
 /** 审阅副本写进片目录的 review/（不隐藏、体积小，聊天和访达里都能直接播放），返回绝对路径。 */
 export async function writeReview(filmDir, file, args) {
   assertActiveProduction(filmDir);
-  const out = path.join(ensureDir(path.join(path.resolve(filmDir), 'review')), file);
+  const out = reviewFile(filmDir, file, { ensure: true });
   await run([...args, out]);
   return out;
 }
@@ -304,14 +305,13 @@ const ANIMATIC_BATCH = 16;
 
 /**
  * 动态分镜：每镜一张代表帧，按镜头时长停留，叠加 wka soundtrack 混好的声轨。
- * 交给用户审的两样都放进 review/：动态分镜.mp4 和接触表.jpg（stills/sheet.jpg 照旧生成）。
+ * 交给用户审的两样都放进 review/小样/：动态分镜和接触表（静帧与它的接触表放在 review/静帧/）。
  */
 export async function animatic(filmDir, { proxy = false, aspect = null, log = console.log } = {}) {
   const ctx = loadFilm(filmDir, { aspect });
   const timeline = buildFrameTimeline(ctx.shots, ANIMATIC_FPS);
   const { files, contactSheet: sheet } = await stills(filmDir, { frames: 1, proxy, aspect, log });
-  const reviewDir = ensureDir(path.join(ctx.filmDir, 'review'));
-  const contactSheet = sheet ? path.join(reviewDir, ctx.variant.review('接触表.jpg')) : null;
+  const contactSheet = sheet ? reviewFile(ctx.filmDir, ctx.variant.review('接触表.jpg'), { ensure: true }) : null;
   if (sheet) fs.copyFileSync(sheet, contactSheet);
   const audio = path.join(ctx.filmDir, '.cache', 'mix.wav');
   const hasAudio = fs.existsSync(audio);
@@ -336,7 +336,7 @@ export async function animatic(filmDir, { proxy = false, aspect = null, log = co
   }
   const silent = path.join(workDir, 'animatic-video.mp4');
   await concatVideo(segments, { fps: ANIMATIC_FPS, list: path.join(workDir, 'animatic-concat.txt'), out: silent });
-  const out = path.join(reviewDir, ctx.variant.review('动态分镜.mp4'));
+  const out = reviewFile(ctx.filmDir, ctx.variant.review('动态分镜.mp4'), { ensure: true });
   await run(hasAudio
     ? ['-i', silent, '-i', audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', out]
     : ['-i', silent, '-c:v', 'copy', out]);
@@ -363,7 +363,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     if (!exp) throw new Error(`导出器 "${name}" 没有注册。可用: ${[...ctx.registry.exporters.keys()].join(', ')}`);
     if (exp.status === 'planned') throw new Error(`导出器 "${name}" 还在规划中`);
     const mod = await loadModule(exp);
-    const target = path.join(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`);
+    const target = finalFile(ctx.filmDir, `${base}${suffix}${proxy ? '-proxy' : ''}.${exp.ext}`, { ensure: true });
     let generation=null;
     if(!proxy)try {
       const kind=name==='jianying'?'draft':'video',flavor=kind==='video'?'clean':null;
@@ -373,7 +373,7 @@ export async function encodeOutputs(filmDir, { video, audio, timeline = null, pr
     // 导出器可返回实际产物路径（如写到片目录之外的剪映草稿）
     const signature=digest({target,draftRoot:name==='jianying'?(process.env.WKA_JIANYING_DRAFTS||path.join(os.homedir(),'Movies/JianyingPro/User Data/Projects/com.lveditor.draft')):null,video:video&&fileDigest(video),audio:audio&&fileDigest(audio),timeline,inputs:timeline?[...timeline.shots,...timeline.tracks].map(t=>[t.file,fileDigest(t.file)]):[],exporter:treeEvidence(exp.dir),name,suffix,proxy,settings:ctx.film.export});
     const out=await runStage(ctx.filmDir,{stage:name==='jianying'?'draft-export':`encode:${name}${suffix}`,aspect:ctx.variant.aspect,proxy,signature,force,log,reuseOnly:name==='mp4'&&reuseOnly,
-      run:async()=>{const out=(await mod.encodeOutput({video,audio,out:target,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
+      run:async()=>{const out=(await mod.encodeOutput({video,audio,out:target,filmDir:ctx.filmDir,fps:outputSize(ctx.film,proxy).fps,duration:buildFrameTimeline(ctx.shots,outputSize(ctx.film,proxy).fps).duration,proxy,timeline,force}))||target;return {value:out,outputs:[out]};}});
     if (name === 'mp4') checkOutputTiming(ctx, out, { proxy, log });
     const technical={status:['mp4','jianying'].includes(name)?'passed':'unknown',
       checks:name==='jianying'?['native writer 时间线及素材校验']:name==='mp4'?['实际输出时间轴校验']:[],errors:[]};

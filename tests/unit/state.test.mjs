@@ -44,12 +44,12 @@ const OLD_HISTORY = [
 test('future flows are never reinterpreted or written, including approval retries', t => {
   const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
-  for (const flow of [7, 99]) {
+  for (const flow of [8, 99]) {
     const st = { flow, step: 60, history: [{ step: 60, label: 'future', approvalId: 'same' }], approved: { mainId: 'keep' }, extra: ['keep'] };
     const before = JSON.stringify(st, null, 3); fs.writeFileSync(stateFile(film), before);
     for (const run of [() => migrateProgress(st), () => readProgress(film), () => recordProgress(film, { step: 1 }),
       () => stateApi.recordApproval(film, { main: {} }), () => stateApi.commitSignoff(film, { id: 'same', step: 1 })]) {
-      assert.throws(run, { code: 'WKA_FLOW_TOO_NEW', flow, supportedFlow: 6 });
+      assert.throws(run, { code: 'WKA_FLOW_TOO_NEW', flow, supportedFlow: 7 });
       assert.equal(JSON.stringify(st, null, 3), before);
       assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
     }
@@ -58,7 +58,7 @@ test('future flows are never reinterpreted or written, including approval retrie
 
 test('explicit invalid flows and corrupt states fail; only absent state/flow is historical', t => {
   const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  assert.deepEqual(readProgress(film), { flow: 6, step: 0, history: [] });
+  assert.deepEqual(readProgress(film), { flow: 7, step: 0, history: [] });
   assert.equal(fs.existsSync(stateFile(film)), true);
   fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
   for (const flow of [null, 0, -1, '5', '6', 1.5, true, [], {}]) {
@@ -84,7 +84,7 @@ test('compatibility inspection is read only for legacy state and mixed lists iso
   assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
   const future = path.join(dir, 'films', 'future'); fs.mkdirSync(path.join(future, '.wka'), { recursive: true });
   fs.writeFileSync(path.join(future, 'brief.md'), 'future brief');
-  const raw = '{ "flow": 7, "history": [{"step": 60}] }'; fs.writeFileSync(stateFile(future), raw);
+  const raw = '{ "flow": 8, "history": [{"step": 60}] }'; fs.writeFileSync(stateFile(future), raw);
   const list = listProductions(dir), incompatible = list.find(f => f.name === 'future');
   assert.equal(list.find(f => f.name === '寒江').next, null);
   assert.equal(incompatible.compatible, false);

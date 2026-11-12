@@ -12,15 +12,15 @@ function film(t) {
   const git = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
   for (const args of [['init', '-q'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['config', 'commit.gpgsign', 'false']]) assert.equal(git(...args).status, 0);
   const put = (name, text) => { const file = path.join(dir, name); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
-  put('.gitignore', '/review/\n');
+  put('.gitignore', '/review/**/*.mp4\n/review/**/*.m4a\n/review/**/*.png\n/review/**/*.jpg\n');
   put('brief.md', '简报');
   put('story.md', '剧本');
   put('other.md', '无关');
-  put('.wka/state.json', JSON.stringify({ flow: 6, step: 2, history: [] }));
+  put('.wka/state.json', JSON.stringify({ flow: 7, step: 2, history: [] }));
   put('.wka/decisions.json', JSON.stringify({ version: 1, delivery: { status: 'confirmed', value: 'video', source: '用户确认' } }));
   assert.equal(git('add', '--', '.gitignore', 'brief.md', 'story.md', 'other.md', '.wka/state.json', '.wka/decisions.json').status, 0);
   assert.equal(git('commit', '-qm', 'init').status, 0);
-  put('.wka/state.json', JSON.stringify({ flow: 6, step: 2, history: [] }));
+  put('.wka/state.json', JSON.stringify({ flow: 7, step: 2, history: [] }));
   put('.wka/decisions.json', JSON.stringify({ version: 1, delivery: { status: 'confirmed', value: 'video', source: '用户确认' } }));
   return { dir, git, put };
 }

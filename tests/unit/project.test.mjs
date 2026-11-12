@@ -5,10 +5,13 @@ import { upsertIgnoreBlock } from '../../plugin/engine/core/project.mjs';
 const BEGIN = '# >>> wukong-animation >>>';
 const END = '# <<< wukong-animation <<<';
 
-test('a new .gitignore gets the block, which ignores the review folder', () => {
+test('a new .gitignore gets the block, which ignores large review media but keeps text reports', () => {
   const out = upsertIgnoreBlock('');
   assert.ok(out.startsWith(BEGIN));
-  assert.match(out, /^films\/\*\/review\/$/m);
+  assert.match(out, /^films\/\*\/review\/\*\*\/\*\.mp4$/m);
+  assert.match(out, /^films\/\*\/\.wka\/approved\/$/m);
+  assert.match(out, /^films\/\*\/成片\/\*\.mp4$/m);
+  assert.doesNotMatch(out, /^films\/\*\/review\/$/m);
 });
 
 test('an outdated block is replaced and the lines around it are kept', () => {
@@ -16,7 +19,7 @@ test('an outdated block is replaced and the lines around it are kept', () => {
   const out = upsertIgnoreBlock(old);
   assert.ok(out.startsWith('dist/\n\n' + BEGIN));
   assert.ok(out.endsWith(`${END}\n\nmy-notes.txt\n`));
-  assert.match(out, /^films\/\*\/review\/$/m);
+  assert.match(out, /^films\/\*\/review\/\*\*\/\*\.mp4$/m);
   assert.equal(out.split(BEGIN).length, 2);
 });
 
@@ -69,7 +72,7 @@ test('a .gitignore with the user\'s own uncommitted edits is updated but not com
   fs.writeFileSync(path.join(dir, '.gitignore'), 'mine/\n' + fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'));
   const logs = [];
   initProject(dir, { log: (m) => logs.push(m) });
-  assert.match(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), /films\/\*\/review\//);
+  assert.match(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), /films\/\*\/review\/\*\*\/\*\.mp4/);
   assert.match(g('log', '-1', '--format=%s').stdout, /^init/);
   assert.ok(logs.some((m) => /请自己提交/.test(m)));
   fs.rmSync(dir, { recursive: true, force: true });

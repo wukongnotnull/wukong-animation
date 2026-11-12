@@ -35,7 +35,7 @@ function makeFilm(shots, extra = {}) {
 const wka = (...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2' } });
 const wkaEnv = (env, ...args) => spawnSync(process.execPath, [WKA, ...args], { encoding: 'utf8', env: { ...process.env, WKA_NO_FONT_DOWNLOAD: '1', WKA_WORKERS: '2', ...env } });
 const segments = (dir) => {
-  const seg = path.join(dir, '.cache', 'segments');
+  const seg = path.join(dir, '.cache', '16x9', 'segments');
   return fs.existsSync(seg) ? fs.readdirSync(seg) : [];
 };
 const setCues = (dir, cues) => {
@@ -48,13 +48,13 @@ test('a truncated shot manifest recovers on rerun without changing protected fil
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const first = wka('render', dir);
   assert.equal(first.status, 0, first.stderr);
-  const manifestFile = path.join(dir, '.cache', 'manifest.json');
+  const manifestFile = path.join(dir, '.cache', '16x9', 'manifest.json');
   const existing = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).shots.s01;
   const protectedPaths = ['film.json', 'shots/s01.js'];
   for (const [rel, body] of Object.entries({
     'audio/original.wav': 'original audio',
-    '.cache/approved/s01.mp4': 'approved snapshot', '.cache/9x16/manifest.json': '{"shots":{}}',
-    '.wka/state.json': '{"flow":6,"step":0,"history":[]}',
+    '.wka/approved/s01.mp4': 'approved snapshot', '.cache/9x16/manifest.json': '{"shots":{}}',
+    '.wka/state.json': '{"flow":7,"step":0,"history":[]}',
     'assets/reference.txt': 'reference', 'review/approved.mp4': 'reviewed video', 'out.mp4': 'delivered video',
   })) {
     const file = path.join(dir, rel);
@@ -132,7 +132,7 @@ test('c2d.wash after translate is not clipped to the untransformed canvas', opts
   const dir = makeFilm({ s01: SHOT(body) });
   const r = wka('still', dir, '--at', 's01:0.5');
   assert.equal(r.status, 0, r.stderr);
-  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((f) => f.startsWith('s01-')));
+  const png = path.join(dir, 'review', '静帧', '16x9', fs.readdirSync(path.join(dir, 'review', '静帧', '16x9')).find((f) => f.startsWith('s01-')));
   for (const [x, y] of [[2, 2], [317, 2], [2, 177], [317, 177]]) {
     const [red] = pixel(png, x, y);
     assert.ok(red < 120, `corner ${x},${y} should be inked, got ${red}`);
@@ -161,7 +161,7 @@ test('c2d.wash survives a scale(0) frame and a far zoom-out', opts, () => {
   const dir = makeFilm({ s01: SHOT(body) });
   const r = wka('still', dir, '--at', 's01:0.5');
   assert.equal(r.status, 0, r.stderr);
-  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((f) => f.startsWith('s01-')));
+  const png = path.join(dir, 'review', '静帧', '16x9', fs.readdirSync(path.join(dir, 'review', '静帧', '16x9')).find((f) => f.startsWith('s01-')));
   assert.ok(pixel(png, 10, 10)[0] < 120, 'the zoomed-out square should still be inked');
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -170,13 +170,13 @@ test('wka animatic puts the animatic and its contact sheet in review/', opts, ()
   const dir = makeFilm({ s01: SHOT(''), s02: SHOT('') });
   const r = wka('animatic', dir);
   assert.equal(r.status, 0, r.stderr);
-  const video = path.join(dir, 'review', '动态分镜.mp4');
-  const sheet = path.join(dir, 'review', '接触表.jpg');
+  const video = path.join(dir, 'review', '小样', '动态分镜-16x9.mp4');
+  const sheet = path.join(dir, 'review', '小样', '接触表-16x9.jpg');
   assert.ok(fs.existsSync(video) && fs.existsSync(sheet));
   assert.ok(r.stdout.includes(`动态分镜：${video}`));
   assert.ok(r.stdout.includes(`接触表：${sheet}`));
   assert.ok(!fs.existsSync(path.join(dir, 'animatic.mp4')));
-  assert.ok(fs.existsSync(path.join(dir, 'stills', 'sheet.jpg')), 'stills/sheet.jpg is still written for the director');
+  assert.ok(fs.existsSync(path.join(dir, 'review', '静帧', '16x9', 'sheet.jpg')), 'stills/sheet.jpg is still written for the director');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -198,7 +198,7 @@ test('voices with chars: true get per-character cues that shots read with s.cueC
   assert.ok(cues['一#3'][0] >= 0.9, `second clause starts after the pause: ${cues['一#3']}`);
   const st = wka('still', dir, '--at', 's01:0.8');
   assert.equal(st.status, 0, st.stderr);
-  const png = path.join(dir, 'stills', fs.readdirSync(path.join(dir, 'stills')).find((x) => x.startsWith('s01-')));
+  const png = path.join(dir, 'review', '静帧', '16x9', fs.readdirSync(path.join(dir, 'review', '静帧', '16x9')).find((x) => x.startsWith('s01-')));
   assert.ok(pixel(png, 5, 5)[0] < 40);
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -208,11 +208,11 @@ test('without drawtext the contact sheet and animatic still carry shot labels (d
   const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
   assert.equal(r.status, 0, r.stderr);
   assert.doesNotMatch(r.stdout + r.stderr, /不加文字标注/);
-  const sheet = path.join(dir, 'review', '接触表.jpg');
+  const sheet = path.join(dir, 'review', '小样', '接触表-16x9.jpg');
   assert.ok(pixel(sheet, 12, 38)[0] < 200, 'label box in the top-left of the first tile');
   assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest of the tile is still paper');
   const frame = path.join(dir, 'frame.png');
-  spawnSync('ffmpeg', ['-v', 'error', '-y', '-ss', '0.5', '-i', path.join(dir, 'review', '动态分镜.mp4'), '-frames:v', '1', frame]);
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-ss', '0.5', '-i', path.join(dir, 'review', '小样', '动态分镜-16x9.mp4'), '-frames:v', '1', frame]);
   assert.ok(pixel(frame, 23, 58)[0] < 200, 'label box in the animatic frame');
   fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -280,7 +280,7 @@ test('a one-shot film still gets a labelled contact sheet from wka animatic', op
   const dir = makeFilm({ s01: SHOT('') });
   const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
   assert.equal(r.status, 0, r.stderr);
-  const sheet = path.join(dir, 'review', '接触表.jpg');
+  const sheet = path.join(dir, 'review', '小样', '接触表-16x9.jpg');
   assert.ok(fs.existsSync(sheet), r.stdout);
   assert.ok(pixel(sheet, 14, 20)[0] < 200, 'label box in the top-left');
   assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest is still paper');
@@ -294,7 +294,7 @@ test('without drawtext the QC contact sheet still carries labels (drawn by Chrom
   const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'qc', dir);
   assert.equal(r.status, 2, r.stderr);
   assert.doesNotMatch(r.stdout + r.stderr, /不加文字标注/);
-  const sheet = path.join(dir, 'stills', 'qc', 'qc-sheet.jpg');
+  const sheet = path.join(dir, 'review', 'QC', '异常帧', '16x9', 'qc-sheet.jpg');
   assert.ok(pixel(sheet, 14, 20)[0] < 200, 'label box in the top-left');
   assert.ok(pixel(sheet, 600, 300)[0] > 220, 'the rest is still paper');
   fs.rmSync(dir, { recursive: true, force: true });
@@ -306,10 +306,10 @@ test('镜头很多时动态分镜分批出片、帧数精确，接触表在无 d
   try {
     const r = wkaEnv({ WKA_NO_DRAWTEXT: '1' }, 'animatic', dir);
     assert.equal(r.status, 0, r.stderr);
-    const out = path.join(dir, 'review', '动态分镜.mp4');
+    const out = path.join(dir, 'review', '小样', '动态分镜-16x9.mp4');
     const probe = JSON.parse(spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=nb_read_frames', '-of', 'json', out], { encoding: 'utf8' }).stdout);
     assert.equal(Number(probe.streams[0].nb_read_frames), 40 * 12);
-    assert.ok(fs.statSync(path.join(dir, 'review', '接触表.jpg')).size > 0);
-    assert.equal(fs.readdirSync(path.join(dir, '.cache/work')).filter((name) => name.startsWith('animatic-')).length, 0);
+    assert.ok(fs.statSync(path.join(dir, 'review', '小样', '接触表-16x9.jpg')).size > 0);
+    assert.equal(fs.readdirSync(path.join(dir, '.cache/16x9/work')).filter((name) => name.startsWith('animatic-')).length, 0);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

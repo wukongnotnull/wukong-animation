@@ -80,7 +80,7 @@ test('A4/A5/A10 revision rejects mutations and manual draft approval preserves o
   const args={id:'user-approval-15',step:8,revision,source:'用户本轮明确回复',note:'已保存并退出，草稿已打开检查',openEvidence:{status:'opened',source:'用户明确报告'}};
   const approval=final.prepareFinalApproval(dir,args);
   // 模拟既有流程签批已持久化，不通过新模块伪造 state。
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:8,approvalId:args.id,note:args.note}]}));
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:7,step:8,history:[{step:8,approvalId:args.id,note:args.note}]}));
   final.commitFinalApproval(dir,approval);final.commitFinalApproval(dir,approval);
   let report=final.finalDeliveryReport(dir),item=report.items.find(i=>i.kind==='draft');
   assert.equal(item.acceptance,'accepted');assert.equal(item.openStatus,'opened');assert.equal(item.freshness,'current');
@@ -114,7 +114,7 @@ test('A5 variant approval binds the delivered high-definition video, not the pre
   const revision=final.finalDeliveryReport(dir).reviewSets[7].deliveryRevision;
   const prepared=final.prepareFinalApproval(dir,{id:'variant-7',step:7,revision,source:'用户明确批准副版成片',note:'副版成片通过'});
   assert.equal(prepared.approval.type,'direct');assert.deepEqual(prepared.approval.bindings.map(b=>b.path),[native]);
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:7,approvalId:'variant-7'}]}));final.commitFinalApproval(dir,prepared);
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:7,step:8,history:[{step:7,approvalId:'variant-7'}]}));final.commitFinalApproval(dir,prepared);
   let item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.equal(item.acceptance,'accepted');assert.equal(item.approval.type,'direct');
   fs.appendFileSync(path.join(dir,'shots/s01.js'),'// change');item=final.finalDeliveryReport(dir).items.find(i=>i.path===native);assert.notEqual(item.acceptance,'accepted');
 });
@@ -126,7 +126,7 @@ test('A6 variant overrides and notes do not stale main; shared picture does',t=>
   for(const aspect of ['16:9','9:16']) {
     const generation=final.captureFinalGeneration(dir,{slot:`${aspect}/video/mp4/clean`,fontFiles:[path.join(dir,'film.json')]}),out=path.join(dir,aspect.replace(':','x')+'.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
   }
-  fs.appendFileSync(path.join(dir,'shots/s01.9x16.js'),' changed');fs.writeFileSync(path.join(dir,'review-notes.json'),'{"version":1}');
+  fs.appendFileSync(path.join(dir,'shots/s01.9x16.js'),' changed');fs.writeFileSync(path.join(dir,'.wka/review-notes.json'),'{"version":1}');
   let report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'current');assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='9:16').freshness,'changed');
   fs.appendFileSync(path.join(dir,'shots/s01.js'),' changed');report=final.finalDeliveryReport(dir);assert.equal(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9').freshness,'changed');
   assert.match(JSON.stringify(report.items.find(i=>i.kind==='video'&&i.aspect==='16:9')),/相关输入已变：picture（shots\/s01\.js）/);
@@ -138,7 +138,7 @@ test('A10 identical successful export reuses evidence identity and record retrie
   const first=save(),second=save();assert.equal(first.id,second.id);
   const revision=final.finalDeliveryReport(dir).reviewSets[6].deliveryRevision;
   const prepared=final.prepareFinalApproval(dir,{id:'same-13',step:6,revision,source:'用户',note:'通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:6,approvalId:'same-13'}]}));final.commitFinalApproval(dir,prepared);
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:7,step:8,history:[{step:6,approvalId:'same-13'}]}));final.commitFinalApproval(dir,prepared);
   save();assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
   final.recordFinalEvidence(dir);assert.equal(final.finalDeliveryReport(dir).items[0].acceptance,'accepted');
 });
@@ -155,7 +155,7 @@ test('A10 saved generation receipt recovers ledger failure without generating me
 test('A7 dynamic audio and missing fonts remain unknown without touching operations',t=>{
   const dir=fixture(t),file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));film.audio={build:'audio/build.mjs'};fs.writeFileSync(file,JSON.stringify(film));
   const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean'}),out=path.join(dir,'影片.mp4');fs.writeFileSync(out,'video');final.recordFinalArtifact(dir,{generation,path:out,stage:'encode:mp4',technical:{status:'passed'}});
-  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].freshness,'unknown');assert.match(report.items[0].reasons.join(' '),/audio.build/);assert.match(report.items[0].reasons.join(' '),/字体/);assert.equal(fs.existsSync(path.join(dir,'.cache/operations.json')),false);
+  const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].freshness,'unknown');assert.match(report.items[0].reasons.join(' '),/audio.build/);assert.match(report.items[0].reasons.join(' '),/字体/);assert.equal(fs.existsSync(path.join(dir,'.wka/operations.json')),false);
 });
 
 test('A10 unstable scan and a running native editor reject approval',t=>{
@@ -185,7 +185,7 @@ test('A8 complete pending version proof can be recorded after state commit, neve
   const dir=fixture(t);draftArtifact(dir);
   const revision=final.finalDeliveryReport(dir).reviewSets[8].deliveryRevision;
   const prepared=final.prepareFinalApproval(dir,{id:'recover-15',step:8,revision,source:'用户本次明确验收',note:'通过'});
-  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:6,step:8,history:[{step:8,approvalId:'recover-15'}]}));
+  fs.writeFileSync(path.join(dir,'.wka/state.json'),JSON.stringify({flow:7,step:8,history:[{step:8,approvalId:'recover-15'}]}));
   fs.writeFileSync(path.join(dir,'.wka/pending-approval.json'),JSON.stringify({id:'recover-15',deliveryApproval:prepared,status:'prepared'}));
   const state=fs.readFileSync(path.join(dir,'.wka/state.json'));final.recordFinalEvidence(dir);
   assert.equal(final.finalDeliveryReport(dir).items.find(i=>i.kind==='draft').acceptance,'accepted');
@@ -197,12 +197,12 @@ test('A11 font URLs preserve parentheses in actual work directory',()=>{
 });
 
 test('A5 known current QC hard errors cannot be bypassed by a final approval note',t=>{
-  const dir=fixture(t),file=path.join(dir,'影片.mp4');fs.mkdirSync(path.join(dir,'.cache'));fs.mkdirSync(path.join(dir,'review'));
+  const dir=fixture(t),file=path.join(dir,'影片.mp4');fs.mkdirSync(path.join(dir,'.cache/16x9'),{recursive:true});fs.mkdirSync(path.join(dir,'review/QC'),{recursive:true});
   const decisionFile=path.join(dir,'.wka/decisions.json'),decisions=JSON.parse(fs.readFileSync(decisionFile));decisions.delivery.value='video';fs.writeFileSync(decisionFile,JSON.stringify(decisions));
-  const video=path.join(dir,'.cache/video.mp4');fs.writeFileSync(video,'video');fs.writeFileSync(file,'video');
+  const video=path.join(dir,'.cache/16x9/video.mp4');fs.writeFileSync(video,'video');fs.writeFileSync(file,'video');
   final.recordFinalArtifact(dir,{generation:final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'shots/s01.js')]}),path:file,stage:'encode:mp4',technical:{status:'passed'}});
-  const qc=path.join(dir,'review/QC报告.json');fs.writeFileSync(qc,JSON.stringify({issues:[{kind:'空帧',shot:'s01',t:0.5,msg:'no content'}]}));
-  const source=qcSource(path.join(dir,'.cache'));
+  const qc=path.join(dir,'review/QC/QC报告-16x9.json');fs.writeFileSync(qc,JSON.stringify({issues:[{kind:'空帧',shot:'s01',t:0.5,msg:'no content'}]}));
+  const source=qcSource(path.join(dir,'.cache/16x9'));
   rememberArtifacts(dir,{stage:'review:qc',aspect:'16:9',signature:source,outputs:[qc],value:qc});
   const report=final.finalDeliveryReport(dir);assert.equal(report.items[0].technical,'hard-error');assert.equal(report.status,'incomplete');
   assert.throws(()=>final.prepareFinalApproval(dir,{id:'hard',step:6,revision:report.reviewSets[6].deliveryRevision,source:'用户',note:'通过'}),/技术错误/);

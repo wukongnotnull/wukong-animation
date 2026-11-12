@@ -35,9 +35,9 @@ test('所有旧项目制作入口先拒绝，不写锁、执行状态、签批�
 test('新简报与初始化共享新身份，补齐影片后仍可按八道流程恢复', async t => {
   const { root } = project(t), dir = path.join(root, 'films', '新片');
   const brief = await cli(['brief', '新片', '--dir', root]); assert.equal(brief.code, 0, brief.error.join('\n'));
-  assert.equal(readProgress(dir).flow, 6);
+  assert.equal(readProgress(dir).flow, 7);
   const init = await cli(['init', '新片', '--style', 'ink-wash', '--dir', root]); assert.equal(init.code, 0, init.error.join('\n'));
-  assert.equal(readProgress(dir).flow, 6); assert.equal(readProgress(dir).step, 1);
+  assert.equal(readProgress(dir).flow, 7); assert.equal(readProgress(dir).step, 1);
   const film = JSON.parse(fs.readFileSync(path.join(dir, 'film.json'), 'utf8'));
   assert.notEqual(film.audio?.voice_source, 'ai'); assert.equal(film.subtitles?.mode ?? 'none', 'none');
   const status = await cli(['status', root]); assert.equal(status.code, 0); assert.match(status.log.join('\n'), /历史项目（只读）/); assert.match(status.log.join('\n'), /1\/8/);

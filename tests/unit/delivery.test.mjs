@@ -19,10 +19,10 @@ test('特殊路径链接可解析回真实文件，缺失/替换/改源不交作
   const item=report.items.find(i=>i.path===file);assert.equal(item.status,'current');
   const target=/<([^>]+)>/.exec(item.link)[1];assert.equal(fs.readFileSync(decodeURIComponent(target),'utf8'),'检查结果');
   assert.equal(item.openStatus,'not-tested');
-  fs.writeFileSync(path.join(dir,'.cache/active-command.json'),JSON.stringify({argv:['final',dir]}));
+  fs.mkdirSync(path.join(dir,'.cache'),{recursive:true});fs.writeFileSync(path.join(dir,'.cache/active-command.json'),JSON.stringify({argv:['final',dir]}));
   const incomplete=delivery.deliveryReport(dir,{host:'codex'});
   assert.equal(incomplete.ok,false,'生成了其他文件不能掩盖 final 必需视频缺失');
-  assert.ok(incomplete.errors.some(e=>e.includes('out.mp4')));
+  assert.ok(incomplete.errors.some(e=>e.includes('成片')));
   fs.rmSync(path.join(dir,'.cache/active-command.json'));
   fs.writeFileSync(file,'用户手改');report=delivery.deliveryReport(dir,{host:'codex'});assert.equal(report.ok,false);assert.equal(report.links.length,0);
   fs.rmSync(file);report=delivery.deliveryReport(dir,{host:'codex'});assert.equal(report.items[0].status,'missing');

@@ -46,13 +46,13 @@ test('soundtrack and proxy leave playable review copies in review/', opts, () =>
   const dir = makeFilm();
   let r = wka('soundtrack', dir);
   assert.equal(r.status, 0, r.stderr);
-  const m4a = path.join(dir, 'review', '声轨.m4a');
+  const m4a = path.join(dir, 'review', '声轨', '声轨.m4a');
   assert.ok(r.stdout.includes(m4a), 'absolute path in the log');
   assert.equal(probe(m4a, 'stream=codec_name'), 'aac');
   assert.ok(Math.abs(Number(probe(m4a, 'format=duration')) - Number(probe(path.join(dir, '.cache', 'mix.wav'), 'format=duration'))) < 0.1);
   r = wka('render', dir, '--proxy');
   assert.equal(r.status, 0, r.stderr);
-  const proxy = path.join(dir, 'review', '小样.mp4');
+  const proxy = path.join(dir, 'review', '小样', '小样-16x9.mp4');
   assert.ok(r.stdout.includes(proxy), 'absolute path in the log');
   assert.equal(probe(proxy, 'stream=codec_type'), 'video\naudio');
   assert.equal(fs.readdirSync(dir,{recursive:true}).some(f=>/\.(srt|vtt)$/.test(f)),false);

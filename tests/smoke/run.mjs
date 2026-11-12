@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { aspectOf, suffixOf } from '../../plugin/engine/core/variants.mjs';
 import { BUILTIN_FIXTURE_STYLES, writeBuiltinFixture } from '../fixtures/performance.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -42,10 +43,10 @@ function compare(a, b) {
   }
   return { mean: s / a.length, changed: n / a.length };
 }
-/** 渲染静帧；aspect 为副版画幅时出副版（静帧在 stills/<后缀>/）。 */
+/** 渲染静帧；aspect 为副版画幅时出副版（静帧在 review/静帧/<后缀>/，主版也带后缀）。 */
 function stills(film, points, aspect = null) {
-  const suffix = aspect ? aspect.replace(':', 'x') : null;
-  const dir = suffix ? path.join(film, 'stills', suffix) : path.join(film, 'stills');
+  const main = aspectOf(JSON.parse(fs.readFileSync(path.join(film, 'film.json'), 'utf8')).size);
+  const dir = path.join(film, 'review', '静帧', suffixOf(aspect || main));
   fs.rmSync(dir, { recursive: true, force: true });
   const args = [WK, 'still', film, '--proxy', '--at', points.map((p) => `${p.shot}:${p.t}`).join(','), ...(aspect ? ['--aspect', aspect] : [])];
   const r = spawnSync(process.execPath, args, { encoding: 'utf8' });

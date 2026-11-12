@@ -52,7 +52,7 @@ test('align-words 生成词表：词边界吸附到音频，写出可读表且�
   assert.equal(words.map(word => word.text).join(''), '有素材无素材');
   assert.ok(Math.abs(words[0].start - 0.5) <= 0.03 && Math.abs(words.at(-1).end - 2.0) <= 0.03);
   assert.ok(words.every(word => word.status === 'measured'));
-  const report = fs.readFileSync(path.join(dir, 'review/逐词时间表.md'), 'utf8');
+  const report = fs.readFileSync(path.join(dir, 'review/台词/逐词时间表.md'), 'utf8');
   assert.match(report, /\| 序号 \| 词 \|/);assert.match(report, /word:v01:<序号>/);
   assert.equal(fs.readdirSync(dir, { recursive: true }).some(file => /\.(srt|vtt)$/.test(file)), false);
   const { cues, evidence } = wordTimelineCues(ctxOf(dir));

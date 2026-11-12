@@ -165,10 +165,15 @@ function audioEnvelope(file,start,duration) {
   for(let base=0;base+1600<=r.stdout.length;base+=1600){let sum=0;for(let i=base;i<base+1600;i+=2)sum+=Math.abs(r.stdout.readInt16LE(i));values.push(sum/800);}
   return values;
 }
+function mainSuffix(dir) {
+  const [W,H]=read(path.join(dir,'film.json')).size;
+  const gcd=(a,b)=>b?gcd(b,a%b):a,divisor=gcd(W,H);
+  return `${W/divisor}x${H/divisor}`;
+}
 function checkPreviewAudio(dir,shots,fps) {
   for(const shot of [shots[0],shots.at(-1)]) {
     const duration=Math.min(2,shot.frames/fps),expected=audioEnvelope(path.join(dir,'.cache/mix.wav'),shot.start/fps,duration);
-    const actual=audioEnvelope(path.join(dir,'review/局部小样',`${shot.id}.mp4`),0,duration);
+    const actual=audioEnvelope(path.join(dir,`review/小样/局部小样-${mainSuffix(dir)}`,`${shot.id}.mp4`),0,duration);
     if(!expected.length||actual.length!==expected.length)throw Error('preview audio interval length mismatch');
     const peak=Math.max(1,...expected),error=expected.reduce((n,value,i)=>n+Math.abs(value-actual[i]),0)/expected.length;
     if(error>peak*0.15+20)throw Error(`preview audio interval mismatch: ${shot.id}`);
@@ -181,7 +186,7 @@ function validateWorkflow(ctx,film,dir,command,mode,row) {
   const fps=Math.min(15,film.fps),scale=Math.min(1,960/Math.max(...film.size)),size=film.size.map(n=>Math.max(2,Math.round(n*scale/2)*2));
   let elapsed=0;
   const expectedShots=film.shots.map(s=>{const start=Math.round(elapsed*fps);elapsed+=s.duration;return {...s,start,frames:Math.round(elapsed*fps)-start};});
-  const outputs=command==='preview'?expectedShots.map(s=>({file:path.join(dir,'review/局部小样',`${s.id}.mp4`),frames:s.frames})): [{file:path.join(dir,'review/小样.mp4'),frames:Math.round(elapsed*fps)}];
+  const outputs=command==='preview'?expectedShots.map(s=>({file:path.join(dir,`review/小样/局部小样-${mainSuffix(dir)}`,`${s.id}.mp4`),frames:s.frames})): [{file:path.join(dir,`review/小样/小样-${mainSuffix(dir)}.mp4`),frames:Math.round(elapsed*fps)}];
   for(const output of outputs) {
     const streams=movieInfo(output.file),v=streams.find(s=>s.codec_type==='video');
     const [num,den]=v?.avg_frame_rate?.split('/').map(Number)||[];
@@ -232,7 +237,7 @@ async function workflowSuite(contexts,options) {
       const before=treeIdentity(ctx.case.dir);
       await measured(ctx,`${caseName}-${command}`,round,[path.join(ctx.engine,'bin/wka.mjs'),command,ctx.case.dir,...(command==='delivery'?['--final','--json']:command==='resume'?['--json']:[])],{instrumented:round>options.rounds,accepted:command==='delivery'?[2]:[0],validate:row=>{
         if(command!=='qc') {
-          const after=treeIdentity(ctx.case.dir),allowed=command==='delivery'?['最终交付清单.json','最终交付清单.md','最终交付审计.json','最终交付审计.md'].map(name=>'review/'+name):[];
+          const after=treeIdentity(ctx.case.dir),allowed=command==='delivery'?['最终交付清单.json','最终交付清单.md','最终交付审计.json','最终交付审计.md'].map(name=>'review/交付/'+name):[];
           for(const name of new Set([...Object.keys(before),...Object.keys(after)]))if(!allowed.includes(name)&&before[name]!==after[name])throw Error(`unexpected boundary write: ${name}`);
         }
         if(command==='delivery') {const report=read(row.log);if(report.ok!==false||!report.items?.some(item=>item.link)||report.items.some(item=>item.acceptance==='accepted'))throw Error('real output must remain linked and unapproved');return {blockedWithoutUserApproval:true};}

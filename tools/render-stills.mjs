@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { aspectOf, suffixOf } from '../plugin/engine/core/variants.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WK = path.join(ROOT, 'plugin/engine/bin/wka.mjs');
@@ -32,13 +33,14 @@ for (const id of fs.readdirSync(skills)) {
   const last = fj.shots[fj.shots.length - 1];
   const r = spawnSync(process.execPath, [WK, 'still', film, '--at', `${last.id}:${(last.duration * 0.8).toFixed(2)}`], { stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status);
-  const png = fs.readdirSync(path.join(film, 'stills')).find((f) => f.endsWith('.png'));
-  spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', path.join(film, 'stills', png), '-vf', 'scale=1280:-2', '-q:v', '3', path.join(out, `${id}.jpg`)]);
+  const stillsDir = path.join(film, 'review', '静帧', suffixOf(aspectOf(fj.size)));
+  const png = fs.readdirSync(stillsDir).find((f) => f.endsWith('.png'));
+  spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', path.join(stillsDir, png), '-vf', 'scale=1280:-2', '-q:v', '3', path.join(out, `${id}.jpg`)]);
   console.log(`✓ docs/gallery/${id}.jpg`);
   if (gif) {
     spawnSync(process.execPath, [WK, 'final', film, '--proxy', '--formats', 'gif'], { stdio: 'inherit' });
-    const g = fs.readdirSync(film).find((f) => f.endsWith('.gif'));
-    if (g) fs.copyFileSync(path.join(film, g), path.join(out, `${id}.gif`));
+    const g = fs.readdirSync(path.join(film, '成片')).find((f) => f.endsWith('.gif'));
+    if (g) fs.copyFileSync(path.join(film, '成片', g), path.join(out, `${id}.gif`));
     console.log(`✓ docs/gallery/${id}.gif`);
   }
   fs.rmSync(tmp, { recursive: true, force: true });

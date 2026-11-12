@@ -18,9 +18,9 @@ test('A3/A9 final CLI reports missing items with exit 2 and only writes four rep
   assert.equal(out.status,2,out.stderr);const report=JSON.parse(out.stdout);
   assert.equal(report.version,2);assert.equal(report.ok,false);assert.equal(report.scope,'all');
   assert.equal(report.items[0].link,undefined);
-  assert.deepEqual(fs.readdirSync(path.join(dir,'review')).sort(),['最终交付审计.json','最终交付审计.md','最终交付清单.json','最终交付清单.md']);
+  assert.deepEqual(fs.readdirSync(path.join(dir,'review')),['交付']);assert.deepEqual(fs.readdirSync(path.join(dir,'review','交付')).sort(),['最终交付审计.json','最终交付审计.md','最终交付清单.json','最终交付清单.md']);
   assert.deepEqual(fs.readdirSync(path.join(dir,'.wka')),['state.json']);assert.equal(fs.existsSync(path.join(dir,'.cache')),false);
-  const bytes=fs.readFileSync(path.join(dir,'review/最终交付清单.json'));void bytes;
+  const bytes=fs.readFileSync(path.join(dir,'review/交付/最终交付清单.json'));void bytes;
   fs.rmSync(path.join(dir,'review'),{recursive:true});fs.writeFileSync(path.join(dir,'review'),'blocks writing');
   const fail=run('delivery',dir,'--final','--json');assert.equal(fail.status,1);assert.match(fail.stderr,/review/);
 });
@@ -29,7 +29,7 @@ test('A4/A5/A11 real video and draft export bind existing signoff nodes and reta
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-final-real-'));initializeProduction(dir);t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   for (const args of [['init','-q'],['config','user.name','Fixture'],['config','user.email','fixture@example.invalid'],['config','commit.gpgsign','false']]) assert.equal(spawnSync('git',args,{cwd:dir}).status,0);
   fs.writeFileSync(path.join(dir,'.git/info/exclude'),'/home/\n/*.mp4\n');
-  fs.writeFileSync(path.join(dir,'.gitignore'),'/review/\n/.cache/\n/drafts/\n/.wka/*\n!/.wka/state.json\n!/.wka/decisions.json\n!/.wka/pending-approval.json\n!/.wka/final-delivery.json\n!/.wka/final-delivery-receipts/\n');
+  fs.writeFileSync(path.join(dir,'.gitignore'),'/成片/*.mp4\n/review/**/*.mp4\n/review/**/*.m4a\n/review/**/*.png\n/review/**/*.jpg\n/.cache/\n/drafts/\n/.wka/*\n!/.wka/state.json\n!/.wka/decisions.json\n!/.wka/pending-approval.json\n!/.wka/final-delivery.json\n!/.wka/final-delivery-receipts/\n');
   assert.equal(spawnSync('git',['add','--','.gitignore'],{cwd:dir}).status,0);assert.equal(spawnSync('git',['commit','-qm','init'],{cwd:dir}).status,0);
   const home=path.join(dir,'home'),drafts=path.join(dir,'drafts');fs.mkdirSync(path.join(home,'styles','delivery-fixture'),{recursive:true});fs.mkdirSync(drafts);fs.mkdirSync(path.join(dir,'shots'));fs.mkdirSync(path.join(dir,'.wka'),{recursive:true});
   const style=JSON.parse(fs.readFileSync('plugin/skills/ink-wash/style.json'));Object.assign(style,{id:'delivery-fixture',fonts:[],scripts:[]});

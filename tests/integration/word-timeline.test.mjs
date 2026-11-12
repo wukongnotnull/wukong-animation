@@ -43,7 +43,7 @@ test('逐词 cue 驱动镜头词首帧与配乐脚本；align-voice 默认生成
     const timeline = JSON.parse(fs.readFileSync(path.join(dir, '.wka/word-timeline.json'), 'utf8'));
     const words = timeline.voices.v01.words;
     assert.equal(words.length, 4);
-    assert.ok(fs.existsSync(path.join(dir, 'review/逐词时间表.md')));
+    assert.ok(fs.existsSync(path.join(dir, 'review/台词/逐词时间表.md')));
     const track = cli('soundtrack', dir);
     assert.equal(track.status, 0, track.stderr + track.stdout);
     const seen = JSON.parse(fs.readFileSync(path.join(dir, 'audio/generated/seen-cues.json'), 'utf8'));
@@ -51,7 +51,7 @@ test('逐词 cue 驱动镜头词首帧与配乐脚本；align-voice 默认生成
     assert.ok(Math.abs(seen['word:v01:3'][0] - (0.17 + words[2].start)) < 1e-6);
     const render = cli('render', dir);
     assert.equal(render.status, 0, render.stderr + render.stdout.slice(-2000));
-    const decoded = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(dir, '.cache/video.mp4'), '-vf', 'scale=1:1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { maxBuffer: 1e6 });
+    const decoded = spawnSync('ffmpeg', ['-v', 'error', '-i', path.join(dir, '.cache/16x9/video.mp4'), '-vf', 'scale=1:1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { maxBuffer: 1e6 });
     assert.equal(decoded.status, 0, String(decoded.stderr));
     [[0, words[0]], [1, words[2]]].forEach(([channel, word]) => {
       let first = -1;

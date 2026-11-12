@@ -14,7 +14,7 @@ function repo(t) {
   for (const args of [['init', '-q'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['config', 'commit.gpgsign', 'false']]) {
     assert.equal(git(...args).status, 0);
   }
-  fs.writeFileSync(path.join(dir, '.gitignore'), '/review/\n');
+  fs.writeFileSync(path.join(dir, '.gitignore'), '/review/**/*.mp4\n/review/**/*.m4a\n/review/**/*.png\n/review/**/*.jpg\n');
   fs.writeFileSync(path.join(dir, 'story.md'), '第一版\n');
   fs.writeFileSync(path.join(dir, 'other.md'), '别的\n');
   initializeProduction(dir);

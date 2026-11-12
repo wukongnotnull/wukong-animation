@@ -53,36 +53,36 @@ function centerRgb(file) {
 }
 const near = (rgb, want) => rgb.length === 3 && rgb.every((v, i) => Math.abs(v - want[i]) < 24);
 
-test('the main version keeps its paths; the variant renders into .cache/9x16 at its own size', opts, () => {
+test('the main version renders into .cache/16x9; the variant renders into .cache/9x16 at its own size', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir));
-  assert.deepEqual(videoSize(path.join(dir, '.cache', 'video.mp4')), [320, 180]);
-  const manifest = fs.readFileSync(path.join(dir, '.cache', 'manifest.json'), 'utf8');
+  assert.deepEqual(videoSize(path.join(dir, '.cache', '16x9', 'video.mp4')), [320, 180]);
+  const manifest = fs.readFileSync(path.join(dir, '.cache', '16x9', 'manifest.json'), 'utf8');
 
   ok(wka('render', dir, '--aspect', '9:16'));
   assert.deepEqual(videoSize(path.join(dir, '.cache', '9x16', 'video.mp4')), [180, 320]);
   assert.equal(fs.readdirSync(path.join(dir, '.cache', '9x16', 'segments')).length, 2);
-  assert.equal(fs.readFileSync(path.join(dir, '.cache', 'manifest.json'), 'utf8'), manifest, '主版缓存不被副版改动');
+  assert.equal(fs.readFileSync(path.join(dir, '.cache', '16x9', 'manifest.json'), 'utf8'), manifest, '主版缓存不被副版改动');
 });
 
 test('the variant uses override shot files and s.orientation; the main version does not', opts, () => {
   const dir = makeFilm();
   ok(wka('still', dir, '--at', 's01:0.5,s02:0.5'));
   ok(wka('still', dir, '--aspect', '9:16', '--at', 's01:0.5,s02:0.5'));
-  assert.ok(near(centerRgb(path.join(dir, 'stills', 's01-0.50s.png')), [242, 237, 227]));
-  assert.ok(near(centerRgb(path.join(dir, 'stills', 's02-0.50s.png')), [255, 255, 255]));
-  assert.ok(near(centerRgb(path.join(dir, 'stills', '9x16', 's01-0.50s.png')), [255, 0, 0]));
-  assert.ok(near(centerRgb(path.join(dir, 'stills', '9x16', 's02-0.50s.png')), [0, 0, 255]));
+  assert.ok(near(centerRgb(path.join(dir, 'review', '静帧', '16x9', 's01-0.50s.png')), [242, 237, 227]));
+  assert.ok(near(centerRgb(path.join(dir, 'review', '静帧', '16x9', 's02-0.50s.png')), [255, 255, 255]));
+  assert.ok(near(centerRgb(path.join(dir, 'review', '静帧', '9x16', 's01-0.50s.png')), [255, 0, 0]));
+  assert.ok(near(centerRgb(path.join(dir, 'review', '静帧', '9x16', 's02-0.50s.png')), [0, 0, 255]));
 });
 
 test('variant review files carry the aspect suffix', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir, '--proxy', '--aspect', '9:16'));
-  assert.ok(fs.existsSync(path.join(dir, 'review', '小样-9x16.mp4')));
+  assert.ok(fs.existsSync(path.join(dir, 'review', '小样', '小样-9x16.mp4')));
   ok(wka('animatic', dir, '--aspect', '9:16'));
-  assert.ok(fs.existsSync(path.join(dir, 'review', '动态分镜-9x16.mp4')));
-  assert.ok(fs.existsSync(path.join(dir, 'review', '接触表-9x16.jpg')));
-  assert.ok(!fs.existsSync(path.join(dir, 'review', '小样.mp4')), '主版审阅文件不被写');
+  assert.ok(fs.existsSync(path.join(dir, 'review', '小样', '动态分镜-9x16.mp4')));
+  assert.ok(fs.existsSync(path.join(dir, 'review', '小样', '接触表-9x16.jpg')));
+  assert.ok(!fs.existsSync(path.join(dir, 'review', '小样', '小样-16x9.mp4')), '主版审阅文件不被写');
 });
 
 test('an aspect the film does not declare fails with the usable ones', () => {
@@ -104,10 +104,10 @@ test('wka qc --aspect checks the variant video and writes its report under .cach
   ok(wka('render', dir, '--proxy', '--aspect', '9:16'));
   wka('qc', dir, '--proxy', '--aspect', '9:16');
   assert.ok(fs.existsSync(path.join(dir, '.cache', '9x16', 'qc.json')));
-  assert.ok(!fs.existsSync(path.join(dir, '.cache', 'qc.json')), '主版质检报告不被写');
+  assert.ok(!fs.existsSync(path.join(dir, '.cache', '16x9', 'qc.json')), '主版质检报告不被写');
 });
 
-const report = (dir) => fs.readFileSync(path.join(dir, 'review', '主版不变报告-9x16.md'), 'utf8');
+const report = (dir) => fs.readFileSync(path.join(dir, 'review', 'QC', '主版不变报告-9x16.md'), 'utf8');
 const rowOf = (text, id) => text.split('\n').find((l) => l.startsWith(`| ${id} `)) || '';
 const state = (dir) => JSON.parse(fs.readFileSync(path.join(dir, '.wka', 'state.json'), 'utf8'));
 
@@ -116,7 +116,7 @@ test('signing off step 6 snapshots the main version; variant renders report whet
   ok(wka('render', dir));
   ok(wka('signoff', dir, '成片终审通过', '--step', '6'));
   assert.deepEqual(Object.keys(state(dir).approved.main), ['s01', 's02']);
-  assert.deepEqual(fs.readdirSync(path.join(dir, '.cache', 'approved')).sort(), ['s01.mp4', 's02.mp4']);
+  assert.deepEqual(fs.readdirSync(path.join(dir, '.wka', 'approved')).sort(), ['s01.mp4', 's02.mp4']);
 
   // 没改代码：哈希相同
   ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
@@ -136,7 +136,7 @@ test('signing off step 6 snapshots the main version; variant renders report whet
   assert.match(rowOf(report(dir), 's01'), /画面有变化/);
 
   // 快照丢了：改为目视复核
-  fs.rmSync(path.join(dir, '.cache', 'approved'), { recursive: true });
+  fs.rmSync(path.join(dir, '.wka', 'approved'), { recursive: true });
   ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
   assert.match(rowOf(report(dir), 's01'), /快照缺失/);
 });
@@ -167,9 +167,9 @@ test('a variant signed off before the main version changed is stale: final refus
 test('wka final --aspect names the variant output with its suffix; --aspect all makes every version', opts, () => {
   const dir = makeFilm();
   ok(wka('final', dir, '--aspect', '9:16', '--proxy'));
-  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [180, 320]);
-  assert.ok(!fs.existsSync(path.join(dir, 'it-proxy.mp4')));
+  assert.deepEqual(videoSize(path.join(dir, '成片', 'it-9x16-proxy.mp4')), [180, 320]);
+  assert.ok(!fs.existsSync(path.join(dir, '成片', 'it-16x9-proxy.mp4')));
   ok(wka('final', dir, '--aspect', 'all', '--proxy'));
-  assert.deepEqual(videoSize(path.join(dir, 'it-proxy.mp4')), [320, 180]);
-  assert.deepEqual(videoSize(path.join(dir, 'it-9x16-proxy.mp4')), [180, 320]);
+  assert.deepEqual(videoSize(path.join(dir, '成片', 'it-16x9-proxy.mp4')), [320, 180]);
+  assert.deepEqual(videoSize(path.join(dir, '成片', 'it-9x16-proxy.mp4')), [180, 320]);
 });

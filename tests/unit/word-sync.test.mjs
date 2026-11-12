@@ -13,7 +13,7 @@ test('来源绑定、重复词选择、过期测量回退和整体平移', () =>
     const film={audio:{voice_source:'user',voices:[{cue:'v01',text:'有素材，无素材，有素材',at:1,file:'voice.wav'}]},cues:{v01:[1,4]}};
     const ctx={filmDir:dir,film};
     word.writeVoiceSources(ctx,[{file:path.join(dir,'voice.wav'),duration:3}]);
-    const source=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;
+    const source=JSON.parse(fs.readFileSync(path.join(dir,'.wka','voice-sources.json'))).voices.v01;
     const point={id:'materials',voice:'v01',text:'有素材',occurrence:2,method:'manual',source:{audio_sha256:source.audio_sha256,text_sha256:source.text_sha256},range:[2,2.5],evidence:'听审标注'};
     fs.writeFileSync(path.join(dir,'sync-points.json'),JSON.stringify({version:1,points:[point]}));
     let result=word.resolveWordSync(ctx);
@@ -42,7 +42,7 @@ test('抽帧小样的词首帧返回原生时间轴帧号', () => {
     const film={audio:{voice_source:'user',voices:[{cue:'v01',text:'有素材',at:0,file:'voice.wav'}]},cues:{v01:[0,3]}};
     const ctx={filmDir:dir,film};
     word.writeVoiceSources(ctx,[{file:path.join(dir,'voice.wav'),duration:3}]);
-    const source=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;
+    const source=JSON.parse(fs.readFileSync(path.join(dir,'.wka','voice-sources.json'))).voices.v01;
     fs.writeFileSync(path.join(dir,'sync-points.json'),JSON.stringify({version:1,points:[{id:'materials',voice:'v01',text:'有素材',method:'manual',source:{audio_sha256:source.audio_sha256,text_sha256:source.text_sha256},range:[1,1.5],evidence:'听审标注'}]}));
     fs.writeFileSync(path.join(dir,'s01.js'),"s.cueFrame('word:materials')");
     const base={...ctx,fps:15,styleScripts:[],filmScripts:[],shots:[{id:'s01',path:path.join(dir,'s01.js'),startFrame:0,frames:45,start:0,duration:3}]};
@@ -74,7 +74,7 @@ test('错误声明、估算分级、音色变化、无关配乐与来源清理',
   const line={cue:'v01',text:'𠮷有素材',at:0,file:'voice.wav'};
   const ctx={filmDir:dir,film:{audio:{voice_source:'user',voices:[line]},cues:{}}};
   word.writeVoiceSources(ctx,[{file:path.join(dir,'voice.wav'),duration:1}]);
-  const src=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;
+  const src=JSON.parse(fs.readFileSync(path.join(dir,'.wka','voice-sources.json'))).voices.v01;
   const point={id:'unicode',voice:'v01',text:'有素材',method:'manual',source:{audio_sha256:src.audio_sha256,text_sha256:src.text_sha256},range:[0.2,0.8],evidence:'听审'};
   const put=p=>fs.writeFileSync(path.join(dir,'sync-points.json'),JSON.stringify({version:1,points:Array.isArray(p)?p:[p]}));put(point);
   let r=word.resolveWordSync(ctx);assert.equal(r.evidence['word:unicode'].verified,true);
@@ -86,6 +86,6 @@ test('错误声明、估算分级、音色变化、无关配乐与来源清理',
   put({...point,text:'不存在'});assert.throws(()=>word.resolveWordSync(ctx),/不存在/);
   put({...point,method:'estimated',range:undefined,source:undefined});assert.equal(word.resolveWordSync(ctx).evidence['word:unicode'].verified,false);
   ctx.film.audio.voices=[];word.writeVoiceSources(ctx,[]);
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices,{});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','voice-sources.json'))).voices,{});
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

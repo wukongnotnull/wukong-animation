@@ -20,7 +20,7 @@ function oldTree(dir,exclude=()=>false) {
 }
 // Independent pre-optimization projection: duplicate declarations remain in the data.
 function legacy(dir) {
-  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','review-notes.json','.wka/decisions.json'];
+  const roots=['film.json','brief.md','story.md','storyboard.md','sync-points.json','.wka/voice-alignment.json','.wka/word-timeline.json','.wka/review-notes.json','.wka/decisions.json'];
   const data=roots.map(rel=>[rel,fs.existsSync(path.join(dir,rel))?oldFile(path.join(dir,rel)):null]);
   let film={};try{film=JSON.parse(fs.readFileSync(path.join(dir,'film.json'),'utf8'));}catch{}
   const references=[...(film.scripts||[]),...(film.shots||[]).map(s=>s.file),...(film.audio?.tracks||[]).map(t=>t.file),...(film.audio?.voices||[]).map(t=>t.file)].filter(Boolean);
@@ -133,16 +133,16 @@ test('stage execution writes the source identity observed after await, never an 
   await runStage(dir,{stage:'bench',aspect:'16:9',signature:'s',log:()=>{},run:async()=>{
     await Promise.resolve();const fd=fs.openSync(file,'r+');fs.writeSync(fd,Buffer.from([8]),0,1,0);fs.closeSync(fd);fs.writeFileSync(out,'output');return {value:out,outputs:[out]};
   }});
-  const current=sourceState(dir),ledger=JSON.parse(fs.readFileSync(path.join(dir,'.cache/operations.json')));
+  const current=sourceState(dir),ledger=JSON.parse(fs.readFileSync(path.join(dir,'.wka/operations.json')));
   assert.notEqual(current,before);assert.equal(ledger.stages['16:9|full|bench'].sourceState,current);
 });
 
 test('an unstable observation records a failed stage and preserves user approval bytes',async t=>{
   const dir=fixture(t),out=path.join(dir,'out'),state=path.join(dir,'.wka/state.json');fs.mkdirSync(path.dirname(state),{recursive:true});
-  const approval=JSON.stringify({flow:6,step:6,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
+  const approval=JSON.stringify({flow:7,step:6,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
   const readdir=fs.readdirSync;let changed=false;
   t.mock.method(fs,'readdirSync',function(file,...args){const entries=readdir.call(this,file,...args);if(file===path.join(dir,'audio')&&!changed){changed=true;fs.writeFileSync(path.join(dir,'brief.md'),'brief two');}return entries;});
   await assert.rejects(runStage(dir,{stage:'bench',aspect:'16:9',signature:'s',log:()=>{},run:async()=>{fs.writeFileSync(out,'output');return {value:out,outputs:[out]};}}),/变化|changed|观察|observation/i);
-  const ledger=JSON.parse(fs.readFileSync(path.join(dir,'.cache/operations.json')));
+  const ledger=JSON.parse(fs.readFileSync(path.join(dir,'.wka/operations.json')));
   assert.equal(ledger.stages['16:9|full|bench'].status,'failed');assert.equal(fs.readFileSync(state,'utf8'),approval);
 });

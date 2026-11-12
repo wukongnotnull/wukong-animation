@@ -26,7 +26,7 @@ for(const style of ['ink-wash','keynote'])test(`${style} 实际编码复用、�
   const film={title:'recovery',style,size:[160,90],fps:10,seed:1,shots:[{id:'s01',file:`shots/s01.${ext}`,duration:0.8}],audio:{voice_source:'user',voices:[{cue:'v',text:'有素材',at:0.1,file:path.relative(dir,audio)}]},export:{name:'成片 #%',formats:['mp4']}};
   fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));confirmFixtureVoices(dir);
   ok(run('final',dir));
-  const out=path.join(dir,'成片 #%.mp4'),video=path.join(dir,'.cache/video.mp4'),mtime=fs.statSync(out).mtimeMs;
+  const out=path.join(dir,'成片','成片 #%-16x9.mp4'),video=path.join(dir,'.cache/16x9/video.mp4'),mtime=fs.statSync(out).mtimeMs;
   const again=run('final',dir);ok(again);assert.match(again.stdout,/encode:mp4.*复用完成产物/);assert.equal(fs.statSync(out).mtimeMs,mtime);
   const concatenated=fs.statSync(video).mtimeMs;fs.rmSync(out);ok(run('final',dir));assert.equal(fs.statSync(video).mtimeMs,concatenated);assert.ok(fs.existsSync(out));
   ok(run('signoff',dir,'用户明确批准','--step','6','--approval-id','review-1'));
@@ -35,11 +35,11 @@ for(const style of ['ink-wash','keynote'])test(`${style} 实际编码复用、�
   let state=JSON.parse(fs.readFileSync(stateFile));assert.equal(state.history.filter(h=>h.approvalId==='review-1').length,1);assert.equal(state.approved.mainId,first.approved.mainId);
   const pendingFile=path.join(dir,'.wka/pending-approval.json'),pending=JSON.parse(fs.readFileSync(pendingFile));pending.status='prepared';fs.writeFileSync(pendingFile,JSON.stringify(pending));
   const resume=run('resume',dir,'--json');ok(resume);assert.equal(JSON.parse(resume.stdout).pendingApproval.id,'review-1');
-  const snap=fileDigest(path.join(dir,'.cache/approved/s01.mp4'));fs.appendFileSync(shot,'\n// changed after approval\n');
-  const changed=run('signoff',dir,'用户明确批准','--step','6','--approval-id','review-1');assert.notEqual(changed.status,0);assert.match(changed.stderr,/输入已变化/);assert.equal(fileDigest(path.join(dir,'.cache/approved/s01.mp4')),snap);
+  const snap=fileDigest(path.join(dir,'.wka/approved/s01.mp4'));fs.appendFileSync(shot,'\n// changed after approval\n');
+  const changed=run('signoff',dir,'用户明确批准','--step','6','--approval-id','review-1');assert.notEqual(changed.status,0);assert.match(changed.stderr,/输入已变化/);assert.equal(fileDigest(path.join(dir,'.wka/approved/s01.mp4')),snap);
   fs.writeFileSync(shot,source);ok(run('signoff',dir,'用户明确批准','--step','6','--approval-id','review-1'));
   const delivered=run('delivery',dir,'--host','codex','--json');ok(delivered);const report=JSON.parse(delivered.stdout);
   const item=report.items.find(i=>i.path===out);assert.equal(item.status,'current');assert.equal(fileDigest(decodeURIComponent(/<([^>]+)>/.exec(item.link)[1])),fileDigest(out));assert.equal(item.openStatus,'not-tested');
-  const audioReview=JSON.parse(fs.readFileSync(path.join(dir,'review/声轨审听.json')));assert.equal(audioReview.status,'not-listened');assert.match(audioReview.sha256,/^[a-f0-9]{64}$/);
+  const audioReview=JSON.parse(fs.readFileSync(path.join(dir,'review/声轨/声轨审听.json')));assert.equal(audioReview.status,'not-listened');assert.match(audioReview.sha256,/^[a-f0-9]{64}$/);
   assert.equal(fileDigest(audio),originalAudio,'原始人声未修改');
 });

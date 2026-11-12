@@ -22,7 +22,7 @@ function fixture(t) {
     fs.writeFileSync(file, 'png');
     return [file];
   };
-  return { job, calls, renderStills, report: stem => path.join(filmDir, 'review', stem) };
+  return { job, calls, renderStills, report: stem => path.join(filmDir, 'review', '台词', stem) };
 }
 
 test('词级检查帧写入 .cache，未变化的点增量复用，镜头变化只重渲该镜', async t => {
@@ -31,7 +31,7 @@ test('词级检查帧写入 .cache，未变化的点增量复用，镜头变化�
   const shotKey = (_, shot) => version[shot.id];
   await writeWordReview(f.job, { renderStills: f.renderStills, shotKey });
   assert.equal(f.calls.length, 9);
-  assert.deepEqual(fs.readdirSync(path.join(f.job.filmDir, 'review')).sort(), ['词级同步.json', '词级同步.md']);
+  assert.deepEqual(fs.readdirSync(path.join(f.job.filmDir, 'review', '台词')).sort(), ['词级同步.json', '词级同步.md']);
   const report = JSON.parse(fs.readFileSync(f.report('词级同步.json')));
   assert.ok(report.points.every(p => p.images.every(img => img.startsWith(path.join(f.job.filmDir, '.cache', 'word-review')))));
 

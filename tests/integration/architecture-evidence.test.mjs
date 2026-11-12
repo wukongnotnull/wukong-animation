@@ -40,7 +40,7 @@ test('moving film loading does not allow old delivery evidence to survive implem
   const revision = f.final.finalDeliveryReport(f.film).reviewSets[6].deliveryRevision;
   const approval = f.final.prepareFinalApproval(f.film, { id: 'approved', step: 6, revision, source: 'fixture explicit approval', note: 'approved' });
   const state = path.join(f.film, '.wka/state.json');
-  fs.writeFileSync(state, JSON.stringify({ flow: 6, step: 6, history: [{ step: 6, approvalId: 'approved' }] }));
+  fs.writeFileSync(state, JSON.stringify({ flow: 7, step: 6, history: [{ step: 6, approvalId: 'approved' }] }));
   f.final.commitFinalApproval(f.film, approval);
   assert.equal(f.final.finalDeliveryReport(f.film).items[0].acceptance, 'accepted');
   const ledger = path.join(f.film, '.wka/final-delivery.json'), saved = fs.readFileSync(ledger), history = fs.readFileSync(state);
@@ -57,7 +57,7 @@ for (const relative of ['core/qc-config.mjs', 'core/qc-source.mjs']) test(`QC an
   const { runQc } = await import(pathToFileURL(path.join(f.engine, 'core/qc.mjs')));
   await runQc(f.film, { log() {} }); // A real failed QC observation; no fabricated success or media dependency.
   assert.ok(f.final.finalDeliveryReport(f.film).items[0].technicalEvidence.qc, 'consumer recognizes the producer signature');
-  const file = path.join(f.film, '.cache/operations.json'), before = JSON.parse(fs.readFileSync(file));
+  const file = path.join(f.film, '.wka/operations.json'), before = JSON.parse(fs.readFileSync(file));
   const signature = Object.values(before.stages).find(s => s.stage === 'review:qc').signature;
   const ledger = path.join(f.film, '.wka/final-delivery.json'), saved = fs.readFileSync(ledger);
   fs.appendFileSync(moved, '\n// isolated QC implementation edit\n');

@@ -10,7 +10,7 @@ export function initReviewRepo(dir) {
   };
   git('init', '-q');
   for (const args of [['user.name', 'Fixture'], ['user.email', 'fixture@example.invalid'], ['commit.gpgsign', 'false']]) git('config', ...args);
-  fs.writeFileSync(path.join(dir, '.gitignore'), '/.cache/\n/review/\n/stills/\n/audio/generated/\n*.mp4\n*.gif\n*.webm\n.DS_Store\n');
+  fs.writeFileSync(path.join(dir, '.gitignore'), '/.cache/\n/.wka/approved/\n/.wka/operations.json\n/.wka/voice-sources.json\n/.wka/main-check.json\n/成片/*.mp4\n/成片/*.gif\n/成片/*.webm\n/review/**/*.mp4\n/review/**/*.m4a\n/review/**/*.png\n/review/**/*.jpg\n/audio/generated/\n*.mp4\n*.gif\n*.webm\n.DS_Store\n');
   git('add', '--', '.gitignore');
   git('commit', '-qm', 'init');
 }

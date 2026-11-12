@@ -37,7 +37,7 @@ test('只有输入素材时可新建，身份在补齐简报与影片文件后�
   state.initializeProduction(dir);
   write(dir, 'brief.md', '方案简报'); write(dir, 'film.json', { title: '新片' });
   assert.equal(state.inspectProduction(dir).mode, 'active');
-  assert.equal(state.readProgress(dir).flow, 6);
+  assert.equal(state.readProgress(dir).flow, 7);
   assert.equal(fs.readFileSync(path.join(dir, '录音.wav'), 'utf8'), 'existing input');
   state.recordProgress(dir, { step: 2, note: '方案简报通过' });
   assert.equal(state.readProgress(dir).history[0].label, '确定方案');
@@ -57,7 +57,7 @@ test('新项目签批绑定新工序；重复批准幂等，越界不写入', t 
 
 test('旧进度读取原样返回，不自动换算；任何进度和签批写入均拒绝', t => {
   const { dir } = fixture(t);
-  for (const flow of [undefined, 1, 2, 3, 4, 5]) {
+  for (const flow of [undefined, 1, 2, 3, 4, 5, 6]) {
     const value = { ...(flow === undefined ? {} : { flow }), step: 13, history: [{ step: 13, label: '旧终审', note: '原结论' }] };
     write(dir, '.wka/state.json', JSON.stringify(value, null, 3)); const before = contents(dir);
     assert.equal(typeof state.inspectProduction, 'function');
@@ -83,8 +83,8 @@ for (const file of ['brief.md', 'film.json', '.wka/workbench.json', '.wka/final-
 
 test('损坏或未来进度不能重新初始化或被当成历史可写项目', t => {
   const { dir } = fixture(t);
-  for (const [raw, code] of [['{broken', 'WKA_FLOW_INVALID'], [JSON.stringify({ flow: 7, history: [] }), 'WKA_FLOW_TOO_NEW'],
-    [JSON.stringify({ flow: 6, step: 13, history: [] }), 'WKA_FLOW_INVALID']]) {
+  for (const [raw, code] of [['{broken', 'WKA_FLOW_INVALID'], [JSON.stringify({ flow: 8, history: [] }), 'WKA_FLOW_TOO_NEW'],
+    [JSON.stringify({ flow: 7, step: 13, history: [] }), 'WKA_FLOW_INVALID']]) {
     write(dir, '.wka/state.json', raw); const before = contents(dir);
     assert.equal(typeof state.initializeProduction, 'function');
     assert.throws(() => state.initializeProduction(dir), { code });

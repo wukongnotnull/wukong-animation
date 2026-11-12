@@ -68,7 +68,7 @@ test('中间正负偏差抵消、截短输出和来源过期都不能通过', as
     assert.equal(checkTiming(ctx).ok,false,'没有来源记录不得通过');
     const a = make('a.mp4',11), b = make('b.mp4',9), video=make('video.mp4',20);
     assert.throws(() => recordTiming(ctx,video,[a,b]), /时间轴检查失败/);
-    const report = JSON.parse(fs.readFileSync(path.join(dir,'review','时间轴检查.json')));
+    const report = JSON.parse(fs.readFileSync(path.join(dir,'review','QC','时间轴检查.json')));
     assert.equal(report.video.frames,20,'总帧数其实正确');
     assert.match(report.errors.join(' '),/s01 切点实测 11 帧，期望 10/);
     assert.equal(fs.existsSync(path.join(dir,'.cache','timing.json')),false);

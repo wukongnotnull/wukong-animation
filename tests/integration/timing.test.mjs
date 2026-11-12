@@ -57,11 +57,11 @@ for (const pipeline of ['browser','remotion']) test(`${pipeline} 真渲染累计
     for (const proxy of [false,true]) {
       const r = cli('render',dir,...(proxy?['--proxy']:[]));
       assert.equal(r.status,0,r.stderr);
-      const file = path.join(dir,'.cache',proxy?'video-proxy.mp4':'video.mp4');
+      const file = path.join(dir,'.cache','16x9',proxy?'video-proxy.mp4':'video.mp4');
       const fps = 10;
       assert.equal(frames(file), Math.round(1.02*fps));
       checkBoundaries(file,[0.34,0.34,0.34],fps);
-      assert.ok(fs.existsSync(path.join(dir,'.cache',proxy?'timing-proxy.json':'timing.json')));
+      assert.ok(fs.existsSync(path.join(dir,'.cache','16x9',proxy?'timing-proxy.json':'timing.json')));
       const again = cli('render',dir,...(proxy?['--proxy']:[]));
       assert.equal(again.status,0,again.stderr);
       assert.match(again.stdout,/s01 缓存命中/);
@@ -69,7 +69,7 @@ for (const pipeline of ['browser','remotion']) test(`${pipeline} 真渲染累计
     assert.deepEqual(fs.readFileSync(path.join(dir,'film.json')),original);
     const bad = cli('qc',dir);
     assert.equal(bad.status,0,bad.stderr + bad.stdout);
-    const video = path.join(dir,'.cache','video.mp4');
+    const video = path.join(dir,'.cache','16x9','video.mp4');
     fs.appendFileSync(video,'tamper');
     const qc = cli('qc',dir);
     assert.equal(qc.status,2,qc.stderr + qc.stdout);
@@ -83,7 +83,7 @@ if (process.env.WKA_TIMING_LONG) for (const pipeline of ['browser','remotion']) 
     for (const aspect of [null,'9:16']) for (const proxy of [false,true]) {
       const r = cli('render',dir,...(aspect?['--aspect',aspect]:[]),...(proxy?['--proxy']:[]));
       assert.equal(r.status,0,r.stderr + r.stdout.slice(-6000));
-      const file = path.join(dir,'.cache',...(aspect?['9x16']:[]),proxy?'video-proxy.mp4':'video.mp4');
+      const file = path.join(dir,'.cache',aspect?'9x16':'16x9',proxy?'video-proxy.mp4':'video.mp4');
       assert.equal(frames(file),proxy?1637:3274);
       checkBoundaries(file,Array(107).fill(1.02),proxy?15:30);
       console.log(`${pipeline} ${aspect||'16:9'} ${proxy?'15fps小样':'30fps高清'}：${frames(file)}帧，107个切点检查通过`);
@@ -97,17 +97,17 @@ test('旧定稿帧长变化时，副版检查保留主版缓存与快照', {time
     assert.equal(cli('render',dir).status,0);
     const signed = cli('signoff',dir,'主版确认','--step','6');
     assert.equal(signed.status,0,signed.stderr);
-    const manifest = fs.readFileSync(path.join(dir,'.cache','manifest.json'));
-    const snapshot = fs.readFileSync(path.join(dir,'.cache','approved','s01.mp4'));
+    const manifest = fs.readFileSync(path.join(dir,'.cache','16x9','manifest.json'));
+    const snapshot = fs.readFileSync(path.join(dir,'.wka','approved','s01.mp4'));
     const state = fs.readFileSync(path.join(dir,'.wka','state.json'));
     const file = path.join(dir,'film.json'), f = JSON.parse(fs.readFileSync(file));
     f.shots[0].duration = 0.54;
     fs.writeFileSync(file,JSON.stringify(f));
     cli('render',dir,'--aspect','9:16');
-    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache','manifest.json')),manifest,'不能自动重渲帧长已变的签批主版');
-    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache','approved','s01.mp4')),snapshot);
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache','16x9','manifest.json')),manifest,'不能自动重渲帧长已变的签批主版');
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.wka','approved','s01.mp4')),snapshot);
     assert.deepEqual(fs.readFileSync(path.join(dir,'.wka','state.json')),state);
-    assert.match(fs.readFileSync(path.join(dir,'review','主版不变报告-9x16.md'),'utf8'),/主版有变化/);
+    assert.match(fs.readFileSync(path.join(dir,'review','QC','主版不变报告-9x16.md'),'utf8'),/主版有变化/);
   } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
 
@@ -115,7 +115,7 @@ test('错误缓存片段被拒绝并失效；下一次渲染恢复', {timeout:30
   const dir = film('browser');
   try {
     assert.equal(cli('render',dir).status,0);
-    const manifestFile = path.join(dir,'.cache','manifest.json');
+    const manifestFile = path.join(dir,'.cache','16x9','manifest.json');
     const m=JSON.parse(fs.readFileSync(manifestFile));
     const bad=spawnSync('ffmpeg',['-v','error','-y','-f','lavfi','-i','color=c=black:s=32x18:r=10','-frames:v','2',m.shots.s01.file]);
     assert.equal(bad.status,0,String(bad.stderr));
@@ -139,7 +139,7 @@ test('动态分镜按12fps累计切点，带声音和无声都保持帧数', {ti
       }
       const r=cli('animatic',dir);
       assert.equal(r.status,0,r.stderr);
-      const out=path.join(dir,'review','动态分镜.mp4');
+      const out=path.join(dir,'review','小样','动态分镜-16x9.mp4');
       assert.equal(frames(out),12);
       checkBoundaries(out,[0.34,0.34,0.34],12);
     }
@@ -154,7 +154,7 @@ test('零帧镜头和小数fps拒绝，不改工程或启动渲染', () => {
     assert.notEqual(zero.status,0);
     assert.match(zero.stderr,/s01.*1fps.*不足一帧/);
     assert.deepEqual(fs.readFileSync(file),original);
-    assert.equal(fs.existsSync(path.join(dir,'.cache','segments')),false);
+    assert.equal(fs.existsSync(path.join(dir,'.cache','16x9','segments')),false);
     const f=JSON.parse(original);f.fps=29.97;fs.writeFileSync(file,JSON.stringify(f));
     const fraction=cli('render',dir);
     assert.notEqual(fraction.status,0);
@@ -168,6 +168,6 @@ test('没有时间轴证据不能记录成片终审签批', () => {
     const r=cli('signoff',dir,'未经渲染的终审','--step','6');
     assert.notEqual(r.status,0);
     assert.match(r.stderr,/时间轴未验证/);
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','state.json'))),{flow:6,step:0,history:[]});
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','state.json'))),{flow:7,step:0,history:[]});
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

@@ -25,14 +25,14 @@ for(const pipeline of ['browser','remotion']) {
    const prepared=spawnSync(process.execPath,['--input-type=module','-e',`import {confirmFixtureVoices} from ${JSON.stringify(new URL('../helpers/production.mjs',import.meta.url).href)};confirmFixtureVoices(${JSON.stringify(dir)});`],{env,encoding:'utf8'});assert.equal(prepared.status,0,prepared.stderr);
    const track=cli('soundtrack',dir);assert.equal(track.status,0,track.stderr);
    const recording=fs.readFileSync(wave),savedMix=fs.readFileSync(path.join(dir,'.cache','mix.wav'));
-   const source=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;
+   const source=JSON.parse(fs.readFileSync(path.join(dir,'.wka','voice-sources.json'))).voices.v01;
    const times=[0.2,1.05,2.11];
    fs.writeFileSync(path.join(dir,'sync-points.json'),JSON.stringify({version:1,points:terms.map((text,i)=>({id:`p${i}`,voice:'v01',text,method:'manual',range:[times[i],times[i]+0.05],source:{audio_sha256:source.audio_sha256,text_sha256:source.text_sha256},evidence:'固定音频脉冲测试标注'}))}));
    const originalSRT='1\n00:00:00,200 --> 00:00:01,000\n手改字幕\n';fs.writeFileSync(path.join(dir,'subtitles.srt'),originalSRT);
    for(const fps of (process.env.WKA_WORD_RATE?[Number(process.env.WKA_WORD_RATE)]:[30,25])) for(const aspect of [null,'9:16']) for(const proxy of [false,true]) {
     film.fps=fps;fs.writeFileSync(filmFile,JSON.stringify({...film,cues:JSON.parse(fs.readFileSync(filmFile)).cues}));
     const r=cli('render',dir,...(aspect?['--aspect',aspect]:[]),...(proxy?['--proxy']:[]));assert.equal(r.status,0,r.stderr+r.stdout.slice(-2500));
-    const out=path.join(dir,'.cache',...(aspect?['9x16']:[]),proxy?'video-proxy.mp4':'video.mp4');
+    const out=path.join(dir,'.cache',aspect?'9x16':'16x9',proxy?'video-proxy.mp4':'video.mp4');
     const decoded=spawnSync('ffmpeg',['-v','error','-i',out,'-vf','scale=1:1','-pix_fmt','rgb24','-f','rawvideo','-'],{maxBuffer:1e6});assert.equal(decoded.status,0,String(decoded.stderr));
     const rate=proxy?Math.min(15,fps):fps;
     for(let channel=0;channel<3;channel++) {

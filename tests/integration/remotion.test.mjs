@@ -48,7 +48,7 @@ const wka = (...args) => spawnSync(process.execPath, [WKA, ...args], {
   encoding: 'utf8',
   env: { ...process.env, WUKONG_ANIMATION_HOME: HOME, WKA_NO_FONT_DOWNLOAD: '1' },
 });
-const segDir = (dir) => path.join(dir, '.cache', 'segments');
+const segDir = (dir) => path.join(dir, '.cache', '16x9', 'segments');
 const segments = (dir) => (fs.existsSync(segDir(dir)) ? fs.readdirSync(segDir(dir)) : []);
 const probe = (file) => {
   const r = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-count_frames', '-show_entries', 'stream=width,height,nb_read_frames,r_frame_rate', '-of', 'json', file], { encoding: 'utf8' });
@@ -84,7 +84,7 @@ test('同一帧渲染两次逐像素一致', opts, () => {
   const shoot = () => {
     const r = wka('still', dir, '--at', 's01:0.5');
     assert.equal(r.status, 0, r.stderr);
-    return fs.readFileSync(path.join(dir, 'stills', 's01-0.50s.png'));
+    return fs.readFileSync(path.join(dir, 'review', '静帧', '16x9', 's01-0.50s.png'));
   };
   const a = shoot();
   const b = shoot();
@@ -110,7 +110,7 @@ test('60fps工程小样只绘制每4帧，组件看到的仍是原生帧率与�
     const r=wka('preview',dir);assert.equal(r.status,0,r.stderr);
     const seg=segments(dir).find(f=>f.endsWith('.mp4')),st=probe(path.join(segDir(dir),seg));
     assert.deepEqual([st.width,st.height,st.r_frame_rate,Number(st.nb_read_frames)],[960,540,'15/1',6]);
-    assert.equal(fs.existsSync(path.join(dir,'.cache/video-proxy.mp4')),false);
+    assert.equal(fs.existsSync(path.join(dir,'.cache/16x9/video-proxy.mp4')),false);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -135,9 +135,9 @@ test('写死原生帧号的镜头：小样与成片在同一时刻位置一致�
     const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
     film.fps=30;film.shots[0].duration=1;fs.writeFileSync(file,JSON.stringify(film));
     assert.equal(wka('render',dir,'--proxy','--force').status,0);
-    const proxy=squareX(path.join(dir,'.cache/video-proxy.mp4'),8);
+    const proxy=squareX(path.join(dir,'.cache/16x9/video-proxy.mp4'),8);
     assert.equal(wka('render',dir,'--force').status,0);
-    const full=squareX(path.join(dir,'.cache/video.mp4'),16);
+    const full=squareX(path.join(dir,'.cache/16x9/video.mp4'),16);
     assert.equal(proxy,full);
     assert.equal(proxy,160);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
@@ -177,8 +177,9 @@ test('小样尺寸与 job 一致：宽高比例不同的取整也不出错', opt
   fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), size: [1000, 562] }));
   const r = wka('render', dir, '--proxy');
   assert.equal(r.status, 0, r.stderr);
-  const seg = segments(dir).find((x) => x.endsWith('.mp4'));
-  const st = probe(path.join(segDir(dir), seg));
+  const oddDir = path.join(dir, '.cache', '500x281', 'segments');
+  const seg = fs.readdirSync(oddDir).find((x) => x.endsWith('.mp4'));
+  const st = probe(path.join(oddDir, seg));
   assert.deepEqual([st.width, st.height], [960, 540]);
   fs.rmSync(dir, { recursive: true, force: true });
 });

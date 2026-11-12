@@ -32,15 +32,15 @@ for (const style of ['ink-wash', 'keynote']) test(`${style} 主版证明复用�
   assert.ok(!logs.some(s=>/缓存命中|渲染.*镜头用时/.test(s)), '证明命中不调用主版渲染');
   film.cues.pulse=[0.1,0.3];fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
   assert.equal((await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}})).reused,false,'使用的cue变化重新测量');
-  const beforeManifest=fs.readFileSync(path.join(dir,'.cache/manifest.json'));
+  const beforeManifest=fs.readFileSync(path.join(dir,'.cache/16x9/manifest.json'));
   for(const settings of [{fps:20},{size:[320,180]}]){
     fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify({...film,...settings}));
     const changed=await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}});
     assert.equal(changed.ok,false);assert.equal(changed.timingChanged,true);
-    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache/manifest.json')),beforeManifest,'旧定稿条件变化不自动重渲');
+    assert.deepEqual(fs.readFileSync(path.join(dir,'.cache/16x9/manifest.json')),beforeManifest,'旧定稿条件变化不自动重渲');
   }
   fs.writeFileSync(path.join(dir,'film.json'),JSON.stringify(film));
-  const manifest=JSON.parse(fs.readFileSync(path.join(dir,'.cache/manifest.json')));
+  const manifest=JSON.parse(fs.readFileSync(path.join(dir,'.cache/16x9/manifest.json')));
   const segment=manifest.shots.s01.file,segmentBytes=fs.readFileSync(segment);
   const replacement=path.join(dir,'replacement.mp4');
   const made=spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=black:s=160x90:r=10:d=0.4','-pix_fmt','yuv420p','-y',replacement]);
@@ -49,7 +49,7 @@ for (const style of ['ink-wash', 'keynote']) test(`${style} 主版证明复用�
   const bad=await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}});
   assert.equal(bad.ok,false);assert.equal(bad.reused,false,'同路径有效视频被替换不能沿用证明');
   fs.writeFileSync(segment,segmentBytes);
-  const snap=path.join(dir,'.cache/approved/s01.mp4'), original=fs.readFileSync(snap);
+  const snap=path.join(dir,'.wka/approved/s01.mp4'), original=fs.readFileSync(snap);
   fs.rmSync(snap);
   assert.equal((await checkMainUnchanged(dir,{aspect:'9:16',log:()=>{}})).ok,false);
   fs.writeFileSync(snap,original);

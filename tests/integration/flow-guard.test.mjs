@@ -12,7 +12,7 @@ import { writeFinalDelivery, recordFinalEvidence, recordFinalArtifact, commitFin
 import { initProject, commitSnapshot } from '../../plugin/engine/core/project.mjs';
 
 const cli = fileURLToPath(new URL('../../plugin/engine/bin/wka.mjs', import.meta.url));
-function fixture(t, flow = 7) {
+function fixture(t, flow = 8) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-flow-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const dir = path.join(root, 'films/future'), file = path.join(dir, '.wka/state.json');
@@ -28,8 +28,8 @@ test('resume gives structured read-only flow diagnostics, never a rerun instruct
   const f = fixture(t), result = f.run(['resume', f.dir, '--json']);
   assert.equal(result.status, 1, result.stdout + result.stderr);
   const status = JSON.parse(result.stdout);
-  assert.equal(status.code, 'WKA_FLOW_TOO_NEW'); assert.equal(status.flow, 7);
-  assert.equal(status.supportedFlow, 6); assert.equal(status.stateFile, f.file); assert.equal(status.readonly, true);
+  assert.equal(status.code, 'WKA_FLOW_TOO_NEW'); assert.equal(status.flow, 8);
+  assert.equal(status.supportedFlow, 7); assert.equal(status.stateFile, f.file); assert.equal(status.readonly, true);
   assert.match(status.instruction, /升级/); assert.equal('next' in status, false); assert.equal('stages' in status, false);
   const plain = f.run(['resume', f.dir]);
   assert.equal(plain.status, 1); assert.match(plain.stdout, /WKA_FLOW_TOO_NEW.*升级/);
@@ -46,7 +46,7 @@ function snapshot(root) {
 
 for (const withArtifacts of [false, true]) test(`every production command rejects before side effects (existing artifacts: ${withArtifacts})`, t => {
   const f = fixture(t);
-  if (withArtifacts) for (const rel of ['.cache/operations.json', '.cache/active-command.json', 'review/notes.md', '.wka/pending-approval.json']) {
+  if (withArtifacts) for (const rel of ['.wka/operations.json', '.cache/active-command.json', 'review/notes.md', '.wka/pending-approval.json']) {
     const file = path.join(f.dir, rel); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, 'sentinel');
   }
   if (withArtifacts) {
@@ -116,7 +116,7 @@ test('status continues compatible films and fails overall without interpreting f
   const f = fixture(t), current = path.join(f.root, 'films/current');
   fs.mkdirSync(path.join(current, '.wka'), { recursive: true });
   fs.writeFileSync(path.join(current, 'brief.md'), 'current');
-  fs.writeFileSync(path.join(current, '.wka/state.json'), JSON.stringify({ flow: 6, step: 2, history: [] }));
+  fs.writeFileSync(path.join(current, '.wka/state.json'), JSON.stringify({ flow: 7, step: 2, history: [] }));
   const result = f.run(['status', f.root]);
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stdout, /current/); assert.match(result.stdout, /编写剧本/);

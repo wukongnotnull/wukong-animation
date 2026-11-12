@@ -28,6 +28,7 @@ export function commandsFor(context) {
     'brief': { preflight: 'new-film', lock: 'none', active: false, run: groups['project']['brief'] },
     'new': { preflight: 'none', lock: 'none', active: false, run: groups['project']['new'] },
     'init': { preflight: 'new-film', lock: 'none', active: false, run: groups['project']['init'] },
+    'recheck': { preflight: 'film', lock: 'film', active: false, run: groups['review']['recheck'] },
     'signoff': { preflight: 'film', lock: 'film', active: true, run: groups['review']['signoff'] },
     'status': { preflight: 'none', lock: 'none', active: false, run: groups['project']['status'] },
     'qc': { preflight: 'film', lock: 'film', active: true, run: groups['review']['qc'] },

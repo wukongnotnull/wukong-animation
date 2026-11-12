@@ -183,13 +183,25 @@ function changedDetail(dir,old,now) {
   return `（${names.slice(0,3).join('、')}${names.length>3?` 等 ${names.length} 项`:''}）`;
 }
 
+const insideEngine=file=>file===ENGINE_ROOT||file.startsWith(ENGINE_ROOT+path.sep);
+const withoutEngine=value=>{
+  if(Array.isArray(value))return value.map(withoutEngine);
+  if(!value||typeof value!=='object')return value;
+  if(typeof value.path==='string'&&value.snapshot&&insideEngine(value.path))return {engine:true};
+  return Object.fromEntries(Object.entries(value).map(([key,child])=>[key,withoutEngine(child)]));
+};
+function currentDependencies(dir,slot,artifact) {
+  const now=dependencies(dir,slot,artifact.dependencies.fontFiles);
+  if(artifact.dependencies.groups.actualInputs)now.groups.actualInputs=artifact.dependencies.groups.actualInputs.map(e=>sourceFile(e.path));
+  return now;
+}
+
 function sourceStatus(dir,slot,artifact) {
   if(!artifact)return {freshness:'unknown',reasons:['证据未存档，待核实']};
   if(artifact.contractDigest!==slot.contractDigest)return {freshness:'changed',reasons:['相关交付要求已变']};
   if(artifact.provenance==='external-edit')return {freshness:'current',reasons:['外部修改并验收；不声称与引擎源工程逐项一致']};
   if(!artifact.dependencies)return {freshness:'unknown',reasons:['生成时逐项来源证据缺失']};
-  const now=dependencies(dir,slot,artifact.dependencies.fontFiles),changed=[];
-  if(artifact.dependencies.groups.actualInputs)now.groups.actualInputs=artifact.dependencies.groups.actualInputs.map(e=>sourceFile(e.path));
+  const now=currentDependencies(dir,slot,artifact),changed=[];
   for(const [name,old] of Object.entries(artifact.dependencies.groups))if(digest(old)!==digest(now.groups[name]))changed.push(name);
   if(artifact.contractDigest!==slot.contractDigest)changed.push('相关交付要求');
   if(changed.length)return {freshness:'changed',reasons:changed.map(n=>`相关输入已变：${n}${changedDetail(dir,artifact.dependencies.groups[n],now.groups[n])}`)};
@@ -224,6 +236,40 @@ export function recordFinalArtifact(dir,{generation,path:file,stage,technical={s
   if(previous&&identity(previous)===identity(artifact))return previous;
   atomicJson(receipt,artifact);
   return appendArtifact(dir,data,artifact);
+}
+
+// 引擎（插件）升级后，只有引擎文件变了而影片输入、设置都没变的产物，可经用户复核后接受新引擎上下文。
+// 不改写旧证据：追加一条新产物记录，旧批准绑定旧记录，仍须重新签批。
+export function recheckEngineChange(dir,{accept=false,note=''}={}) {
+  assertActiveProduction(dir);
+  if(accept&&!String(note).trim())throw new Error('接受引擎变动需要复核说明（--note）');
+  const data=ledger(dir),contract=finalContract(dir),items=[],added=[];
+  for(const slot of contract.slots) {
+    const artifact=latestArtifact(data,slot.slot);
+    if(!artifact||!artifact.dependencies||artifact.provenance==='external-edit'||artifact.contractDigest!==slot.contractDigest)continue;
+    const now=currentDependencies(dir,slot,artifact),changed=Object.keys(artifact.dependencies.groups).filter(name=>digest(artifact.dependencies.groups[name])!==digest(now.groups[name]));
+    if(!changed.length)continue;
+    const files=changed.flatMap(name=>{
+      const before=snapshotHashes(artifact.dependencies.groups[name]),after=snapshotHashes(now.groups[name]);
+      return [...new Set([...before.keys(),...after.keys()])].filter(key=>insideEngine(key)&&before.get(key)!==after.get(key)).map(key=>'引擎/'+path.relative(ENGINE_ROOT,key));
+    }).sort();
+    const item={slot:slot.slot,path:artifact.path,files,eligible:false,reason:''};
+    const engineOnly=changed.every(name=>digest(withoutEngine(artifact.dependencies.groups[name]))===digest(withoutEngine(now.groups[name])));
+    let snapshotSame=false;
+    try{snapshotSame=digest(deliverySnapshot(artifact.path))===digest(artifact.snapshot);}catch{snapshotSame=false;}
+    if(!engineOnly)item.reason='影片输入或设置也变了，不只是引擎变动，须重新生成';
+    else if(!files.length)item.reason='变动无法对应到具体引擎文件，须重新生成';
+    else if(!snapshotSame)item.reason='产物文件在生成后变化或缺失，须重新核实';
+    else if(artifact.technical?.errors?.length||artifact.technical?.status==='hard-error')item.reason='产物有确定的技术错误，复核不能绕过';
+    else item.eligible=true;
+    items.push(item);
+    if(accept&&item.eligible) {
+      const generation=captureFinalGeneration(dir,{slot:slot.slot,fontFiles:artifact.dependencies.fontFiles,inputFiles:(artifact.dependencies.groups.actualInputs||[]).map(e=>e.path),unknownReasons:[...new Set(artifact.dependencies.unknown)]});
+      const entry={...artifact,id:generation.id,observedAt:new Date().toISOString(),dependencies:generation.dependencies,tool:generation.tool,provenance:'engine-recheck',recheck:{of:artifact.id,files,note:String(note).trim(),at:new Date().toISOString()}};
+      added.push(appendArtifact(dir,data,entry).id);
+    }
+  }
+  return {accepted:accept,items,added};
 }
 
 export function recordFinalEvidence(dir) {

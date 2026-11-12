@@ -13,6 +13,7 @@ export const HELP = `wka —— wukong-animation 引擎命令行。
   wka delivery <片目录> --host codex|claude|generic [--aspect all|9:16] [--json]  生成存在性与新旧状态交付清单
   wka materials <片目录> [--frames N]   素材清单：扫描片目录里的录音、录屏、参考图和原稿，视频抽帧，写入 review/素材清单.md（第 2 道）
   wka estimate <片目录> [--max-shot 秒] [--aspect 9:16]   渲染规模与用时估算；有镜头超过单镜上限时退出码为 2（第 4 道）
+  wka recheck <片目录> [--accept --note "<复核说明>"]   插件升级后复核：列出只因引擎文件变动而过期的交付产物，确认后接受新引擎上下文
   wka signoff <片目录> "<审片结论>" [--step N]   审片节点签批：记录进度并做定版快照
   wka qc <片目录> [--proxy] [--aspect 9:16]       量化技术质检（QC）
   wka still <片目录> [--frames N] [--at s02:1.5,s03:2] [--word-review] [--proxy] [--aspect 9:16]   静帧 + 接触表

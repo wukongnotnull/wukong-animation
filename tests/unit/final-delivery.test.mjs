@@ -244,3 +244,45 @@ test('A1 conflicting aspect decisions retain evidenced files without making them
   const report=final.finalDeliveryReport(dir);assert.equal(report.status,'needs-verification');assert.equal(report.ok,false);
   assert.ok(report.candidates?.some(i=>i.path===draft&&i.link&&i.section==='历史/待核实版本'));
 });
+
+function engineRecheckFixture(t) {
+  const dir=fixture(t),file=path.join(dir,'影片.mp4');
+  const generation=final.captureFinalGeneration(dir,{slot:'16:9/video/mp4/clean',fontFiles:[path.join(dir,'film.json')]});
+  fs.writeFileSync(file,'generated video');
+  const artifact=final.recordFinalArtifact(dir,{generation,path:file,stage:'encode:mp4',technical:{status:'passed'}});
+  const ledgerFile=path.join(dir,'.wka/final-delivery.json'),data=JSON.parse(fs.readFileSync(ledgerFile));
+  const stored=data.artifacts.find(a=>a.id===artifact.id);
+  const find=v=>{if(!v||typeof v!=='object')return null;if(typeof v.path==='string'&&v.snapshot?.kind==='file'&&v.path.includes(`${path.sep}engine${path.sep}`))return v;for(const child of Object.values(v)){const hit=find(child);if(hit)return hit;}return null;};
+  const engineFile=find(stored.dependencies.groups);
+  engineFile.snapshot.entries[0].sha256='f'.repeat(64);engineFile.snapshot.sha256='e'.repeat(64);
+  fs.writeFileSync(ledgerFile,JSON.stringify(data));
+  return {dir,file,artifact};
+}
+
+test('B1 engine-only change is listed read-only, then accepted by an explicit note without rewriting old evidence',t=>{
+  const {dir,artifact}=engineRecheckFixture(t),video=()=>final.finalDeliveryReport(dir).items.find(i=>i.kind==='video');
+  assert.equal(video().freshness,'changed');
+  const before=fs.readFileSync(path.join(dir,'.wka/final-delivery.json'),'utf8');
+  const listed=final.recheckEngineChange(dir);
+  assert.equal(listed.accepted,false);assert.equal(listed.items.length,1);assert.equal(listed.items[0].eligible,true);
+  assert.ok(listed.items[0].files.length>=1&&listed.items[0].files.every(f=>f.startsWith('引擎/')));
+  assert.equal(fs.readFileSync(path.join(dir,'.wka/final-delivery.json'),'utf8'),before,'只列出时不能写账本');
+  assert.throws(()=>final.recheckEngineChange(dir,{accept:true}),/复核说明/);
+  const done=final.recheckEngineChange(dir,{accept:true,note:'核对变动文件与本片无关'});
+  assert.equal(done.added.length,1);
+  const data=JSON.parse(fs.readFileSync(path.join(dir,'.wka/final-delivery.json'),'utf8'));
+  assert.equal(data.artifacts.length,2);assert.deepEqual(data.artifacts[0],JSON.parse(before).artifacts[0],'旧证据保持原样');
+  const entry=data.artifacts[1];assert.equal(entry.provenance,'engine-recheck');assert.equal(entry.recheck.of,artifact.id);assert.equal(entry.recheck.note,'核对变动文件与本片无关');
+  assert.deepEqual(entry.snapshot,artifact.snapshot);
+  assert.equal(video().freshness,'current');assert.equal(video().acceptance,'pending');
+  assert.deepEqual(final.recheckEngineChange(dir).items,[]);
+});
+
+test('B2 recheck refuses when film inputs changed or the output file changed',t=>{
+  let fx=engineRecheckFixture(t);
+  fs.appendFileSync(path.join(fx.dir,'shots/s01.js'),'// 改了画面');
+  let item=final.recheckEngineChange(fx.dir).items[0];assert.equal(item.eligible,false);assert.match(item.reason,/不只是引擎/);
+  assert.deepEqual(final.recheckEngineChange(fx.dir,{accept:true,note:'x'}).added,[]);
+  fx=engineRecheckFixture(t);fs.appendFileSync(fx.file,'tampered');
+  item=final.recheckEngineChange(fx.dir).items[0];assert.equal(item.eligible,false);assert.match(item.reason,/生成后变化/);
+});

@@ -44,6 +44,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka init <片名> --style <id> [--aspect 9:16]` | 在占位片目录上补齐工程模板（第 2 道） |
 | `wka materials <片目录> [--frames N]` | 素材清单：扫描片目录里的录音、录屏、参考图、原稿，记录规格并给视频抽帧，写入 `review/素材清单.md` 和 `review/素材抽帧/`（第 2 道） |
 | `wka estimate <片目录> [--max-shot 秒] [--aspect 9:16]` | 渲染规模与用时估算：镜数、帧数、最长单镜，有渲染实测时外推用时；`--max-shot` 列出超过单镜上限的镜头并以退出码 2 结束（第 4 道） |
+| `wka recheck <片目录> [--accept --note "<复核说明>"]` | 插件升级后复核：列出只因引擎文件变动而过期的最终交付产物；确认变动与本片无关后 `--accept` 追加新证据，旧批准不沿用，仍须重新签批（不适用于影片输入或设置也变了的产物） |
 | `wka signoff <片目录> "<审片结论>" --step N` | 记录进度 + git 定版存档 |
 | `wka sfx <片目录> [--list]` | 风格带录音音效清单时用：`--list` 只列来源与大小给用户确认，不带参数则下载并处理到本机缓存 |
 | `wka align-voice <片目录> [--words\|--prepare --binary 路径 --model 路径\|--status\|--import 时间点.json --confirm "用户确认说明"]` | 本地台词定位；默认同时生成逐词时间表（`--words` 只重算词表，`--words --status` 查看）；首次准备与人工补点见 [录音定位](references/LOCAL-SPEECH.md) |

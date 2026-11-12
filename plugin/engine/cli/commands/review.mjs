@@ -12,7 +12,7 @@ import { requireTiming } from '../../core/timing.mjs';
 import { checkShotSizes } from '../../core/shot-sizes.mjs';
 import { implementationState } from '../../core/operations.mjs';
 import { writeDelivery, readDecisions } from '../../core/delivery.mjs';
-import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, prepareFinalApproval, commitFinalApproval } from '../../core/final-delivery.mjs';
+import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, recheckEngineChange, prepareFinalApproval, commitFinalApproval } from '../../core/final-delivery.mjs';
 import { digest, readJson, atomicJson, treeEvidence } from '../../core/evidence.mjs';
 import { fail } from '../context.mjs';
 
@@ -32,6 +32,18 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       const report=(opt('final')?writeFinalDelivery:writeDelivery)(pos[0],{host:opt('host','codex'),aspect:aspectOpt()});
       log(opt('json')?JSON.stringify(report,null,2):opt('final')?formatFinalDelivery(report):[...report.links.map(l=>'- '+l),...report.errors].join('\n'));
       return report.ok ? 0 : 2;
+    },
+    'recheck': async () => {
+      if(!pos[0]) throw new Error('用法：wka recheck <片目录> [--accept --note "<复核说明>"]');
+      const accept=!!opt('accept'),result=recheckEngineChange(pos[0],{accept,note:opt('note')===true?'':opt('note','')});
+      if(!result.items.length){log('没有因引擎变动而过期的交付产物。');return 0;}
+      for(const item of result.items) {
+        log(`${item.eligible?(accept?'已接受':'可接受'):'不可接受'}：${item.path}`);
+        if(item.files.length)log(`  引擎变动：${item.files.slice(0,8).join('、')}${item.files.length>8?` 等 ${item.files.length} 个文件`:''}`);
+        if(item.reason)log(`  原因：${item.reason}`);
+      }
+      if(!accept&&result.items.some(i=>i.eligible))log('\n确认这些变动与本片画面和声音无关后，加 --accept --note "<复核说明>" 接受；旧批准不会沿用，仍须重新签批。');
+      return result.items.every(i=>i.eligible&&(!accept||result.added.length))?0:2;
     },
     'signoff': async () => {
       if (!pos[0] || !pos[1]) fail('用法：wka signoff <片目录> "<审片结论>" [--step N]');

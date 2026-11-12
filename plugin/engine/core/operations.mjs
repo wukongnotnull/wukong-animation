@@ -93,21 +93,27 @@ export async function runStage(dir,{stage,aspect,proxy=false,signature,force=fal
   }
 }
 const alive=pid=>{try{process.kill(pid,0);return true;}catch(e){return e.code==='EPERM';}};
-export function lockProduction(dir) {
+const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
+const describeHolder=old=>old?`pid ${old.pid}${old.command?`，命令 ${old.command}`:''}${old.since?`，已持有 ${Math.round((Date.now()-Date.parse(old.since))/1000)} 秒`:''}`:'持有者信息缺失';
+/** waitMs：锁被活着的进程持有时最多等这么久（毫秒），超时报错并说明持有者；默认不等待。 */
+export function lockProduction(dir,{waitMs=0}={}) {
   assertActiveProduction(dir);
   const file=path.join(path.resolve(dir),'.cache/operation.lock');fs.mkdirSync(path.dirname(file),{recursive:true});
-  for(let n=0;n<2;n++){
+  const started=Date.now();
+  for(;;){
     try{
-      const fd=fs.openSync(file,'wx'),token=crypto.randomUUID();fs.writeFileSync(fd,JSON.stringify({pid:process.pid,host:os.hostname(),token}));fs.closeSync(fd);
+      const fd=fs.openSync(file,'wx'),token=crypto.randomUUID();
+      fs.writeFileSync(fd,JSON.stringify({pid:process.pid,host:os.hostname(),token,command:process.argv.slice(2).join(' ').slice(0,120),since:new Date().toISOString()}));fs.closeSync(fd);
       return ()=>{if(readJson(file)?.token===token) fs.rmSync(file,{force:true});};
     }catch(e){
       if(e.code!=='EEXIST') throw e;
       const old=readJson(file);
-      if(!old||old.host!==os.hostname()||alive(old.pid)) throw new Error(`工程正在写入或锁所有者无法核实，请稍后检查：${file}`);
-      fs.rmSync(file,{force:true});
+      if(old&&old.host===os.hostname()&&!alive(old.pid)){fs.rmSync(file,{force:true});continue;}
+      if(old&&old.host!==os.hostname()||!old&&Date.now()-started>=waitMs) throw new Error(`工程正在写入或锁所有者无法核实，请稍后检查：${file}`);
+      if(Date.now()-started>=waitMs) throw new Error(`工程正在写入：${describeHolder(old)}${waitMs?`；已等待 ${Math.round((Date.now()-started)/1000)} 秒`:''}。等它结束后重试，或确认该进程已无用后结束它：${file}`);
+      sleep(Math.min(250,waitMs-(Date.now()-started)));
     }
   }
-  throw new Error('工程忙，无法取得写入锁');
 }
 export function recoveryStatus(dir) {
   assertCompatibleProgress(dir);

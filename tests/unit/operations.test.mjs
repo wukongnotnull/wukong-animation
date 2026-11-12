@@ -22,3 +22,21 @@ test('阶段完整才复用，缺失/替换补做，失败不沿用；中断保�
   const unlock=ops.lockProduction(dir);
   assert.throws(()=>ops.lockProduction(dir),/正在|忙/);unlock();ops.lockProduction(dir)();
 });
+
+test('写入锁：活着的持有者最多等待指定时间，超时报错并说明持有者；释放后等待方取得锁',async t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-lock-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  initializeProduction(dir);
+  const release=ops.lockProduction(dir);
+  const begin=Date.now();
+  assert.throws(()=>ops.lockProduction(dir,{waitMs:400}),new RegExp(`pid ${process.pid}.*已等待`));
+  assert.ok(Date.now()-begin>=350);
+  release();
+  const { spawn }=await import('node:child_process');
+  const opsUrl=new URL('../../plugin/engine/core/operations.mjs',import.meta.url).href;
+  const child=spawn(process.execPath,['--input-type=module','-e',`import {lockProduction} from ${JSON.stringify(opsUrl)};const r=lockProduction(${JSON.stringify(dir)});console.log('held');setTimeout(()=>{r();},700);`],{stdio:['ignore','pipe','inherit']});
+  await new Promise(resolve=>child.stdout.once('data',resolve));
+  const waited=Date.now();
+  const unlock=ops.lockProduction(dir,{waitMs:5000});
+  assert.ok(Date.now()-waited>=300);unlock();
+  await new Promise(resolve=>child.on('exit',resolve));
+});

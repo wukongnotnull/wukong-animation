@@ -10,6 +10,7 @@
 
 ## 修订记录
 
+- v1.23.0（2026-11-12）：影片目录布局改为工程 flow 7，不兼容旧片（旧片按只读留档，续作新建项目并复用素材）。根目录只留 `film.json`、`brief.md`、`story.md`、`storyboard.md`、`sync-points.json`；成片进 `成片/`，所有画幅（含主版）输出都带画幅后缀；审阅文件按类别分到 `review/` 子目录；状态与证据进 `.wka/`，`.cache/` 只放可删缓存；输入素材统一放 `media/`、`audio/voice/`、`资料/`。`wka materials --add` 导入素材、查重、记录来源并提醒大文件与 LFS，`wka status` 显示目录占用，`wka clean --deep` 先列清单再清理。导演流程新增“文件放哪里”一节。
 - v1.22.0（2026-11-12）：第 2 道新增 `wka materials`（素材清单与视频抽帧），简报记录“镜头规模与单镜上限”；第 4 道签批前运行 `wka estimate` 估算镜数、帧数和用时；插件升级后用 `wka recheck` 复核只因引擎文件变动而过期的最终交付产物，确认后追加新证据并重新签批。
 - v1.21.0（2026-11-12）：签批只用于审片节点，工序内部的分步确认不调用 `wka signoff`。第 7 道横屏小样通过后先问是否生成高清成片，全部副版高清成片和 QC 就绪后才签批，签批绑定高清成片。`wka align-voice` 默认同时生成逐词时间表，镜头可用 `word:<录音cue>:<序号>` 踩点；`wka still --at` 默认不做词级检查，需要时加 `--word-review`。工作台已发送批注转入批注区下方列表，只读显示状态（[#146](https://github.com/wukongnotnull/wukong-animation/pull/146)、[#147](https://github.com/wukongnotnull/wukong-animation/pull/147)）。
 - v1.20.0（2026-11-11）：签批前先提交本阶段点名的审阅文件并记录校验，通过后询问是否进入下一工序。工作台只查看交付物和写批注，已发送的批注不留在页面上，新版本自行载入；同一本机服务可直接打开并接入多部影片。剧本只写故事、台词和画面上的字，镜头、声音和文字形式留在分镜稿；方案简报、剧本、分镜稿不写版本号。制作小样只重渲有变化的镜头。8 道工序、7 个审片节点与工程 flow 6 不变（[#136](https://github.com/wukongnotnull/wukong-animation/pull/136)、[#138](https://github.com/wukongnotnull/wukong-animation/pull/138)）。

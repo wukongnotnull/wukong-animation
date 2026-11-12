@@ -44,19 +44,24 @@ wukong-animation/                          # GitHub 仓库
 
 <项目>/                 # wka init-project 会 git init
 └── films/<片名>/
-    ├── film.json  story.md  storyboard.md
-    ├── shots/sNN.js  shots/common.js
-    ├── audio/build.mjs
-    ├── .wka/state.json        # 进度、签批时的镜头哈希（进 git）
-    ├── .cache/                 # 镜头片段、混音、QA（不进 git）
-    │   ├── <后缀>/             # 副版（如 9x16/）的片段、拼接结果、QA
-    │   └── approved/           # 第 6 道成片签批时的主版定稿快照
-    ├── stills/                 # 静帧、接触表（不进 git）；副版在 stills/<后缀>/
-    ├── .wka/voice-alignment.json # 用户录音的本地台词定位与确认依据
-    └── <name>.mp4              # 成片（不进 git，可用 LFS）；副版是 <name>-<后缀>.mp4
+    ├── film.json  brief.md  story.md  storyboard.md  sync-points.json   # 根目录只放引擎认的源文件
+    ├── shots/sNN.js  shots/common.js  shots/sNN.<后缀>.js               # 副版覆盖镜头带画幅后缀
+    ├── media/  audio/voice/  资料/  scripts/                            # 输入素材：图片视频、录音、文字资料、辅助脚本
+    ├── audio/build.mjs  audio/generated/                                # 生成的音频不进 git
+    ├── 成片/<片名>-<后缀>.mp4   # 成片与其他交付格式；所有画幅（含主版）都带后缀；大文件可用 LFS
+    ├── review/                 # 请用户审的文件，文字报告进 git，大媒体不进
+    │   ├── 小样/  静帧/<后缀>/  QC/  声轨/  素材/  台词/  交付/       # 按类别分子目录
+    ├── .wka/                   # 状态与证据（进 git）
+    │   ├── state.json  decisions.json  final-delivery.json            # 进度、签批、决定、交付账本
+    │   ├── voice-alignment.json  word-timeline.json  review-notes.json  materials-origin.json
+    │   ├── operations.json  voice-sources.json  main-check.json       # 本机状态（不进 git）
+    │   └── approved/           # 第 6 道成片签批时的主版定稿快照（不进 git）
+    └── .cache/                 # 只放可删除的缓存（不进 git）
+        ├── <后缀>/             # 每个画幅的片段、拼接结果、QC 中间数据
+        └── mix.wav  operation.lock  render-speed.json
 ```
 
-仓库里的示范片（`plugin/skills/<id>/examples/<片名>/`）目录结构相同，但**只提交源文件**：`.wka/`、`stills/`、`review/`、生成的配音和字幕、成片都被 `.gitignore` 挡掉。用户项目会把 `.wka/state.json` 提交进 git，用来恢复在制进度；旧示范片只读留档。视觉回归从其素材建立独立新项目，不继承旧签批或已取消能力。
+仓库里的示范片（`plugin/skills/<id>/examples/<片名>/`）目录结构相同，但**只提交源文件**：`.wka/`、`review/`、生成的配音和字幕、成片都被 `.gitignore` 挡掉。用户项目会把 `.wka/state.json` 提交进 git，用来恢复在制进度；旧示范片只读留档。视觉回归从其素材建立独立新项目，不继承旧签批或已取消能力。
 
 ## 桌面插件边界
 
@@ -88,7 +93,7 @@ shots/*.js + 镜头哈希 ──► ShotCache ──命中──► 复用片段
 
 `film.json` 的 `size` 是主版画幅，`variants` 里是副版（如 `"9:16": {}`）。命令加 `--aspect <副版>` 处理副版：`core/variants.mjs` 把画幅解析成尺寸（按主版短边等比推出）、画幅后缀和各类路径，`loadFilm` 换上副版尺寸，镜头有覆盖文件 `sNN.<后缀>.<扩展名>` 时换成它。镜头表、`cues`、声轨两版共用；镜头从 `s.aspect` / `s.orientation` 知道当前画幅。
 
-主版第 6 道签批时，`core/approval.mjs` 把每镜哈希记进 `state.json`、片段存到 `.cache/approved/`；渲染副版前重算主版哈希，变了的镜头重渲后与快照逐帧比 PSNR（> 50 dB 且帧数相同算不变），写 `review/主版不变报告-<后缀>.md`。副版在第 7 道签批时记下当时的主版哈希，主版之后重新签批且哈希变了，副版就过期，`wka final` 拒绝输出。
+主版第 6 道签批时，`core/approval.mjs` 把每镜哈希记进 `state.json`、片段存到 `.wka/approved/`；渲染副版前重算主版哈希，变了的镜头重渲后与快照逐帧比 PSNR（> 50 dB 且帧数相同算不变），写 `review/QC/主版不变报告-<后缀>.md`。副版在第 7 道签批时记下当时的主版哈希，主版之后重新签批且哈希变了，副版就过期，`wka final` 拒绝输出。
 
 ## 三类插槽
 

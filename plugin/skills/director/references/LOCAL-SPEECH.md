@@ -27,7 +27,7 @@ wka align-voice <片目录>
 
 每段完整录音在 `film.json.audio.voices[]` 只登记一次：`file` 是相对片目录的路径，`at` 是在影片里的起点，`cue` 是唯一名称，`text` 是可选原稿。原文件不切分、不覆盖、不变速；总时长冲突先请用户确认。
 
-识别输出保存在 `.wka/voice-alignment.json`，可读结果在 `review/台词定位.md`。采用真实识别句段时间戳，再与原稿保序匹配；不是强制对齐，也不用原稿提示词伪造已识别内容。方法分别记录 `local-recognition`、`local-recognition-text-match` 或 `manual`。低可信、重复和不一致保持 pending，不能用于完整小样签批。即使 matched，最终仍需随小样听审，不能声称达到逐字精确。
+识别输出保存在 `.wka/voice-alignment.json`，可读结果在 `review/台词/台词定位.md`。采用真实识别句段时间戳，再与原稿保序匹配；不是强制对齐，也不用原稿提示词伪造已识别内容。方法分别记录 `local-recognition`、`local-recognition-text-match` 或 `manual`。低可信、重复和不一致保持 pending，不能用于完整小样签批。即使 matched，最终仍需随小样听审，不能声称达到逐字精确。
 
 定位得到 `speech:<cue>:<序号>` 同步点，供镜头和配乐使用。不生成、导入或输出 SRT/VTT；原稿文字不是字幕。逐字需求须另有经过核实的词锚点，不能把句段时间平均分给每个字后声称实测。
 
@@ -45,7 +45,7 @@ wka align-voice <片目录>
 
 - **模型要求**：词级精度依赖 whisper.cpp 的 DTW。模型文件须保留官方文件名（如 `ggml-small.bin`、`ggml-base.bin`），插件按文件名选择 DTW 预设；重命名的模型退回句段 token 时间，精度明显下降。中文建议 small 及以上多语言模型。含汉字原稿时自动加固定风格提示，避免输出繁体。
 - **切词**：用 `Intl.Segmenter('zh')`，标点不计时；每个词带逐字子级时间，逐字只是词内细分，精度低于词边界。
-- **文件**：数据 `.wka/word-timeline.json`，可读表 `review/逐词时间表.md`（序号、词、全片起止、时长、前停顿、置信度、状态）。
+- **文件**：数据 `.wka/word-timeline.json`，可读表 `review/台词/逐词时间表.md`（序号、词、全片起止、时长、前停顿、置信度、状态）。
 - **状态**：`measured`（比对一致且置信度足够）、`pending`（有字对不上、缺失或置信度不足）、`confirmed`（用户听审后确认）。pending 与过期的词不注册 cue。
 - **cue**：`word:<录音cue>:<序号>`，序号每段录音从 1 起。镜头用 `s.cueFrame/cueIn/cueOut`；`audio.build` 的 `cues` 里同名键为全片秒 `[起, 止]`。词 cue 不写进 `film.json`；镜头用到不可用词时渲染报明确错误，不改用估算时间。
 - **人工确认**：先 `--words --status` 取当前 `source`，格式为 `{"version":1,"voices":{"录音cue":{"source":当前来源对象,"words":[{"n":3,"text":"词","start":1.2,"end":1.5}]}}}`，只覆盖列出的词，且必须绑定当前 `source`；用户听审并明确确认后运行 `wka align-voice <片目录> --import <时间点.json> --confirm "实际用户确认说明"`。

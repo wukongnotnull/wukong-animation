@@ -53,11 +53,11 @@ const chars = s.cueChars('第四句');
 
 ### 逐词时间表 cue
 
-`wka align-voice` 生成逐词时间表后，镜头可直接用 `word:<录音cue>:<序号>` 作为 cue（如 `s.cueFrame('word:v01:3')`、`s.cueIn/cueOut`），序号见 `review/逐词时间表.md`。词 cue 不写进 `film.json`；pending 或过期的词渲染时报错，不会改用估算时间。
+`wka align-voice` 生成逐词时间表后，镜头可直接用 `word:<录音cue>:<序号>` 作为 cue（如 `s.cueFrame('word:v01:3')`、`s.cueIn/cueOut`），序号见 `review/台词/逐词时间表.md`。词 cue 不写进 `film.json`；pending 或过期的词渲染时报错，不会改用估算时间。
 
 ### 列举词和步骤：词锚点
 
-需要“念到有素材，文字就出现”时，在片目录的 `sync-points.json` 声明词点，格式见 `engine/schemas/sync-points.schema.json`。先运行 `wka soundtrack`，从 `.cache/voice-sources.json` 读取当前人声的 audio_sha256/text_sha256；manual 或 aligned 的 range 是相对该句原始音频的秒数，必须来自实际听审或可核对的对齐结果，不能由字数均分伪装成测量。
+需要“念到有素材，文字就出现”时，在片目录的 `sync-points.json` 声明词点，格式见 `engine/schemas/sync-points.schema.json`。先运行 `wka soundtrack`，从 `.wka/voice-sources.json` 读取当前人声的 audio_sha256/text_sha256；manual 或 aligned 的 range 是相对该句原始音频的秒数，必须来自实际听审或可核对的对齐结果，不能由字数均分伪装成测量。
 
 - id 全片唯一（小写字母起始，字母/数字/连字符），运行时名字为 `word:<id>`；重复词必须给 occurrence。
 - `manual` 附听审标注说明；`aligned` 附可读取的本地对齐结果路径；没有测量就写 `estimated`，明确未验证。
@@ -72,7 +72,7 @@ if (s.frame >= s.cueFrame('word:material-available')) {
 
 也可用 cueIn/cueOut 取得词点相对实际呈现镜头起点的秒数，旧普通 cue 的秒数语义不变。不要把词点写成平均镜长或不会随音频更新的常量表。
 
-render/still/animatic/final 会生成 `review/词级同步[-画幅][-proxy].md`，包含来源状态和词首前/当/后的画面、人声音频；检查帧和人声片段存放在 `.cache/<画幅>/word-review/` 并按镜头渲染哈希增量复用，review/ 里只有汇总报告。`wka still --at` 只渲指定的帧、不做词级检查；加 `--word-review` 时只检查 `--at` 涉及的镜头，报告另存为 `词级同步-局部.md`，不覆盖整片报告。**来源有效不等于画面响应正确**：先自行听看，再放进现有声轨、小样或改版审阅；不新增节点或自动签批。未声明词点时如实标为未声明，不声称整片词级同步已验证。
+render/still/animatic/final 会生成 `review/台词/词级同步-<画幅>[-proxy].md`，包含来源状态和词首前/当/后的画面、人声音频；检查帧和人声片段存放在 `.cache/<画幅>/word-review/` 并按镜头渲染哈希增量复用，review/ 里只有汇总报告。`wka still --at` 只渲指定的帧、不做词级检查；加 `--word-review` 时只检查 `--at` 涉及的镜头，报告另存为 `词级同步-局部.md`，不覆盖整片报告。**来源有效不等于画面响应正确**：先自行听看，再放进现有声轨、小样或改版审阅；不新增节点或自动签批。未声明词点时如实标为未声明，不声称整片词级同步已验证。
 
 ## s：镜头状态
 

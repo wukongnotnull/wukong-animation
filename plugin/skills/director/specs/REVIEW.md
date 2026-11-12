@@ -2,12 +2,12 @@
 
 机器报告只证明列出的测量或文件检查。实际听感、画面含义与用户签批分别记录，不互相代替。
 
-## review-notes.json
+## .wka/review-notes.json
 
-片目录可选文件，schema：`engine/schemas/review-notes.schema.json`。没有记录时保留待审，不补写历史审阅。
+片目录可选文件（位于 `.wka/`），schema：`engine/schemas/review-notes.schema.json`。没有记录时保留待审，不补写历史审阅。
 
 - 顶层 `version: 1`。
-- `audio.sha256`：从当前 `review/声轨审听.json` 复制实际混音签名；不是文件名或任意自定义 id。
+- `audio.sha256`：从当前 `review/声轨/声轨审听.json` 复制实际混音签名；不是文件名或任意自定义 id。
 - `audio.sections`：音乐段落数组，每项 `id`、`label`、`range: [开始秒,结束秒]`。按音乐编排声明，不把每次镜头切换当成新段落。
 - `audio.checks`：实际审听记录，含 `section`（报告窗口的 id）、覆盖该窗口的 `range`、`reviewer`、实际 `reviewedAt`、`verdict`、`note` 和 `evidence`。结论 accepted / needs-fix；听不到写 not-listened，只有数值检查写 measured。后两项不会被认作实际审听完成。
 - `qc`：人工处置数组，每项 `finding`（当前报告的完整 id）、`disposition: accepted|needs-fix`、`range`、`reviewer`、实际 `reviewedAt`、`reason`、`evidence`。全片统计问题写实际抽查范围及全片设计理由；空理由、旧来源、越界范围不生效。

@@ -20,7 +20,7 @@ import { buildFrameTimeline, TIMING_VERSION, assertVideo, recordTiming, timingFa
 import { captureFinalGeneration, recordFinalArtifact } from './final-delivery.mjs';
 import { assertActiveProduction } from './state.mjs';
 
-import { outputSize, renderWorkers } from './render-profile.mjs';
+import { outputSize, proxySampling, renderWorkers } from './render-profile.mjs';
 export { outputSize } from './render-profile.mjs';
 
 import { loadFilm } from './film-context.mjs';
@@ -31,6 +31,7 @@ function createRenderJob(ctx, { proxy = false, nativeFps = false, log }) {
   const [W0, H0] = ctx.film.size;
   const { W, H } = outputSize(ctx.film, proxy);
   const fps = nativeFps ? ctx.film.fps : outputSize(ctx.film, proxy).fps;
+  const everyNthFrame = nativeFps ? 1 : proxySampling(ctx.film, proxy, ctx.pipeline.name);
   const timeline = buildFrameTimeline(ctx.shots, fps);
   const native = buildFrameTimeline(ctx.shots, ctx.film.fps);
   const shots = ctx.shots.map((s, i) => ({ ...s, frames: timeline.shots[i].frames, nativeFrames: native.shots[i].frames, startFrame: timeline.shots[i].startFrame }));
@@ -45,6 +46,7 @@ function createRenderJob(ctx, { proxy = false, nativeFps = false, log }) {
     designW: W0,
     designH: H0,
     fps,
+    everyNthFrame,
     proxy,
     seed: ctx.film.seed,
     fonts,
@@ -80,7 +82,7 @@ function shotHash(job, shot) {
   return hashParts([
     job.sharedHash,
     { file: shot.path },
-    { W: job.W, H: job.H, designW: job.designW, designH: job.designH, fps: job.fps, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id, timingVersion: TIMING_VERSION, frames: shot.frames, nativeFrames: shot.nativeFrames, startFrame: shot.startFrame },
+    { W: job.W, H: job.H, designW: job.designW, designH: job.designH, fps: job.fps, everyNthFrame: job.everyNthFrame, seed: job.seed, duration: shot.duration, start: shot.start, id: shot.id, timingVersion: TIMING_VERSION, frames: shot.frames, nativeFrames: shot.nativeFrames, startFrame: shot.startFrame },
     // 只算本镜（及公共脚本）用到的 cue：改一句人声不会让无关镜头重渲
     pickCues(job.film.cues, [shot.path, ...job.styleScripts, ...job.filmScripts]),
     pickCues(job.wordEvidence, [shot.path, ...job.styleScripts, ...job.filmScripts]),

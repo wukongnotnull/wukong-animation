@@ -2,6 +2,12 @@ import os from 'node:os';
 
 export const outputFps = (film, proxy = false) => proxy ? Math.min(15, film.fps) : film.fps;
 
+/** Remotion 小样：原生帧率能被小样帧率整除时，按原生时间轴每 N 帧抽一帧；否则为 1（按输出帧率绘制）。 */
+export function proxySampling(film, proxy, pipelineName) {
+  const out = outputFps(film, proxy);
+  return proxy && pipelineName === 'remotion' && out < film.fps && film.fps % out === 0 ? film.fps / out : 1;
+}
+
 /** 小样长边不超过960，不放大；偶数像素供H.264编码。 */
 export function outputSize(film, proxy = false) {
   const [W, H] = film.size;

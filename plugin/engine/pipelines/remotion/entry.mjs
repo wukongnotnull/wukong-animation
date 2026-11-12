@@ -17,11 +17,12 @@ export const STATIC_PREFIX = 'wka-static:';
  * @param {string} fontCss  已经过 rewriteFontCss 的 @font-face
  */
 export function buildEntry(job, fontCss) {
-  const fps = job.fps ?? job.film.fps;
+  const every = job.everyNthFrame || 1;
+  const fps = every > 1 ? job.film.fps : job.fps ?? job.film.fps;
   const native = job.shots.every(sh => Number.isInteger(sh.frames) && sh.frames > 0) ? null : buildFrameTimeline(job.shots, fps);
   const shots = job.shots.map((sh, i) => ({
     id: sh.id,
-    frames: sh.frames ?? native.shots[i].frames,
+    frames: (sh.frames ?? native.shots[i].frames) * every,
     s: {
       id: sh.id, W: job.designW, H: job.designH, designW: job.designW, designH: job.designH,
       aspect: aspectOf([job.designW, job.designH]), orientation: orientationOf([job.designW, job.designH]),

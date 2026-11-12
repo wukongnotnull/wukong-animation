@@ -35,6 +35,22 @@ test('来源绑定、重复词选择、过期测量回退和整体平移', () =>
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+test('抽帧小样的词首帧返回原生时间轴帧号', () => {
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-word-every-'));
+  try {
+    fs.writeFileSync(path.join(dir,'voice.wav'),'actual voice bytes');
+    const film={audio:{voice_source:'user',voices:[{cue:'v01',text:'有素材',at:0,file:'voice.wav'}]},cues:{v01:[0,3]}};
+    const ctx={filmDir:dir,film};
+    word.writeVoiceSources(ctx,[{file:path.join(dir,'voice.wav'),duration:3}]);
+    const source=JSON.parse(fs.readFileSync(path.join(dir,'.cache','voice-sources.json'))).voices.v01;
+    fs.writeFileSync(path.join(dir,'sync-points.json'),JSON.stringify({version:1,points:[{id:'materials',voice:'v01',text:'有素材',method:'manual',source:{audio_sha256:source.audio_sha256,text_sha256:source.text_sha256},range:[1,1.5],evidence:'听审标注'}]}));
+    fs.writeFileSync(path.join(dir,'s01.js'),"s.cueFrame('word:materials')");
+    const base={...ctx,fps:15,styleScripts:[],filmScripts:[],shots:[{id:'s01',path:path.join(dir,'s01.js'),startFrame:0,frames:45,start:0,duration:3}]};
+    assert.equal(word.prepareWordShots({...base,everyNthFrame:1}).shots[0].wordFrames['word:materials'],15);
+    assert.equal(word.prepareWordShots({...base,everyNthFrame:2}).shots[0].wordFrames['word:materials'],30);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
+
 test('词首帧映射符合降帧采样；越界不静默夹取',()=>{
   assert.equal(typeof word.wordFrame,'function');
   for(const [nativeFps,outputFps] of [[30,30],[30,15],[25,13]]) {

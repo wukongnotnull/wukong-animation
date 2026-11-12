@@ -25,7 +25,7 @@ Remotion 不是 MIT 许可：**个人和不超过 3 人的公司免费，更大�
 | 静态文件 | 风格的 `assets/` 复制到 public 的 `assets/`，组件用 `staticFile('assets/…')` |
 | 依赖 | `react`、`react-dom`、`remotion` 用别名钉成同一份（`core/deps.mjs` 的 `resolveDep`） |
 | 浏览器 | 用 playwright 同版本的 chromium headless shell；找不到时 Remotion 自行下载（约 170 MB） |
-| 小样 | `scale` 0.5，按 `film.fps` 的累计切点渲染，再用 ffmpeg 降帧并精确匹配代理帧时间轴；仅允许补足最多两帧镜尾画面 |
+| 小样 | 小样帧率为 `min(15, film.fps)`、长边不超过 960。`film.fps` 能被小样帧率整除（30、60、45 等）时，Composition 仍用 `film.fps` 与原生帧数，`renderMedia` 的 `everyNthFrame` 只抽取每 N 帧，镜头里写死的帧号与成片时刻一致；不能整除（如 24、25fps）时，Composition 直接按小样帧率绘制，`s.fps` 与 `dur` 是小样值，镜头必须用 `s.fps`、`useVideoConfig().fps`，不要写死帧号 |
 | 失败 | 先写 `.part.mp4`，成功才改名；报错带镜头 id 和文件名 |
 
 ## 时间轴检查
@@ -34,4 +34,4 @@ Remotion 不是 MIT 许可：**个人和不超过 3 人的公司免费，更大�
 
 ## 词首显现
 
-片级 sync-points.json 可声明 manual/aligned/estimated 词点。使用 `const at = s.cueFrame("word:material-available")`，再比较 useCurrentFrame；不要额外乘 fps。该帧入口适配输出切点与代理采样，动画仍以原生 film.fps 运行。来源状态、词首前当后帧和人声片段交付到 review/词级同步*.md；来源有效不代表实际画面响应已经由机器证明。
+片级 sync-points.json 可声明 manual/aligned/estimated 词点。使用 `const at = s.cueFrame("word:material-available")`，再比较 useCurrentFrame；不要额外乘 fps。该帧入口已按当前画面的帧序号换算（抽帧小样返回原生帧号）。来源状态、词首前当后帧和人声片段交付到 review/词级同步*.md；来源有效不代表实际画面响应已经由机器证明。

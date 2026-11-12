@@ -102,8 +102,8 @@ test('小样不放大小尺寸，低于15fps时保留原帧率', opts, () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('60fps工程直接只绘制15fps小样，组件看到实际输出帧率', opts, () => {
-  const dir = makeFilm({ s01: SHOT('#111111', "if(s.fps!==15 || dur!==6) throw new Error('多生成了不需要的帧');") });
+test('60fps工程小样只绘制每4帧，组件看到的仍是原生帧率与帧数', opts, () => {
+  const dir = makeFilm({ s01: SHOT('#111111', "if(s.fps!==60 || dur!==24 || f%4!==0) throw new Error('小样应只抽取原生时间轴上的每4帧');") });
   try {
     const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
     film.fps=60;film.size=[1920,1080];film.shots[0].duration=0.4;fs.writeFileSync(file,JSON.stringify(film));
@@ -111,6 +111,35 @@ test('60fps工程直接只绘制15fps小样，组件看到实际输出帧率', o
     const seg=segments(dir).find(f=>f.endsWith('.mp4')),st=probe(path.join(segDir(dir),seg));
     assert.deepEqual([st.width,st.height,st.r_frame_rate,Number(st.nb_read_frames)],[960,540,'15/1',6]);
     assert.equal(fs.existsSync(path.join(dir,'.cache/video-proxy.mp4')),false);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+const SQUARE = `import React from 'react';
+import { AbsoluteFill, useCurrentFrame } from 'remotion';
+export default function Shot() {
+  const f = useCurrentFrame();
+  return <AbsoluteFill style={{ background: '#000' }}><div style={{ position: 'absolute', left: f * 10, top: 60, width: 30, height: 30, background: '#fff' }} /></AbsoluteFill>;
+}
+`;
+const squareX = (video, frame) => {
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', video, '-vf', `select=eq(n\\,${frame})`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 26 });
+  const width = 320;
+  const xs = [];
+  r.stdout.forEach((value, index) => { if (value > 200) xs.push(index % width); });
+  return Math.min(...xs);
+};
+
+test('写死原生帧号的镜头：小样与成片在同一时刻位置一致，不半速', opts, () => {
+  const dir = makeFilm({ s01: SQUARE });
+  try {
+    const file=path.join(dir,'film.json'),film=JSON.parse(fs.readFileSync(file));
+    film.fps=30;film.shots[0].duration=1;fs.writeFileSync(file,JSON.stringify(film));
+    assert.equal(wka('render',dir,'--proxy','--force').status,0);
+    const proxy=squareX(path.join(dir,'.cache/video-proxy.mp4'),8);
+    assert.equal(wka('render',dir,'--force').status,0);
+    const full=squareX(path.join(dir,'.cache/video.mp4'),16);
+    assert.equal(proxy,full);
+    assert.equal(proxy,160);
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 

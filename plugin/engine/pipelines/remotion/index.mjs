@@ -134,12 +134,12 @@ async function renderShot(job, { shot, out }, { r, serveUrl, puppeteerInstance, 
     await r.renderMedia({
       composition, serveUrl, puppeteerInstance, browserExecutable: exe, concurrency, logLevel: 'error',
       codec: 'h264', muted: true, crf: job.proxy ? 23 : 16, pixelFormat: 'yuv420p',
-      scale, outputLocation: raw, overwrite: true,
+      scale, outputLocation: raw, overwrite: true, everyNthFrame: job.everyNthFrame || 1,
       ...(job.proxy || job.daily ? { ...(job.proxy ? { x264Preset: 'veryfast' } : {}),
         ffmpegOverride: ({ args }) => [...args.slice(0, -1), '-threads', '2', args.at(-1)] } : {}),
       onProgress: ({ progress, renderedFrames }) => {
         if (progress < nextLog) return;
-        job.log(`  ${shot.id} ${Math.round(progress * 100)}%  (${renderedFrames}/${composition.durationInFrames} 帧, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+        job.log(`  ${shot.id} ${Math.round(progress * 100)}%  (${renderedFrames}/${Math.ceil(composition.durationInFrames / (job.everyNthFrame || 1))} 帧, ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
         while (nextLog <= progress) nextLog += 0.25;
       },
     });

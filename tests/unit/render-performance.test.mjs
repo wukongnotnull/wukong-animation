@@ -98,7 +98,7 @@ test('changing media after inspection cannot persist a successful proof',async t
 });
 
 test('接触表版式：张数少时保持每行 3 张，130 镜竖屏排成总宽不超过 4096 的接近方形', async () => {
-  const { contactSheetLayout } = await import('../../plugin/engine/core/job.mjs');
+  const { contactSheetLayout } = await import('../../plugin/engine/core/contact-sheet.mjs');
   assert.deepEqual(contactSheetLayout(5, 1920, 1080), { cols: 3, rows: 2, tw: 640, th: 360 });
   assert.deepEqual(contactSheetLayout(6, 1920, 1080, 2), { cols: 2, rows: 3, tw: 640, th: 360 });
   const layout = contactSheetLayout(130, 540, 960);

@@ -8,9 +8,9 @@
     <div class="theme-switch" role="group" aria-label="主题"><button type="button" data-theme-choice="light">浅色</button><button type="button" data-theme-choice="dark">深色</button></div>
   </header>
   <div id="notice" role="status" aria-live="polite" hidden></div>
-  <div class="statusbar"><span id="connection" role="status">正在连接本机工程…</span><span id="last-sync"></span><nav class="panelbar" aria-label="工作区面板"><button data-panel="files">文件</button><button data-panel="preview" aria-pressed="true">预览</button><button data-panel="notes">意见</button><button data-panel="checks">检查</button><button id="toggle-library">收起文件栏</button><button id="toggle-inspector">收起审阅栏</button><details class="layout-controls"><summary>调整栏宽</summary><label>文件栏宽度<input id="library-width" type="range" min="180" max="340" value="220"></label><label>审阅栏宽度<input id="inspector-width" type="range" min="260" max="460" value="320"></label></details></nav><span id="draft-status" role="status"></span><button id="retry-drafts" hidden>重试保存草稿</button></div>
+  <div class="statusbar"><span id="connection" role="status">正在连接本机工程…</span><span id="last-sync"></span><nav class="panelbar" aria-label="工作区面板"><button id="toggle-library">收起文件栏</button><button id="toggle-inspector">收起审阅栏</button><details class="layout-controls"><summary>调整栏宽</summary><label>文件栏宽度<input id="library-width" type="range" min="180" max="340" value="220"></label><label>审阅栏宽度<input id="inspector-width" type="range" min="260" max="460" value="320"></label></details></nav><span id="draft-status" role="status"></span><button id="retry-drafts" hidden>重试保存草稿</button></div>
   <div id="archive-banner" class="statusbar" role="status" hidden>历史档案 · 只读。原文件、意见与签批保留；继续制作请新建项目并复用素材，旧签批不会继承。</div>
-  <main class="workspace" data-panel="preview" hidden>
+  <main class="workspace" hidden>
     <aside class="library">
       <div class="section-heading"><span>制作流程</span><span id="progress" class="muted"></span></div>
       <nav id="stages" aria-label="制作阶段"></nav>

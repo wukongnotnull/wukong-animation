@@ -106,6 +106,23 @@ test('page keeps a light and dark theme switch in the browser', async t => {
   const js = await (await fetch(f.server.origin + '/app.js', { headers })).text();
   assert.match(js, /function applyTheme/);
 });
+test('file and review columns are hidden only by the user, never by window width', async t => {
+  const f = await fixture(t);
+  const html = await (await fetch(f.server.origin + '/', { headers: f.headers })).text();
+  assert.doesNotMatch(html, /data-panel/, '不再提供按窗口宽度切换的面板按钮');
+  for (const id of ['toggle-library', 'toggle-inspector', 'library-width', 'inspector-width']) assert.match(html, new RegExp(`id="${id}"`));
+  const css = await (await fetch(f.server.origin + '/app.css', { headers: f.headers })).text();
+  const rules = [];
+  for (const media of css.matchAll(/@media[^{]*\{/g)) {
+    let depth = 1, end = media.index + media[0].length;
+    while (depth && end < css.length) { if (css[end] === '{') depth++; else if (css[end] === '}') depth--; end++; }
+    for (const rule of css.slice(media.index + media[0].length, end - 1).matchAll(/([^{}]+)\{([^{}]*)\}/g)) rules.push({ selector: rule[1], body: rule[2] });
+  }
+  assert.ok(rules.length > 10, '应能读到窄窗规则');
+  const columns = /\.workspace|\.library|\.inspector(?![-\w])|#toggle-library|#toggle-inspector|\.layout-controls/;
+  const byWidth = rules.filter(rule => columns.test(rule.selector) && /(^|;)\s*(display|grid-template-columns)\s*:/.test(rule.body));
+  assert.deepEqual(byWidth.map(rule => rule.selector), [], '窗口宽度不得决定两侧栏和收起按钮是否显示');
+});
 test('Chrome normalized loopback Origin works for assets, media and JSON review writes', async t => {
   const f = await fixture(t), headers = { ...f.headers, Origin: 'http://127.0.0.1' };
   for (const route of ['/app.css', '/app.js', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs']) {

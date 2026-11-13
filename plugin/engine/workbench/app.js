@@ -4,7 +4,7 @@ import { createSession } from './session.mjs';
 
 const $ = id => document.getElementById(id);
 if (location.hash) history.replaceState(null, '', '/');
-const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, panel: 'preview', raw: false, logSerial: 0, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
+const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, raw: false, logSerial: 0, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, pollTimer;
 const labels = { archived: '历史档案 · 只读', pending: '待审阅', approved: '已通过', 'changes-requested': '需要修改', 'needs-review': '需要复核', 'not-applicable': '不适用', present: '已生成', missing: '文件缺失', 'not-generated': '尚未生成', unreadable: '无法读取', historical: '历史交付物' };
 const categories = { formal: '正式交付物', reference: '参考资料', history: '历史交付物' };
@@ -81,7 +81,7 @@ function rememberPosition() {
   if (!session || !ui.film) return;
   const key = ui.film + '/' + ui.item + '/' + ui.version;
   if (ui.media && ui.viewKey === key) ui.mediaStates.set(key, { time: ui.media.currentTime, rate: ui.media.playbackRate });
-  storeValue('position:' + ui.film, { step: ui.step, item: ui.item, version: ui.version, panel: ui.panel, raw: ui.raw, reviewNote: ui.reviewNote, media: ui.mediaStates.get(key) || null });
+  storeValue('position:' + ui.film, { step: ui.step, item: ui.item, version: ui.version, raw: ui.raw, reviewNote: ui.reviewNote, media: ui.mediaStates.get(key) || null });
   storeValue('film', ui.film);
 }
 function stash() { captureDrafts(); rememberPosition(); }
@@ -105,17 +105,12 @@ async function loadReport(reset = false, nextVersion = false) {
   if (film === ui.film) { ui.fingerprint = status.revision; ui.busy = status.busy; }
 }
 async function choose(file, v = file.current?.id, reviewNote = null) {
-  stash(); ui.step = file.step; ui.item = file.id; ui.version = v; ui.reviewNote = reviewNote; ui.panel = 'preview'; await render(); rememberPosition();
+  stash(); ui.step = file.step; ui.item = file.id; ui.version = v; ui.reviewNote = reviewNote; await render(); rememberPosition();
 }
 async function chooseStage(row) {
   const file = row.items.find(i => i.category === 'formal' && i.availability === 'present') || row.items[0];
   if (file) return choose(file);
   stash(); ui.step = row.step; ui.item = null; ui.version = null; ui.reviewNote = null; await render(); rememberPosition();
-}
-function showPanel(panel) {
-  ui.panel = panel; document.querySelector('.workspace').dataset.panel = panel;
-  document.querySelectorAll('[data-panel]').forEach(node => { if (node.tagName === 'BUTTON') node.setAttribute('aria-pressed', String(node.dataset.panel === panel)); });
-  rememberPosition();
 }
 function renderStages() {
   $('stages').replaceChildren(); const gates = ui.report.stages.filter(s => s.gate && s.status !== 'not-applicable');
@@ -299,7 +294,7 @@ async function render() {
   $('archive-banner').hidden = !ui.report.readonly; $('mark-time').hidden = ui.report.readonly;
   $('draft-status').hidden = ui.report.readonly; $('retry-drafts').hidden = ui.report.readonly || $('retry-drafts').hidden;
   const serial = ++ui.render; document.querySelector('.workspace').hidden = false; document.querySelector('.panelbar').hidden = false;
-  renderStages(); renderFiles(); restoreDrafts(); renderInspector(); await renderViewer(serial); showPanel(ui.panel || 'preview');
+  renderStages(); renderFiles(); restoreDrafts(); renderInspector(); await renderViewer(serial); rememberPosition();
 }
 function updateFilmChoices(listing) {
   const signature = JSON.stringify(listing.films.map(film => [film.id, film.name]));
@@ -374,7 +369,6 @@ $('note-form').onsubmit = event => { event.preventDefault(); action(async () => 
     }
   } finally { submit.disabled = false; }
 }); };
-document.querySelectorAll('button[data-panel]').forEach(b => b.onclick = () => showPanel(b.dataset.panel));
 function applyLayout(layout = {}) {
   const work = document.querySelector('.workspace');
   work.classList.toggle('library-collapsed', !!layout.libraryHidden); work.classList.toggle('inspector-collapsed', !!layout.inspectorHidden);

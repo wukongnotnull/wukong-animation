@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { inSpan, chatPrompt, chatLink, lineDiff, formatLineDiff, versionChanges } from '../../plugin/engine/workbench/model.mjs';
+import { inSpan, chatPrompt, chatLink, lineDiff, lineChanges, formatLineDiff, formatChangeExcerpts, versionChanges } from '../../plugin/engine/workbench/model.mjs';
 
 test('镜头选中态容忍跳转后落在起点前一帧内的播放位置', () => {
   const shots = [{ id: 's008', start: 14.57, end: 16.08 }, { id: 's009', start: 16.08, end: 18 }];
@@ -42,4 +42,17 @@ test('版本日志：文字版本按行统计新增与删除', () => {
   assert.deepEqual(lineDiff('x', 'x'), { added: 0, removed: 0 });
   assert.equal(formatLineDiff({ added: 2, removed: 1 }), '文字内容：新增 2 行，删除 1 行');
   assert.equal(formatLineDiff({ added: 0, removed: 0 }), '');
+});
+
+test('版本日志：文字版本列出具体新增与删除的内容', () => {
+  const changes = lineChanges('# 简报\n风格：水墨\n时长：30 秒\n', '# 简报\n风格：像素\n时长：30 秒\n画幅：16:9\n');
+  assert.deepEqual(changes, { addedLines: ['风格：像素', '画幅：16:9'], removedLines: ['风格：水墨'] });
+  assert.deepEqual(lineDiff('一\n二\n三', '一\n三\n四\n五'), { added: 2, removed: 1 });
+  assert.deepEqual(formatChangeExcerpts(changes), ['新增：「风格：像素」「画幅：16:9」', '删除：「风格：水墨」']);
+});
+
+test('版本日志：摘录最多三条、截断长行并忽略空行', () => {
+  const many = { addedLines: ['a', '', 'b', 'c', 'd', 'e'], removedLines: ['x'.repeat(40)] };
+  assert.deepEqual(formatChangeExcerpts(many), ['新增：「a」「b」「c」等 5 行', '删除：「' + 'x'.repeat(24) + '…」']);
+  assert.deepEqual(formatChangeExcerpts({ addedLines: ['', ' '], removedLines: [] }), []);
 });

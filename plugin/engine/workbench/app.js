@@ -1,4 +1,4 @@
-import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineDiff, formatLineDiff, versionChanges } from './model.mjs';
+import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineChanges, formatLineDiff, formatChangeExcerpts, versionChanges } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
 
@@ -254,7 +254,7 @@ function renderSent() {
 const textChanges = new Map();
 function textChange(file, version, previous) {
   const key = ui.film + '/' + file.id + '/' + previous.id + '/' + version.id;
-  if (!textChanges.has(key)) textChanges.set(key, Promise.all([previous, version].map(row => fetch(mediaUrl(file, row)).then(response => response.ok ? response.text() : Promise.reject(new Error('读取失败'))))).then(([before, after]) => formatLineDiff(lineDiff(before, after))).catch(() => { textChanges.delete(key); return ''; }));
+  if (!textChanges.has(key)) textChanges.set(key, Promise.all([previous, version].map(row => fetch(mediaUrl(file, row)).then(response => response.ok ? response.text() : Promise.reject(new Error('读取失败'))))).then(([before, after]) => { const changes = lineChanges(before, after); return [formatLineDiff({ added: changes.addedLines.length, removed: changes.removedLines.length }), ...formatChangeExcerpts(changes)].filter(Boolean); }).catch(() => { textChanges.delete(key); return []; }));
   return textChanges.get(key);
 }
 function renderVersionLog(file) {
@@ -271,8 +271,8 @@ function renderVersionLog(file) {
     node.append(head);
     const changes = versionChanges(row, previous); for (const line of changes) node.append(el('span', line, 'version-log-line'));
     if (file.kind === 'text' && previous && row.snapshot.digest !== previous.snapshot.digest && rows.length - index <= 20 && row.snapshot.kind === 'file' && previous.snapshot.kind === 'file') {
-      const slot = el('span', undefined, 'version-log-line'); node.append(slot);
-      textChange(file, row, previous).then(text => { if (serial === ui.logSerial && text) slot.textContent = text; });
+      const slot = el('span', undefined, 'version-log-detail'); node.append(slot);
+      textChange(file, row, previous).then(lines => { if (serial === ui.logSerial) slot.replaceChildren(...lines.map(line => el('span', line, 'version-log-line'))); });
     }
     node.addEventListener('click', () => action(async () => { if (row.id === ui.version) return; stash(); ui.version = row.id; await render(); rememberPosition(); }));
     entry.append(node); list.prepend(entry);

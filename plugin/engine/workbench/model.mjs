@@ -65,28 +65,43 @@ export function chatLink(thread, prompt) {
   return (validThreadId(thread) ? 'codex://threads/' + thread : 'codex://threads/new') + '?prompt=' + encodeURIComponent(prompt);
 }
 export const formatBytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
-export function lineDiff(before, after) {
+const MATRIX_LIMIT = 4e6;
+export function lineChanges(before, after) {
   const a = String(before).split('\n'), b = String(after).split('\n');
   let start = 0, endA = a.length, endB = b.length;
   while (start < endA && start < endB && a[start] === b[start]) start++;
   while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
-  const left = a.slice(start, endA), right = b.slice(start, endB);
-  let common = 0;
-  if (left.length * right.length > 4e6) {
+  const left = a.slice(start, endA), right = b.slice(start, endB), width = right.length + 1;
+  const addedLines = [], removedLines = [];
+  if (left.length * right.length > MATRIX_LIMIT) {
     const counts = new Map();
     for (const line of left) counts.set(line, (counts.get(line) || 0) + 1);
-    for (const line of right) if (counts.get(line) > 0) { counts.set(line, counts.get(line) - 1); common++; }
-  } else {
-    let row = new Uint32Array(right.length + 1);
-    for (const line of left) {
-      const next = new Uint32Array(right.length + 1);
-      for (let j = 0; j < right.length; j++) next[j + 1] = line === right[j] ? row[j] + 1 : Math.max(row[j + 1], next[j]);
-      row = next;
-    }
-    common = row[right.length];
+    for (const line of right) { if (counts.get(line) > 0) counts.set(line, counts.get(line) - 1); else addedLines.push(line); }
+    for (const line of left) { if (counts.get(line) > 0) { counts.set(line, counts.get(line) - 1); removedLines.push(line); } }
+    return { addedLines, removedLines };
   }
-  return { added: right.length - common, removed: left.length - common };
+  const table = new Uint32Array((left.length + 1) * width);
+  for (let i = 1; i <= left.length; i++) for (let j = 1; j <= right.length; j++) table[i * width + j] = left[i - 1] === right[j - 1] ? table[(i - 1) * width + j - 1] + 1 : Math.max(table[(i - 1) * width + j], table[i * width + j - 1]);
+  let i = left.length, j = right.length;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && left[i - 1] === right[j - 1]) { i--; j--; }
+    else if (j > 0 && (i === 0 || table[i * width + j - 1] >= table[(i - 1) * width + j])) addedLines.push(right[--j]);
+    else removedLines.push(left[--i]);
+  }
+  return { addedLines: addedLines.reverse(), removedLines: removedLines.reverse() };
 }
+export function lineDiff(before, after) {
+  const { addedLines, removedLines } = lineChanges(before, after);
+  return { added: addedLines.length, removed: removedLines.length };
+}
+const EXCERPT_LIMIT = 3, EXCERPT_WIDTH = 24;
+const excerptLine = (label, lines) => {
+  const shown = lines.map(line => line.trim()).filter(Boolean);
+  if (!shown.length) return '';
+  const quote = line => '「' + (line.length > EXCERPT_WIDTH ? line.slice(0, EXCERPT_WIDTH) + '…' : line) + '」';
+  return label + '：' + shown.slice(0, EXCERPT_LIMIT).map(quote).join('') + (shown.length > EXCERPT_LIMIT ? '等 ' + shown.length + ' 行' : '');
+};
+export const formatChangeExcerpts = ({ addedLines, removedLines }) => [excerptLine('新增', addedLines), excerptLine('删除', removedLines)].filter(Boolean);
 export const formatLineDiff = ({ added, removed }) => added || removed ? '文字内容：' + [added && '新增 ' + added + ' 行', removed && '删除 ' + removed + ' 行'].filter(Boolean).join('，') : '';
 const seconds = value => (Math.round(value * 10) / 10).toFixed(1) + ' 秒';
 export function versionChanges(version, previous) {

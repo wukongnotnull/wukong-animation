@@ -362,9 +362,16 @@ $('note-form').onsubmit = event => { event.preventDefault(); action(async () => 
     const remain = batch.filter(item => item.send === false);
     if (ui.noteDraftKey) { $('note-text').value = ''; setAnchor({ type: 'general' }); writeDraft(remain, '', { type: 'general' }); }
     if (film === ui.film) { stash(); await loadReport(); }
-    const link = document.createElement('a'); link.href = chatLink(new URLSearchParams(location.search).get('thread'), chatPrompt({ film, label, notes: chosen.map(note => ({ where: anchorText(note.anchor), text: note.text.trim() })) }));
-    document.body.append(link); link.click(); link.remove();
-    notice('已把 ' + chosen.length + ' 条批注放进对话输入框，回到对话确认后发送。');
+    const prompt = chatPrompt({ film, label, notes: chosen.map(note => ({ where: anchorText(note.anchor), text: note.text.trim() })) });
+    const href = chatLink(new URLSearchParams(location.search).get('thread'), prompt);
+    if (href) {
+      const link = document.createElement('a'); link.href = href;
+      document.body.append(link); link.click(); link.remove();
+      notice('已把 ' + chosen.length + ' 条批注放进对话输入框，回到对话确认后发送。');
+    } else {
+      const copied = await navigator.clipboard?.writeText(prompt).then(() => true, () => false);
+      notice('已保存 ' + chosen.length + ' 条批注。' + (copied ? '待办文字已复制，粘贴到对话里发送' : '回到对话说“处理工作台里的待办”') + '，即可开始返修。');
+    }
   } finally { submit.disabled = false; }
 }); };
 document.querySelectorAll('button[data-panel]').forEach(b => b.onclick = () => showPanel(b.dataset.panel));

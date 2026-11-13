@@ -61,8 +61,10 @@ export function chatPrompt({ film, label, notes }) {
   const head = `处理工作台里的待办。影片：${film}；交付物：${label}。共 ${notes.length} 条批注：`;
   return [head, ...notes.map((note, index) => `${index + 1}. 【${note.where}】${note.text}`)].join('\n');
 }
+// 只有 Codex 内启动的工作台带 thread 参数，才能用 codex:// 回到原对话；
+// 其他宿主（如 Claude 桌面端的浏览器面板）会拦截该协议，返回 null 由调用方改走剪贴板。
 export function chatLink(thread, prompt) {
-  return (validThreadId(thread) ? 'codex://threads/' + thread : 'codex://threads/new') + '?prompt=' + encodeURIComponent(prompt);
+  return validThreadId(thread) ? 'codex://threads/' + thread + '?prompt=' + encodeURIComponent(prompt) : null;
 }
 export const formatBytes = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
 const MATRIX_LIMIT = 4e6;

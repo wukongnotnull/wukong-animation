@@ -16,8 +16,9 @@ test('批注发送到对话时生成带位置的预填文字，并回到发起�
   assert.match(prompt, /^处理工作台里的待办。影片：demo；交付物：剧本。共 2 条批注：\n1\. 【时间 · 00:01.00】节奏太慢\n2\. 【整份交付物】加结尾$/);
   const thread = '01a1cb55-4172-77b2-9f6c-7a3e725a7608';
   assert.equal(chatLink(thread, prompt), 'codex://threads/' + thread + '?prompt=' + encodeURIComponent(prompt));
-  assert.equal(chatLink('bad', 'x'), 'codex://threads/new?prompt=x');
-  assert.equal(chatLink(null, 'x'), 'codex://threads/new?prompt=x');
+  // 非 Codex 宿主没有对话编号：不生成 codex:// 链接（会被 Claude 浏览器面板拦截）
+  assert.equal(chatLink('bad', 'x'), null);
+  assert.equal(chatLink(null, 'x'), null);
 });
 
 const snap = (kind, entries) => ({ kind, entries: entries.map(([path, sha256, size]) => ({ path, sha256, size })), digest: entries.map(e => e[1]).join() });

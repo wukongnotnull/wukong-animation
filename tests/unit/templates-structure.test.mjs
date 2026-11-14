@@ -68,8 +68,17 @@ function entries(src) {
   return ['基本信息', ...s.filter((x) => x.startsWith('## ')).map((x) => x.slice(3))];
 }
 
-/** 分镜末尾的「副版重排」表是第 14 道改版时才加的（STORYBOARD.md「六、副版重排」），不属于模板骨架。 */
-const withoutVariantAppendix = (src) => src.split(/^## 副版重排/m)[0];
+/** 第 8 道调整画幅时增加的「副画幅重排」表不属于模板骨架；兼容历史名称「副版重排」。 */
+const withoutVariantAppendix = (src) => src.split(/^## 副(?:画幅|版)重排/m)[0];
+
+test('分镜骨架检查排除当前和历史名称的画幅重排附表', () => {
+  const body = '# 分镜稿\n\n## 声音铺底\n\n';
+  for (const heading of ['副画幅重排', '副版重排']) {
+    const source = `${body}## ${heading}（9:16）\n\n| 镜 | 处理方式 | 怎么排 |\n`;
+    assert.equal(withoutVariantAppendix(source), body);
+  }
+  assert.equal(withoutVariantAppendix(body), body);
+});
 
 const examples = (base) => {
   const skills = path.join(PLUGIN, 'skills');

@@ -174,8 +174,8 @@ async function renderViewer(serial) {
   } else if (file.kind === 'image') {
     const wrap = el('div', undefined, 'image-wrap'), img = el('img'); img.src = url; img.alt = file.label; img.tabIndex = 0; img.setAttribute('aria-label', file.label + '，方向键调整批注位置，回车记录');
     img.addEventListener('error', () => notice('图片无法预览，请检查原文件。', true));
-    img.addEventListener('click', event => { const r = img.getBoundingClientRect(); setAnchor({ type: 'image', x: (event.clientX - r.left) / r.width, y: (event.clientY - r.top) / r.height }); captureDrafts(); showPanel('notes'); $('note-text').focus(); });
-    img.addEventListener('keydown', event => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) { event.preventDefault(); const a = ui.anchor.type === 'image' ? { ...ui.anchor } : { type: 'image', x: 0.5, y: 0.5 }; a.x = Math.max(0, Math.min(1, a.x + (event.key === 'ArrowLeft' ? -0.02 : event.key === 'ArrowRight' ? 0.02 : 0))); a.y = Math.max(0, Math.min(1, a.y + (event.key === 'ArrowUp' ? -0.02 : event.key === 'ArrowDown' ? 0.02 : 0))); setAnchor(a); captureDrafts(); if (event.key === 'Enter') { showPanel('notes'); $('note-text').focus(); } } });
+    img.addEventListener('click', event => { const r = img.getBoundingClientRect(); setAnchor({ type: 'image', x: (event.clientX - r.left) / r.width, y: (event.clientY - r.top) / r.height }); captureDrafts(); $('note-text').focus(); });
+    img.addEventListener('keydown', event => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) { event.preventDefault(); const a = ui.anchor.type === 'image' ? { ...ui.anchor } : { type: 'image', x: 0.5, y: 0.5 }; a.x = Math.max(0, Math.min(1, a.x + (event.key === 'ArrowLeft' ? -0.02 : event.key === 'ArrowRight' ? 0.02 : 0))); a.y = Math.max(0, Math.min(1, a.y + (event.key === 'ArrowUp' ? -0.02 : event.key === 'ArrowDown' ? 0.02 : 0))); setAnchor(a); captureDrafts(); if (event.key === 'Enter') { $('note-text').focus(); } } });
     wrap.append(img); $('viewer').append(wrap); setAnchor(ui.anchor);
   } else if (['audio', 'video'].includes(file.kind)) {
     const media = el(file.kind), previous = ui.mediaStates.get(key); media.controls = true; media.preload = 'metadata'; media.src = url; media.setAttribute('aria-label', file.label); ui.media = media;
@@ -199,7 +199,7 @@ async function renderViewer(serial) {
     $('shot-track').replaceChildren();
     for (const shot of context?.shots || []) {
       const end = shot.start + shot.duration, label = formatSpan(shot.start, end);
-      const clip = button('', () => { media.currentTime = shot.start; if (!ui.report.readonly) { setAnchor({ type: 'time', start: shot.start, end }); captureDrafts(); showPanel('notes'); } }, 'clip');
+      const clip = button('', () => { media.currentTime = shot.start; if (!ui.report.readonly) { setAnchor({ type: 'time', start: shot.start, end }); captureDrafts(); } }, 'clip');
       clip.style.flexGrow = Math.max(1, shot.duration); clip.dataset.start = shot.start; clip.dataset.end = end; clip.title = shot.id + ' · ' + label;
       clip.append(el('span', shot.id), el('small', formatClock(shot.start)), el('small', formatClock(end))); $('shot-track').append(clip);
     }
@@ -333,7 +333,7 @@ for (const id of ['time-start', 'time-end']) {
   $(id).addEventListener('keydown', event => { if (event.key !== 'Enter') return; event.preventDefault(); commitTime(); });
   $(id).addEventListener('blur', () => commitTime());
 }
-$('mark-time').onclick = () => { if (ui.media && !ui.report.readonly) { const at = ui.media.currentTime, shot = (playbackContext(item(), version())?.shots || []).find(s => inSpan(at, s.start, s.start + s.duration)); setAnchor(shot ? { type: 'time', start: shot.start, end: shot.start + shot.duration } : { type: 'time', start: at, end: at }); captureDrafts(); showPanel('notes'); $('note-text').focus(); } };
+$('mark-time').onclick = () => { if (ui.media && !ui.report.readonly) { const at = ui.media.currentTime, shot = (playbackContext(item(), version())?.shots || []).find(s => inSpan(at, s.start, s.start + s.duration)); setAnchor(shot ? { type: 'time', start: shot.start, end: shot.start + shot.duration } : { type: 'time', start: at, end: at }); captureDrafts(); $('note-text').focus(); } };
 $('seek').oninput = () => { if (ui.media) ui.media.currentTime = Number($('seek').value); };
 $('speed').onchange = () => { if (ui.media) { ui.media.playbackRate = Number($('speed').value); rememberPosition(); } };
 $('file-search').addEventListener('input', () => { ui.fileQuery = $('file-search').value; if (ui.report) renderFileList(); });

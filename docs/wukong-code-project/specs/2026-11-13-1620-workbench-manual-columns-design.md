@@ -24,4 +24,5 @@
 
 - `tests/integration/workbench.test.mjs` 新增断言：页面不再含 `data-panel` 切换按钮，仍含两个收起按钮和栏宽控件；`app.css` 的任何 `@media` 规则都不对 `.workspace`、`.library`、`.inspector`、两个收起按钮和 `.layout-controls` 设置 `display` 或 `grid-template-columns`。运行 `node --test tests/integration/workbench.test.mjs`。
 - 浏览器实测 1440、1024、768、480 四个宽度：两侧栏默认都在；收起其中一栏后改变宽度仍保持收起，展开后改变宽度仍保持展开；480 宽度下工作区可横向滚动到审阅栏。
+- `tests/unit/workbench-anchors.test.mjs` 执行真实图片点击、图片回车、镜头点击、标注当前时间的事件处理器：定位与草稿照常保存，不再调用已移除的面板切换函数；原有批注输入框聚焦保持。不自动展开用户已收起的审阅栏。
 - `npm run lint` 检查文档一致性。

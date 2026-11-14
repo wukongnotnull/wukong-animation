@@ -389,7 +389,7 @@ function storedTheme() {
     const stored = localStorage.getItem('wka-workbench-theme');
     if (stored === 'light' || stored === 'dark') return stored;
   } catch { /* 沿用页面已经设置的主题 */ }
-  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
 }
 function applyTheme(theme) {
   const next = theme === 'light' ? 'light' : 'dark';

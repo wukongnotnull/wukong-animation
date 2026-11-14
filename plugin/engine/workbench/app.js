@@ -1,8 +1,10 @@
 import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineChanges, formatLineDiff, formatChangeExcerpts, versionChanges } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
+import { createDocumentSearch } from './search.mjs';
 
 const $ = id => document.getElementById(id);
+const documentSearch = createDocumentSearch($('document-search'));
 if (location.hash) history.replaceState(null, '', '/');
 const ui = { film: null, report: null, step: 2, item: null, version: null, anchor: { type: 'general' }, media: null, render: 0, raw: false, logSerial: 0, fileQuery: '', fileKind: 'all', mediaStates: new Map(), fingerprint: null, busy: false, lastSync: null };
 let session, draftTimer, noticeTimer, pollTimer;
@@ -156,6 +158,7 @@ function renderFileList() {
 async function renderViewer(serial) {
   const file = item(), v = version(), key = ui.film + '/' + ui.item + '/' + ui.version;
   if (ui.media && ui.viewKey) { ui.mediaStates.set(ui.viewKey, { time: ui.media.currentTime, rate: ui.media.playbackRate }); ui.media.pause(); }
+  documentSearch.bind(null, ui.film + '/' + ui.item);
   ui.media = null; ui.viewKey = key; ui.documentText = null; $('viewer').replaceChildren(); $('timeline').hidden = true; $('read-mode').hidden = true; $('shot-jump').hidden = true;
   $('stage-name').textContent = '第 ' + ui.step + ' 道 · ' + stage().label; $('file-name').textContent = file?.label || stage().label;
   $('file-path').textContent = file?.relativePath || file?.path || '本地素材 · 只读预览'; $('file-path').title = file?.path || ''; $('locate').disabled = !file || file.availability !== 'present';
@@ -168,6 +171,7 @@ async function renderViewer(serial) {
     const raw = await response.text(); if (serial !== ui.render) return; ui.documentText = raw;
     const markdown = /\.md$/i.test(file.path); $('read-mode').hidden = !markdown; $('read-mode').textContent = ui.raw ? '排版阅读' : '查看原文';
     const doc = renderDocument(raw, markdown && !ui.raw); $('viewer').append(doc);
+    documentSearch.bind(doc, ui.film + '/' + ui.item);
     const shots = [...doc.querySelectorAll('[data-shot]')]; $('shot-jump').replaceChildren(); $('shot-jump').hidden = !shots.length;
     if (shots.length) { const first = el('option', '定位镜号…'); first.value = ''; $('shot-jump').append(first); for (const shot of shots) { const option = el('option', shot.dataset.shot); option.value = shot.dataset.shot; $('shot-jump').append(option); } }
     if (ui.anchor.type === 'text') revealDocumentAnchor(doc, ui.anchor);
@@ -342,8 +346,8 @@ $('fullscreen').onclick = () => action(() => document.fullscreenElement ? docume
 $('locate').onclick = () => action(async () => notice((await api('/api/locate', { artifactId: ui.item })).message));
 $('read-mode').onclick = () => action(async () => { captureDrafts(); ui.raw = !ui.raw; await render(); rememberPosition(); });
 $('shot-jump').onchange = () => { const row = [...document.querySelectorAll('[data-shot]')].find(r => r.dataset.shot === $('shot-jump').value); if (row) { row.scrollIntoView({ block: 'center' }); row.focus(); } };
-function selectedText() { const root = $('document'); if (!root || ui.documentText === null) return; const a = documentAnchor(root, window.getSelection(), ui.documentText); if (a) { setAnchor(a); captureDrafts(); } }
-document.addEventListener('mouseup', selectedText); document.addEventListener('keyup', event => { if (event.key === 'Shift' || event.key.startsWith('Arrow')) selectedText(); });
+function selectedText(event) { if (event?.target?.closest?.('#document-search')) return; const root = $('document'); if (!root || ui.documentText === null) return; const a = documentAnchor(root, window.getSelection(), ui.documentText); if (a) { setAnchor(a); captureDrafts(); } }
+document.addEventListener('mouseup', selectedText); document.addEventListener('keyup', event => { if (event.key === 'Shift' || event.key.startsWith('Arrow')) selectedText(event); });
 $('add-note').onclick = () => { const text = $('note-text').value.trim(); if (!text) { notice('先写下这一条批注。'); return; } const batch = [...(draftRecord().batch || []), { requestId: crypto.randomUUID(), text, anchor: structuredClone(ui.anchor), send: true }]; $('note-text').value = ''; setAnchor({ type: 'general' }); writeDraft(batch, '', { type: 'general' }); renderBatch(); };
 $('note-form').onsubmit = event => { event.preventDefault(); action(async () => {
   captureDrafts(); const film = ui.film, artifactId = ui.item, versionId = ui.version, label = item()?.label || ui.item, draft = draftRecord();

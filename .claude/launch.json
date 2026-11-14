@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "workbench-search-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/browser/workbench-search-server.mjs", "63917"],
+      "port": 63917,
+      "url": "http://127.0.0.1:63917"
+    }
+  ]
+}

@@ -154,7 +154,7 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': page.length });
         res.end(req.method === 'HEAD' ? undefined : page); return;
       }
-      if (['/app.js', '/app.css', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
+      if (['/app.js', '/app.css', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs', '/search.mjs'].includes(route) && ['GET', 'HEAD'].includes(req.method)) {
         const file = path.join(assets, route.slice(1));
         streamFile(req, res, file, file.endsWith('.mjs') ? file + '.js' : file, fs.statSync(file).size); return;
       }

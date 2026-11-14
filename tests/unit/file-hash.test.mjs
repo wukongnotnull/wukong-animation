@@ -78,6 +78,17 @@ for(const mutation of ['truncate','grow','replace','remove','rewrite-with-restor
   const before=fs.statSync(file),observed=track(t,file),read=fs.readSync;
   const replacement=file+'.new';if(mutation==='replace')fs.writeFileSync(replacement,Buffer.alloc(CHUNK+3,1));
   let first=true,mutated=false;
+  if(mutation==='rewrite-with-restored-mtime') {
+    // ctime resolution depends on the filesystem: rapid Windows writes can share a tick.
+    // Keep real bytes/mtime, but make the ctime change this case exercises deterministic.
+    const stat=fs.statSync,initial=stat(file,{bigint:true});
+    t.mock.method(fs,'statSync',function(name,options){
+      const current=stat.call(this,name,options);
+      if(nameOf(name)!==file||!mutated||!options?.bigint)return current;
+      assert.equal(current.mtimeNs,initial.mtimeNs,'mtime must really be restored');
+      return {...current,ctimeNs:initial.ctimeNs+1n};
+    });
+  }
   t.mock.method(fs,'readSync',function(...args){
     if(mutation==='early-eof'&&!first){mutated=true;return 0;}
     const n=read.apply(this,args);

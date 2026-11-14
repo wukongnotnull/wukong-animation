@@ -143,7 +143,7 @@ test('file and review columns are hidden only by the user, never by window width
 });
 test('Chrome normalized loopback Origin works for assets, media and JSON review writes', async t => {
   const f = await fixture(t), headers = { ...f.headers, Origin: 'http://127.0.0.1' };
-  for (const route of ['/app.css', '/app.js', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs']) {
+  for (const route of ['/app.css', '/app.js', '/theme.js', '/model.mjs', '/document.mjs', '/session.mjs', '/search.mjs']) {
     const response = await fetch(f.server.origin + route, { headers });
     assert.equal(response.status, 200, route);
     assert.match(response.headers.get('content-type'), /text\/(css|javascript)/);

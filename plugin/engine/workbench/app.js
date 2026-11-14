@@ -63,7 +63,7 @@ function showImageAnchor(anchor, review = false) {
   pin.style.left = anchor.x * 100 + '%'; pin.style.top = anchor.y * 100 + '%'; wrap.append(pin);
 }
 function scheduleDrafts() { clearTimeout(draftTimer); draftTimer = setTimeout(() => session?.flush(), 500); }
-function storeValue(key, value) { if (ui.report?.readonly) return; session?.set(key, value); scheduleDrafts(); }
+function storeValue(key, value) { if (ui.report?.readonly && key !== 'film') return; session?.set(key, value); scheduleDrafts(); }
 function captureDrafts() {
   if (!session || !ui.report || ui.report.readonly) return;
   if (ui.noteDraftKey) {
@@ -407,5 +407,10 @@ action(async () => {
   ui.film = listing.films.find(f => f.id === requested)?.id || listing.films.find(f => f.id === session.get('film'))?.id || listing.films[0]?.id;
   updateFilmChoices(listing); applyLayout(session.get('layout'));
   if (ui.film) await loadReport(true); else connection('已连接 · 等待加入影片');
+  const address = new URL(location.href);
+  if (address.searchParams.has('film')) {
+    address.searchParams.delete('film');
+    history.replaceState(history.state, '', address.pathname + address.search + address.hash);
+  }
   pollTimer = setTimeout(poll, 4000);
 });

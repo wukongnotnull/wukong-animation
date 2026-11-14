@@ -117,9 +117,24 @@ for (const t of TEMPLATES) {
 
 test('剧本模板不写分镜稿才决定的画面、声音和文字形式', () => {
   const story = read(path.join(PLUGIN, 'engine/templates/film/story.md'));
-  assert.match(story, /\| 段落 \| 时间 \| 这一段讲什么 \| 情绪 \|/);
+  assert.match(story, /\| 段落 \| 预计时间 \| 推进作用 \| 情绪变化 \|/);
   assert.match(story, /\| 文字 \| 所在段落 \|/);
   assert.doesNotMatch(story, /声音提示|画面在发生什么|运镜|景别|转场|\| 形式 \|/);
+});
+
+test('剧本模板用同一段落编号连接正文、结构、人声与屏幕文字', () => {
+  const story = read(path.join(PLUGIN, 'engine/templates/film/story.md'));
+  const body = story.split('## 故事正文\n')[1]?.split('\n## ')[0] || '';
+  const ids = [...body.matchAll(/^### (P\d+) /gm)].map((match) => match[1]);
+  assert.ok(ids.length > 0, '正文应提供可扩展的段落编号');
+  assert.equal(new Set(ids).size, ids.length, '段落编号不能重复');
+  const paragraphs = column(story, '推进作用', '段落');
+  assert.deepEqual(paragraphs, ids);
+  const voices = story.split('## 人声文案\n')[1]?.split('\n## ')[0] || '';
+  const voiceIds = [...voices.matchAll(/\[(P\d+)\]/g)].map((match) => match[1]);
+  assert.ok(voiceIds.length > 0, '人声占位应引用正文段落');
+  const textIds = column(story, '所在段落', '所在段落');
+  for (const id of [...voiceIds, ...textIds]) assert.ok(ids.includes(id), `引用了不存在的段落 ${id}`);
 });
 
 test('新建影片生成三个空白文档，简报、剧本和分镜稿都不写版本号', t => {

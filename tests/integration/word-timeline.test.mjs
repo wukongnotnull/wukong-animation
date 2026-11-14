@@ -35,6 +35,32 @@ function project(text, tokens) {
 }
 const tokens = [['有', 430, 600], ['素', 600, 780], ['材', 780, 970], ['无', 1420, 1700], ['素材', 1700, 2070]];
 
+test('无镜头人声 CLI 可定位、查看和导入词表，混音与渲染仍拒绝空时间轴', { timeout: 300000 }, () => {
+  const { dir, tool, model } = project('有素材无素材', tokens);
+  try {
+    const file = path.join(dir, 'film.json'), film = JSON.parse(fs.readFileSync(file));
+    film.shots = [];film.audio.voices[0].at = 20;fs.writeFileSync(file, JSON.stringify(film));
+    fs.rmSync(path.join(dir, 'shots'), { recursive: true });
+    const aligned = cli('align-voice', dir, '--binary', tool, '--model', model);
+    assert.equal(aligned.status, 0, aligned.stderr + aligned.stdout);
+    assert.match(aligned.stdout, /逐词时间表已生成/);
+    for (const args of [[], ['--words']]) {
+      const checked = cli('align-voice', dir, ...args, '--status');assert.equal(checked.status, 0, checked.stderr);
+      assert.equal(JSON.parse(checked.stdout).ready, true);
+    }
+    const timeline = JSON.parse(fs.readFileSync(path.join(dir, '.wka/word-timeline.json'))), voice = timeline.voices.v01;
+    const input = path.join(dir, 'manual.json');fs.writeFileSync(input, JSON.stringify({ version: 1, voices: { v01: { source: voice.source, words: [voice.words[0]] } } }));
+    const imported = cli('align-voice', dir, '--import', input, '--confirm', '用户确认录音内时间');assert.equal(imported.status, 0, imported.stderr);
+    for (const command of ['soundtrack', 'render']) {
+      const rejected = cli(command, dir);assert.notEqual(rejected.status, 0);assert.match(rejected.stderr + rejected.stdout, /镜头|时间轴/);
+    }
+    const dtwModel = path.join(dir, 'ggml-base.bin');fs.copyFileSync(model, dtwModel);
+    fs.writeFileSync(tool, `#!${process.execPath}\nif(process.argv.includes('--help'))process.exit(0);process.stderr.write('word generation failed');process.exit(2);`);
+    fs.rmSync(path.join(dir, '.wka/word-timeline.json'));
+    const warned = cli('align-voice', dir, '--binary', tool, '--model', dtwModel);assert.equal(warned.status, 0, warned.stderr + warned.stdout);assert.match(warned.stdout, /逐词时间表未生成/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('逐词 cue 驱动镜头词首帧与配乐脚本；align-voice 默认生成词表', { timeout: 300000 }, () => {
   const { dir, tool, model } = project('有素材无素材', tokens);
   try {

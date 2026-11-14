@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP } from '../../plugin/engine/core/state.mjs';
+import { PRODUCTION_STEPS, REVIEW_GATES, LAST_STEP, FLOW } from '../../plugin/engine/core/state.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SKILL = fs.readFileSync(path.join(ROOT, 'plugin/skills/director/SKILL.md'), 'utf8');
@@ -21,8 +21,19 @@ function rows(first) {
   return out;
 }
 
-test('标题写明工序数和审片节点数', () => {
-  assert.match(SKILL, new RegExp(`## 四、制作流程：${LAST_STEP} 道工序、${Object.keys(REVIEW_GATES).length} 个审片节点`));
+test('独立人声使用新存储身份和九道工序，旧 flow 7 不复用签批', () => {
+  assert.equal(FLOW, 8);
+  assert.equal(LAST_STEP, 9);
+  assert.deepEqual(Object.values(PRODUCTION_STEPS), [
+    '制作准备', '确定方案', '编写剧本', '制作人声', '规划镜头',
+    '制作小样', '制作成片', '调整画幅', '导出剪映草稿',
+  ]);
+  assert.equal(Object.keys(REVIEW_GATES).length, 8);
+  assert.match(SKILL, /flow 7.*只读/);
+});
+
+test('标题写明工序数和最多审片节点数', () => {
+  assert.match(SKILL, new RegExp(`## 四、制作流程：${LAST_STEP} 道工序、最多 ${Object.keys(REVIEW_GATES).length} 个审片节点`));
 });
 
 test('工序总表逐道对应引擎的工序，审片节点与 --step 一致', () => {

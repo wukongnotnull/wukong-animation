@@ -13,10 +13,10 @@ function fixture(t) {
  fs.writeFileSync(path.join(dir,'.wka/decisions.json'),JSON.stringify({version:1,delivery:{status:'confirmed',value:'video',source:'用户'},aspects:{status:'confirmed',value:['16:9'],source:'用户'}}));
  return {dir,film,write};
 }
-test('新成片不再要求字幕选择，仅提供无字幕视频，验收绑定 6/7/8',t=>{
+test('新成片不再要求字幕选择，仅提供无字幕视频，验收绑定 7/8/9',t=>{
  const {dir}=fixture(t),contract=finalContract(dir);assert.deepEqual(contract.errors,[]);assert.deepEqual(contract.slots.map(s=>s.slot),['16:9/video/mp4/clean']);
- const report=finalDeliveryReport(dir);assert.deepEqual(Object.keys(report.reviewSets).sort(),['6','7','8']);
- assert.throws(()=>prepareFinalApproval(dir,{step:13}),/6\/7\/8/);
+ const report=finalDeliveryReport(dir);assert.deepEqual(Object.keys(report.reviewSets).sort(),['7','8','9']);
+ assert.throws(()=>prepareFinalApproval(dir,{step:13}),/7\/8\/9/);
 });
 test('新项目明确拒绝字幕和 AI 人声配置，不静默沿用旧能力',t=>{
  const {dir,film,write}=fixture(t);film.subtitles={mode:'burn'};write();assert.throws(()=>loadFilm(dir,{requireShots:false}),/字幕/);

@@ -42,6 +42,12 @@ export function reconcileSegments(rows, transcript, duration) {
   // Timings come from recognition, never from distributing manuscript characters.
   return { status: issues.length ? 'pending' : 'matched', method: expected ? 'local-recognition-text-match' : 'local-recognition', segments, issues };
 }
+/** 录音核心身份不含全片起点；时间点始终相对于录音本身。 */
+export function voiceSourceIdentity(source) {
+  if (!source) return null;
+  const { file, audioSha256, textSha256, duration } = source;
+  return { file, audioSha256, textSha256, duration };
+}
 export function voiceSources(ctx, { checkTotal = true } = {}) {
   const audio = ctx.film.audio || {}, voices = audio.voices || [];
   if (audio.voice_source === 'none' || (!audio.voice_source && !voices.length)) return {};
@@ -55,29 +61,33 @@ export function voiceSources(ctx, { checkTotal = true } = {}) {
     if (!fs.existsSync(file)) throw new Error(`用户录音不存在：${v.file}`);
     const duration = probeDuration(file);
     if (!Number.isFinite(duration) || duration <= 0) throw new Error(`录音损坏或没有可用时长：${v.file}`);
-    if (!Number.isFinite(v.at) || v.at < 0 || (checkTotal && v.at + duration > ctx.totalDuration + .001)) throw new Error(`录音 ${id} 超出已批准的影片时长，请确认调整；不会截断或变速。`);
+    if (!Number.isFinite(v.at) || v.at < 0 || (checkTotal && (!Number.isFinite(ctx.totalDuration) || ctx.totalDuration <= 0 || v.at + duration > ctx.totalDuration + .001))) throw new Error(`录音 ${id} 超出已批准的影片时长，请确认调整；不会截断或变速。`);
     result[id] = { file: v.file, audioSha256: fileDigest(file), textSha256: digest(v.text || ''), at: v.at, duration, text: v.text || '' };
   });
   return result;
 }
-export function voiceAlignmentStatus(dir) {
-  const ctx = loadFilm(dir, { requireShots: false }), data = ledger(ctx.filmDir), current = voiceSources(ctx), voices = {};
+export function voiceAlignmentStatus(dir, { checkTotal = false } = {}) {
+  const ctx = loadFilm(dir, { requireShots: false, requireTimeline: checkTotal }), data = ledger(ctx.filmDir), current = voiceSources(ctx, { checkTotal }), voices = {};
   for (const [id, source] of Object.entries(current)) {
     const saved = data.voices[id];
     if (saved) validateSegments(saved.segments, saved.source?.duration);
-    const fresh = saved && digest(saved.source) === digest(source);
+    const fresh = saved && digest(voiceSourceIdentity(saved.source)) === digest(voiceSourceIdentity(source));
     voices[id] = { source, ...(saved || {}), status: saved ? fresh ? saved.status : 'stale' : 'missing', source };
   }
   const ready = Object.values(voices).every(v => ['matched', 'confirmed'].includes(v.status));
   const expected = ready ? Object.fromEntries(Object.entries(voices).flatMap(([id, v]) => v.segments.map((s, i) => [`speech:${id}:${i + 1}`, [v.source.at + s.start, v.source.at + s.end]]))) : {};
   const applied = ready && !fs.existsSync(scopedPath(ctx.filmDir, '.wka/voice-cues-pending.json')) &&
     digest([...data.ownedCues].sort()) === digest(Object.keys(expected).sort()) && Object.entries(expected).every(([key, value]) => digest(ctx.film.cues?.[key] ?? null) === digest(value));
-  return { version: 1, ready, applied, voices };
+  const localApplied = ready && (applied || data.appliedFingerprint === localFingerprint(voices));
+  return { version: 1, ready, applied, localApplied, voices };
+}
+function localFingerprint(voices) {
+  return digest(Object.keys(voices).sort().map(id => [id, { source: voiceSourceIdentity(voices[id].source), segments: voices[id].segments }]));
 }
 function writeReport(dir, data) {
   atomicJson(recordPath(dir), data);
-  const rows = Object.entries(data.voices).flatMap(([id, v]) => [`## ${id} · ${v.status}`, `来源：${v.method}；不改变原始录音`, ...(v.issues || []).map(x => '- 待确认：' + x), ...v.segments.map((s, i) => `- ${i + 1}. ${(v.source.at + s.start).toFixed(3)}–${(v.source.at + s.end).toFixed(3)} 秒：${s.text}`), '']);
-  const file = reviewFile(scopedPath(dir, '.'), '台词定位.md', { ensure: true });fs.writeFileSync(file, '# 台词定位\n\n仅用于声画编排；识别时间仍需结合小样听审。\n\n' + rows.join('\n'));
+  const rows = Object.entries(data.voices).flatMap(([id, v]) => [`## ${id} · ${v.status}`, `来源：${v.method}；不改变原始录音`, ...(v.issues || []).map(x => '- 待确认：' + x), ...v.segments.map((s, i) => `- ${i + 1}. ${s.start.toFixed(3)}–${s.end.toFixed(3)} 秒：${s.text}`), '']);
+  const file = reviewFile(scopedPath(dir, '.'), '台词定位.md', { ensure: true });fs.writeFileSync(file, '# 台词定位\n\n时间为录音内秒数，以各段录音起点为零；全片位置由 audio.voices[].at 映射，整体移动不改变本报告。仅用于声画编排；识别时间仍需结合小样听审。\n\n' + rows.join('\n'));
   return data;
 }
 export function importVoiceTiming(dir, input, { confirmation } = {}) {
@@ -87,8 +97,9 @@ export function importVoiceTiming(dir, input, { confirmation } = {}) {
   const updates = {};
   for (const [id, value] of Object.entries(input.voices)) {
     const source = status.voices[id]?.source;
-    if (!source || digest(value.source) !== digest(source)) throw new Error(`${id} 录音/原稿来源过期，请重新核对当前来源`);
+    if (!source || digest(voiceSourceIdentity(value.source)) !== digest(voiceSourceIdentity(source))) throw new Error(`${id} 录音/原稿来源过期，请重新核对当前来源`);
     const segments = validateSegments(value.segments, source.duration);
+    if (normalized(source.text) && normalized(source.text) !== segments.map(segment => normalized(segment.text)).join('')) throw new Error(`${id} 人工句段与原稿不符，请改稿或重录；确认说明不能替代文本匹配`);
     updates[id] = { source, segments, status: 'confirmed', method: 'manual', confirmation: confirmation.trim(), at: new Date().toISOString(), issues: [] };
   }
   data.voices = { ...data.voices, ...updates };
@@ -98,6 +109,7 @@ export function applyVoiceAlignment(dir) {
   const status = voiceAlignmentStatus(dir), data = ledger(dir);
   if (!status.ready) throw new Error('台词定位缺失、待确认或已过期，请先运行 align-voice 或确认人工时间点：' + Object.entries(status.voices).filter(([, v]) => !['matched', 'confirmed'].includes(v.status)).map(([id, v]) => `${id} ${v.status}`).join('；'));
   const file = scopedPath(dir, 'film.json'), journal = scopedPath(dir, '.wka/voice-cues-pending.json');
+  if (!Object.keys(status.voices).length && !data.ownedCues.length && !fs.existsSync(journal)) return status;
   const fingerprint = digest(Object.fromEntries(Object.entries(status.voices).map(([id, v]) => [id, { source: v.source, segments: v.segments }])));
   const pending = read(journal, null);
   if (pending) {
@@ -105,7 +117,7 @@ export function applyVoiceAlignment(dir) {
     if (pending.fingerprint !== fingerprint || ![digest(pending.before), digest(pending.after)].includes(digest(film.cues || {})) ||
         ![digest(pending.oldOwned), digest(pending.nextOwned)].includes(digest(data.ownedCues))) throw new Error('定位写入中断后输入已变化，请核对 .wka/voice-cues-pending.json，未覆盖手工标记');
     atomicJson(file, { ...film, cues: pending.after });
-    data.ownedCues = pending.nextOwned;atomicJson(recordPath(dir), data);fs.rmSync(journal);
+    data.ownedCues = pending.nextOwned;data.appliedFingerprint = localFingerprint(status.voices);atomicJson(recordPath(dir), data);fs.rmSync(journal);
   }
   const film = read(file), cues = { ...film.cues };
   for (const key of data.ownedCues) delete cues[key];
@@ -115,10 +127,10 @@ export function applyVoiceAlignment(dir) {
     if (Object.hasOwn(cues, key)) throw new Error(`定位 cue 与手工标记冲突：${key}`);
     cues[key] = [v.source.at + s.start, v.source.at + s.end];owned.push(key);
   });
-  if (cueDigest(film.cues) !== cueDigest(cues) || digest(data.ownedCues) !== digest(owned)) {
+  if (cueDigest(film.cues) !== cueDigest(cues) || digest(data.ownedCues) !== digest(owned) || data.appliedFingerprint !== localFingerprint(status.voices)) {
     atomicJson(journal, { fingerprint, before: film.cues || {}, after: cues, oldOwned: data.ownedCues, nextOwned: owned });
     atomicJson(file, { ...film, cues });
-    data.ownedCues = owned;atomicJson(recordPath(dir), data);fs.rmSync(journal);
+    data.ownedCues = owned;data.appliedFingerprint = localFingerprint(status.voices);atomicJson(recordPath(dir), data);fs.rmSync(journal);
   }
   return voiceAlignmentStatus(dir);
 }
@@ -127,7 +139,7 @@ function executable(name) {
   return candidates.find(file => { try { fs.accessSync(file, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);return fs.statSync(file).isFile(); } catch { return false; } });
 }
 export function prepareVoiceAlignment(dir, { binary, model } = {}) {
-  loadFilm(dir, { requireShots: false });
+  loadFilm(dir, { requireShots: false, requireTimeline: false });
   const file = scopedPath(dir, '.wka/local-speech.json'), saved = read(file, {});
   const tool = executable(binary || process.env.WKA_WHISPER_BIN || saved.binary || (process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli'));
   const modelPath = model || process.env.WKA_WHISPER_MODEL || saved.model;
@@ -192,7 +204,7 @@ export async function alignVoice(dir, { binary, model, force = false, log = cons
     });
     updates[id] = { source: value.source, ...reconcileSegments(rows, value.source.text, value.source.duration), tool, evidence: raw, at: new Date().toISOString() };
     const current = voiceAlignmentStatus(dir).voices[id]?.source;
-    if (digest(current) !== digest(value.source)) throw new Error('识别期间录音或原稿改变，结果未写入');
+    if (digest(voiceSourceIdentity(current)) !== digest(voiceSourceIdentity(value.source))) throw new Error('识别期间录音或原稿改变，结果未写入');
   }
   data.voices = { ...data.voices, ...updates };writeReport(dir, data);
   return voiceAlignmentStatus(dir);

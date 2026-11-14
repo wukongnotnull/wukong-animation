@@ -42,7 +42,7 @@ test('consecutive runner calls return independent 1/0/2/0 outcomes with one erro
     const before = {argv: [...process.argv], cwd: process.cwd(), exitCode: process.exitCode};
     const out=[], errors=[], io={log:(...args)=>out.push(args.join(' ')),error:(...args)=>errors.push(args.join(' '))};
     assert.equal(await runCli(['signoff',${JSON.stringify(f.root)},'probe','--step','999'],io),1);
-    assert.deepEqual(errors,['✗ --step 取 1–8']);
+    assert.deepEqual(errors,['✗ --step 取 1–9']);
     assert.equal(await runCli(['help'],io),0);
     out.length=0;
     assert.equal(await runCli(['delivery',${JSON.stringify(f.root)},'--json'],io),2);

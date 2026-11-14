@@ -30,6 +30,7 @@ function makeFilm(extra = {}) {
   const film = {
     title: 'it', style: 'ink-wash', size: [320, 180], fps: 10, seed: 1,
     shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }, { id: 's02', file: 'shots/s02.js', duration: 1 }],
+    audio: { voice_source: 'none' },
     variants: { '9:16': {} },
     export: { name: 'it' },
     ...extra,
@@ -111,10 +112,10 @@ const report = (dir) => fs.readFileSync(path.join(dir, 'review', 'QC', '主版�
 const rowOf = (text, id) => text.split('\n').find((l) => l.startsWith(`| ${id} `)) || '';
 const state = (dir) => JSON.parse(fs.readFileSync(path.join(dir, '.wka', 'state.json'), 'utf8'));
 
-test('signing off step 6 snapshots the main version; variant renders report whether it changed', opts, () => {
+test('signing off step 7 snapshots the main version; variant renders report whether it changed', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '成片终审通过', '--step', '6'));
+  ok(wka('signoff', dir, '成片终审通过', '--step', '7'));
   assert.deepEqual(Object.keys(state(dir).approved.main), ['s01', 's02']);
   assert.deepEqual(fs.readdirSync(path.join(dir, '.wka', 'approved')).sort(), ['s01.mp4', 's02.mp4']);
 
@@ -144,17 +145,17 @@ test('signing off step 6 snapshots the main version; variant renders report whet
 test('a variant signed off before the main version changed is stale: final refuses it, status says so', opts, () => {
   const dir = makeFilm();
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '终审通过', '--step', '6'));
+  ok(wka('signoff', dir, '终审通过', '--step', '7'));
   ok(wka('render', dir, '--aspect', '9:16', '--proxy'));
-  ok(wka('signoff', dir, '副版通过', '--step', '7'));
+  ok(wka('signoff', dir, '副版通过', '--step', '8'));
   assert.ok(state(dir).approved.variants['9:16'].shots.s01);
 
   fs.writeFileSync(path.join(dir, 'shots', 's01.js'), SHOT(FILL('#000000')));
   ok(wka('render', dir));
-  ok(wka('signoff', dir, '返修后终审通过', '--step', '6'));
+  ok(wka('signoff', dir, '返修后终审通过', '--step', '7'));
   const r = wka('final', dir, '--aspect', '9:16', '--proxy');
   assert.notEqual(r.status, 0);
-  assert.match(r.stderr + r.stdout, /第 7 道/);
+  assert.match(r.stderr + r.stdout, /第 8 道/);
 
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-variants-project-'));
   fs.mkdirSync(path.join(projectDir, 'films'));

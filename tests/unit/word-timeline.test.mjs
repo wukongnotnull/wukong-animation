@@ -74,7 +74,7 @@ test('对不上原稿的词是 pending，不注册 cue；人工确认后可用�
   const source = status.voices.v01.source, word = pending[0];
   const input = { version: 1, voices: { v01: { source, words: [{ n: word.n, text: word.text, start: word.start, end: word.end }] } } };
   assert.throws(() => importWordTiming(dir, input), /确认/);
-  assert.throws(() => importWordTiming(dir, { ...input, voices: { v01: { source: { ...source, at: 9 }, words: input.voices.v01.words } } }, { confirmation: '用户确认' }), /来源|过期/);
+  assert.throws(() => importWordTiming(dir, { ...input, voices: { v01: { source: { ...source, audioSha256: 'different' }, words: input.voices.v01.words } } }, { confirmation: '用户确认' }), /来源|过期/);
   assert.throws(() => importWordTiming(dir, { ...input, voices: { v01: { source, words: [{ ...input.voices.v01.words[0], text: '别的词' }] } } }, { confirmation: '用户确认' }), /不一致/);
   assert.throws(() => importWordTiming(dir, { ...input, voices: { v01: { source, words: [{ ...input.voices.v01.words[0], start: 0, end: 2.4 }] } } }, { confirmation: '用户确认' }), /重叠|无效/);
   const confirmed = importWordTiming(dir, input, { confirmation: '用户听审后确认这些时间' });
@@ -84,15 +84,42 @@ test('对不上原稿的词是 pending，不注册 cue；人工确认后可用�
   assert.equal(again.voices.v01.words.find(item => item.n === word.n).status, 'confirmed', '重算不丢用户已确认的词');
 });
 
-test('录音、原稿或起点变化后词表过期，cue 全部不可用并说明原因', async t => {
+test('整体移动保留词表、自动映射新 cue，原稿或录音变化才过期', async t => {
   const { dir, film, options } = fixture(t);
-  await alignWords(dir, options);
+  const status = await alignWords(dir, options), before = wordTimelineCues(ctxOf(dir));
   film.audio.voices[0].at = 1.5;
-  fs.writeFileSync(path.join(dir, 'film.json'), JSON.stringify(film));
-  assert.equal(wordTimelineStatus(ctxOf(dir)).voices.v01.status, 'stale');
-  const result = wordTimelineCues(ctxOf(dir));
-  assert.deepEqual(result.cues, {});
-  assert.match(result.unavailable.v01, /过期/);
+  const file = path.join(dir, 'film.json');fs.writeFileSync(file, JSON.stringify(film));
+  assert.equal(wordTimelineStatus(ctxOf(dir)).voices.v01.status, 'matched');
+  const moved = wordTimelineCues(ctxOf(dir));
+  assert.deepEqual(moved.cues['word:v01:1'], before.cues['word:v01:1'].map(t => +(t + 0.5).toFixed(3)));
+  const word = status.voices.v01.words[0];
+  importWordTiming(dir, { version: 1, voices: { v01: { source: status.voices.v01.source, words: [word] } } }, { confirmation: '录音内听审' });
+  assert.equal(wordTimelineStatus(ctxOf(dir)).voices.v01.status, 'confirmed');
+  for (const changed of ['text', 'audio']) {
+    if (changed === 'text') fs.writeFileSync(file, JSON.stringify({ ...film, audio: { ...film.audio, voices: [{ ...film.audio.voices[0], text: '不同原稿' }] } }));
+    else { fs.writeFileSync(file, JSON.stringify(film));wave(path.join(dir, '原声.wav'), [[0.2, 0.9]], 2.4); }
+    assert.equal(wordTimelineStatus(ctxOf(dir)).voices.v01.status, 'stale');
+    const result = wordTimelineCues(ctxOf(dir));assert.deepEqual(result.cues, {});assert.match(result.unavailable.v01, /过期/);
+  }
+});
+
+test('无镜头可生成和导入词表，报告为录音内秒且与整体位置无关', async t => {
+  const { dir, film, options } = fixture(t);
+  film.shots = [];film.audio.voices[0].at = 20;
+  const file = path.join(dir, 'film.json');fs.writeFileSync(file, JSON.stringify(film));
+  const status = await alignWords(dir, options);assert.equal(status.ready, true);
+  const ctx = loadFilm(dir, { requireTimeline: false });
+  assert.throws(() => wordTimelineStatus(ctx), /时长|时间轴/);
+  assert.equal(wordTimelineStatus(ctx, { checkTotal: false }).ready, true);
+  const input = { version: 1, voices: { v01: { source: status.voices.v01.source, words: [status.voices.v01.words[0]] } } };
+  importWordTiming(dir, input, { confirmation: '用户确认词首' });
+  const report = path.join(dir, 'review/台词/逐词时间表.md'), before = fs.readFileSync(report, 'utf8');
+  assert.match(before, /录音内/);assert.doesNotMatch(before, /20\.5/);
+  film.audio.voices[0].at = 40;fs.writeFileSync(file, JSON.stringify(film));
+  importWordTiming(dir, input, { confirmation: '用户确认词首' });
+  assert.equal(fs.readFileSync(report, 'utf8'), before);
+  const record = path.join(dir, '.wka/word-timeline.json'), saved = fs.readFileSync(record);
+  assert.equal((await alignWords(dir, options)).ready, true);assert.deepEqual(fs.readFileSync(record), saved);
 });
 
 test('没有原稿时词表来自识别文字；没有词表文件时不产生 cue', async t => {

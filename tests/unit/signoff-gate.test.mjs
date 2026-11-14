@@ -16,11 +16,11 @@ function film(t) {
   put('brief.md', '简报');
   put('story.md', '剧本');
   put('other.md', '无关');
-  put('.wka/state.json', JSON.stringify({ flow: 7, step: 2, history: [] }));
+  put('.wka/state.json', JSON.stringify({ flow: 8, step: 2, history: [] }));
   put('.wka/decisions.json', JSON.stringify({ version: 1, delivery: { status: 'confirmed', value: 'video', source: '用户确认' } }));
   assert.equal(git('add', '--', '.gitignore', 'brief.md', 'story.md', 'other.md', '.wka/state.json', '.wka/decisions.json').status, 0);
   assert.equal(git('commit', '-qm', 'init').status, 0);
-  put('.wka/state.json', JSON.stringify({ flow: 7, step: 2, history: [] }));
+  put('.wka/state.json', JSON.stringify({ flow: 8, step: 2, history: [] }));
   put('.wka/decisions.json', JSON.stringify({ version: 1, delivery: { status: 'confirmed', value: 'video', source: '用户确认' } }));
   return { dir, git, put };
 }

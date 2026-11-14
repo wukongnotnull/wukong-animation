@@ -339,8 +339,8 @@ function technicalStatus(dir,slot,artifact) {
 
 function reviewSets(dir,contract,items,data) {
   const result={};
-  for(const step of [6,7,8]) {
-    const chosen=items.filter(i=>step===8?i.kind==='draft':i.kind!=='draft'&&(step===6)===(i.aspect===contract.mainAspect));
+  for(const step of [7,8,9]) {
+    const chosen=items.filter(i=>step===9?i.kind==='draft':i.kind!=='draft'&&(step===7)===(i.aspect===contract.mainAspect));
     const bindings=chosen.map(i=>({slot:i.slot,path:i.path,artifactId:i.artifactId,snapshot:i.snapshot,contractDigest:i.contractDigest,source:sourceStatus(dir,i,data.artifacts.find(a=>a.id===i.artifactId)),dependencies:dependencies(dir,i,data.artifacts.find(a=>a.id===i.artifactId)?.dependencies?.fontFiles||[])}));
     result[step]={step,bindings,deliveryRevision:digest({flow:FLOW,step,bindings})};
   }
@@ -348,7 +348,7 @@ function reviewSets(dir,contract,items,data) {
 }
 
 export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvidence=null}={}) {
-  if(![6,7,8].includes(step))throw new Error('交付版本绑定只用于6/7/8 节点');
+  if(![7,8,9].includes(step))throw new Error('交付版本绑定只用于7/8/9 节点');
   dir=path.resolve(dir);const report=finalDeliveryReport(dir),set=report.reviewSets[step],data=ledger(dir);
   const old=data.approvals.find(a=>a.id===id);
   if(old){if(old.revision!==revision||old.step!==step)throw new Error('同一 approval-id 不能绑定不同交付版本');return {existing:old};}
@@ -356,19 +356,19 @@ export function prepareFinalApproval(dir,{id,step,revision,source,note,openEvide
   if(!source?.trim()||!note?.trim()||!id)throw new Error('交付批准需要实际用户来源、结论及 approval-id');
   if(report.errors.length)throw new Error(`交付决定待核实：${report.errors.join('；')}`);
   if(!set.bindings.length)throw new Error('本节点没有实际产物，沿用既有无产物签批，不制造逐文件验收');
-  if(step===8)requireEditorClosed();
+  if(step===9)requireEditorClosed();
   const artifacts=[],bindings=[];
   for(const binding of set.bindings) {
     if(!binding.snapshot||!binding.path)throw new Error(`审阅产物缺失或不可读：${binding.slot}`);
     let artifact=data.artifacts.find(a=>a.id===binding.artifactId);
-    if(!artifact&&step===8) {
+    if(!artifact&&step===9) {
       const item=report.items.find(i=>i.slot===binding.slot);
       artifact={id:null,slot:binding.slot,path:binding.path,aspect:item.aspect,format:item.format,flavor:item.flavor,contractDigest:binding.contractDigest,technical:{status:'unknown'}};
     }
     if(!artifact)throw new Error(`产物缺少生成来源：${binding.slot}`);
     const changed=!artifact.id||digest(artifact.snapshot)!==digest(binding.snapshot);
     let current=artifact;
-    if(changed&&step!==8)throw new Error(`产物在生成后变化，须重新核实：${binding.path}`);
+    if(changed&&step!==9)throw new Error(`产物在生成后变化，须重新核实：${binding.path}`);
     if(changed) {
       if(!['opened','playback-confirmed'].includes(openEvidence?.status)||!openEvidence.source?.trim())throw new Error('手改草稿需要实际打开/播放检查的明确来源');
       const technical=nativeCheck(binding.path);
@@ -391,7 +391,7 @@ export function commitFinalApproval(dir,prepared) {
   if(!progress(dir).history?.some(h=>h.approvalId===approval.id&&h.step===approval.step))throw new Error('既有流程批准尚未成功存档，不能追加交付验收');
   const current=finalDeliveryReport(dir).reviewSets[approval.step];
   if(current.deliveryRevision!==approval.revision)throw new Error('批准存档期间交付版本变化，未绑定旧审阅');
-  if(approval.step===8)requireEditorClosed();
+  if(approval.step===9)requireEditorClosed();
   for(const a of prepared.artifacts||[])if(!data.artifacts.some(old=>old.id===a.id))data.artifacts.push(a);
   const contract=finalContract(dir);if(!data.contracts.some(c=>c.id===contract.id))data.contracts.push(contract);
   data.approvals.push(approval);
@@ -408,7 +408,7 @@ function acceptance(dir,item,artifact,data,history) {
     if(binding.snapshot&&digest(binding.snapshot)!==digest(item.snapshot))return {acceptance:'changed-after-acceptance',changedFiles:changedEntries(binding.snapshot,item.snapshot),reason:'验收后磁盘文件变化，待复核'};
     return {acceptance:'historical-only',reason:'历史已验收，当前相关版本或要求待核实'};
   }
-  const step=item.kind==='draft'?8:item.aspect===finalContract(dir).mainAspect?6:7;
+  const step=item.kind==='draft'?9:item.aspect===finalContract(dir).mainAspect?7:8;
   return history.some(h=>h.step===step)?{acceptance:'historical-only',reason:'历史已验收，当前版本待核实：缺少确切产物绑定链'}:{acceptance:'pending'};
 }
 

@@ -15,7 +15,7 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
     if (o.aspect !== 'all') return cmdFinal(filmDir, o);
     const { film } = loadFilm(filmDir);
     const stale = staleVariants(readProgress(filmDir));
-    if (stale.length) fail(`${stale.join('、')} 副版已过期：主版在第 6 道重新签批过，先重做第 7 道「调整画幅」并签批，再出全部画幅`);
+    if (stale.length) fail(`${stale.join('、')} 副版已过期：主版在第 7 道重新签批过，先重做第 8 道「调整画幅」并签批，再出全部画幅`);
     for (const aspect of listAspects(film)) {
       log(`\n── ${aspect}${aspect === listAspects(film)[0] ? ' 主版' : ' 副版'} ──`);
       await cmdFinal(filmDir, { ...o, aspect });
@@ -27,10 +27,10 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
     const conflicts=decisionConflicts(ctx,readDecisions(ctx.filmDir));if(conflicts.length)throw new Error(conflicts.join('；'));
     if (!ctx.variant.isMain) {
       if (variantStale(readProgress(filmDir), ctx.variant.aspect)) {
-        fail(`${ctx.variant.aspect} 副版已过期：主版在第 6 道重新签批过，先重做第 7 道「调整画幅」并签批，再出副版成片`);
+        fail(`${ctx.variant.aspect} 副版已过期：主版在第 7 道重新签批过，先重做第 8 道「调整画幅」并签批，再出副版成片`);
       }
       const mainCheck = await checkMainUnchanged(filmDir, { aspect: o.aspect, log });
-      if (mainCheck?.timingChanged) fail('主版时间轴已变化，请先明确重出主版并完成第 6 道成片验收，再导出副版');
+      if (mainCheck?.timingChanged) fail('主版时间轴已变化，请先明确重出主版并完成第 7 道成片验收，再导出副版');
     }
     const formats = o.formats ? String(o.formats).split(',') : ctx.film.export?.formats || ['mp4'];
     const draftOnly=formats.every(f=>f==='jianying');

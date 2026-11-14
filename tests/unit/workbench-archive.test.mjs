@@ -12,12 +12,12 @@ function fixture(t) { const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wka-archiv
 function write(dir,file,value){const dest=path.join(dir,file);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,typeof value==='string'?value:JSON.stringify(value));}
 function contents(dir){return fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>[e.name,e.isDirectory()?contents(path.join(dir,e.name)):fs.readFileSync(path.join(dir,e.name)).toString('base64')]);}
 
-test('新项目工作台八道工序，方案简报与分镜稿归属准确，没有旧固定产物门槛',t=>{
+test('新项目工作台九道工序，方案简报与分镜稿归属准确，没有旧固定产物门槛',t=>{
   const dir=fixture(t);initializeProduction(dir);write(dir,'brief.md','方案简报');write(dir,'story.md','剧本');write(dir,'storyboard.md','分镜稿');
   write(dir,'stills/s01-0.png','process image');write(dir,'review/局部小样/s01.mp4','process clip');
-  const view=captureWorkbench(dir);assert.equal(view.readonly,false);assert.equal(view.stages.length,8);
+  const view=captureWorkbench(dir);assert.equal(view.readonly,false);assert.equal(view.stages.length,9);
   assert.equal(view.stages.find(s=>s.step===2).items.find(i=>i.relativePath==='brief.md').label,'方案简报');
-  assert.equal(view.stages.find(s=>s.step===4).items.find(i=>i.relativePath==='storyboard.md').label,'分镜稿');
+  assert.equal(view.stages.find(s=>s.step===5).items.find(i=>i.relativePath==='storyboard.md').label,'分镜稿');
   assert.ok(view.stages.flatMap(s=>s.items).filter(i=>/stills|局部小样/.test(i.relativePath||'')).every(i=>!i.required));
   assert.equal(view.stages.flatMap(s=>s.items).some(i=>/visual-direction|人声来源|接触表|动态分镜|subtitles/.test(i.relativePath||'')&&i.required),false);
 });
@@ -29,6 +29,17 @@ test('未接入过工作台的旧项目可只读预览现存文件，重复打�
   assert.equal(view.stages.find(s=>s.step===5).decisions[0].note,'历史通过');
   const brief=view.stages.flatMap(s=>s.items).find(i=>i.relativePath==='brief.md');assert.ok(brief?.current);
   assert.equal(fs.readFileSync(workbenchFile(dir,brief.id,brief.current.id).file,'utf8'),'原简报');
+  captureWorkbench(dir);assert.deepEqual(contents(dir),before);
+});
+
+test('flow7 分镜第四步保留为历史档案，不插入人声也不迁移写盘',t=>{
+  const dir=fixture(t);write(dir,'storyboard.md','旧分镜');
+  write(dir,'.wka/state.json',{flow:7,step:4,history:[{step:4,label:'分镜',decision:'approved',note:'原分镜通过'}]});
+  const before=contents(dir),view=captureWorkbench(dir);
+  assert.equal(view.readonly,true);assert.equal(view.flow,7);
+  assert.equal(view.stages.find(s=>s.step===4).label,'分镜');
+  assert.equal(view.stages.find(s=>s.step===4).decisions[0].note,'原分镜通过');
+  assert.equal(view.stages.some(s=>s.gate),false);
   captureWorkbench(dir);assert.deepEqual(contents(dir),before);
 });
 

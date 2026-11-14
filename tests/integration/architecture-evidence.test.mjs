@@ -21,7 +21,7 @@ async function fixture(t) {
   initializeProduction(film);
   for (const dir of ['shots', '.wka', '.cache', 'review']) fs.mkdirSync(path.join(film, dir), { recursive: true });
   fs.writeFileSync(path.join(film, 'shots/s01.js'), 'wk.shot({render(){}});');
-  fs.writeFileSync(path.join(film, 'film.json'), JSON.stringify({ title: 'Evidence', style: 'ink-wash', size: [32, 18], fps: 10, seed: 1, shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }], export: { name: 'out', formats: ['mp4'] } }));
+  fs.writeFileSync(path.join(film, 'film.json'), JSON.stringify({ title: 'Evidence', style: 'ink-wash', size: [32, 18], fps: 10, seed: 1, shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }], audio: { voice_source: 'none' }, export: { name: 'out', formats: ['mp4'] } }));
   fs.writeFileSync(path.join(film, '.wka/decisions.json'), JSON.stringify({ version: 1, ...Object.fromEntries(Object.entries({ delivery: 'video', aspects: ['16:9'] }).map(([key, value]) => [key, { status: 'confirmed', value, source: 'fixture explicit choice' }])) }));
   const final = await import(pathToFileURL(path.join(engine, 'core/final-delivery.mjs')));
   const output = path.join(film, 'out.mp4');
@@ -37,10 +37,10 @@ test('moving film loading does not allow old delivery evidence to survive implem
   const f = await fixture(t), moved = path.join(f.engine, 'core/film-context.mjs');
   assert.ok(fs.existsSync(moved), 'film loading has not yet been extracted');
   const first = f.save(); assert.equal(f.save().id, first.id, 'unchanged repeated generation keeps its identity');
-  const revision = f.final.finalDeliveryReport(f.film).reviewSets[6].deliveryRevision;
-  const approval = f.final.prepareFinalApproval(f.film, { id: 'approved', step: 6, revision, source: 'fixture explicit approval', note: 'approved' });
+  const revision = f.final.finalDeliveryReport(f.film).reviewSets[7].deliveryRevision;
+  const approval = f.final.prepareFinalApproval(f.film, { id: 'approved', step: 7, revision, source: 'fixture explicit approval', note: 'approved' });
   const state = path.join(f.film, '.wka/state.json');
-  fs.writeFileSync(state, JSON.stringify({ flow: 7, step: 6, history: [{ step: 6, approvalId: 'approved' }] }));
+  fs.writeFileSync(state, JSON.stringify({ flow: 8, step: 7, history: [{ step: 7, approvalId: 'approved' }] }));
   f.final.commitFinalApproval(f.film, approval);
   assert.equal(f.final.finalDeliveryReport(f.film).items[0].acceptance, 'accepted');
   const ledger = path.join(f.film, '.wka/final-delivery.json'), saved = fs.readFileSync(ledger), history = fs.readFileSync(state);

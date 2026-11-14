@@ -27,7 +27,7 @@ test('invalid signoff step releases its lock and retains the recovery command', 
   const result = f.run(args);
   assert.equal(result.status, 1, result.stderr);
   assert.equal(result.stdout, '');
-  assert.equal(result.stderr, '✗ --step 取 1–8\n');
+  assert.equal(result.stderr, '✗ --step 取 1–9\n');
   assert.deepEqual(JSON.parse(fs.readFileSync(f.active)), { argv: args });
   assert.equal(fs.existsSync(f.lock), false, 'controlled validation failure must release its lock');
 });

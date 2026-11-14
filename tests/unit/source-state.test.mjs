@@ -139,7 +139,7 @@ test('stage execution writes the source identity observed after await, never an 
 
 test('an unstable observation records a failed stage and preserves user approval bytes',async t=>{
   const dir=fixture(t),out=path.join(dir,'out'),state=path.join(dir,'.wka/state.json');fs.mkdirSync(path.dirname(state),{recursive:true});
-  const approval=JSON.stringify({flow:7,step:6,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
+  const approval=JSON.stringify({flow:8,step:7,history:[],approved:{mainId:'keep'}});fs.writeFileSync(state,approval);
   const readdir=fs.readdirSync;let changed=false;
   t.mock.method(fs,'readdirSync',function(file,...args){const entries=readdir.call(this,file,...args);if(file===path.join(dir,'audio')&&!changed){changed=true;fs.writeFileSync(path.join(dir,'brief.md'),'brief two');}return entries;});
   await assert.rejects(runStage(dir,{stage:'bench',aspect:'16:9',signature:'s',log:()=>{},run:async()=>{fs.writeFileSync(out,'output');return {value:out,outputs:[out]};}}),/变化|changed|观察|observation/i);

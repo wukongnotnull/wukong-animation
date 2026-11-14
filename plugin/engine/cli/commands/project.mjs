@@ -105,7 +105,7 @@ export function projectCommands({ pos, opt, log, aspectOpt }) {
         const usage = filmUsage(f.dir);
         if (usage.length) log(`  占用：${usage.map(item => `${item.name} ${formatBytes(item.bytes)}`).join(' · ')}`);
         if (f.last) log(`  最近：${f.last.at.slice(0, 16).replace('T', ' ')}  ${f.last.note}`);
-        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 6 道重新签批过，要复核第 7 道「调整画幅」`);
+        for (const a of f.staleVariants) log(`  ! ${a} 副版已过期：主版在第 7 道重新签批过，要复核第 8 道「调整画幅」`);
       }
       return exitCode;
     }

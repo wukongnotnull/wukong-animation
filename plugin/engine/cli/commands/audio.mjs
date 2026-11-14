@@ -29,9 +29,9 @@ export function audioCommands({ pos, opt, log, aspectOpt }) {
   return {
     'align-voice': async () => {
       if (!pos[0]) fail('用法：wka align-voice <片目录> [--words] [--prepare --binary 路径 --model 路径 | --status | --import 时间点.json --confirm "用户确认说明"]');
-      const words = !!opt('words'), film = () => loadFilm(pos[0], { requireShots: false });
+      const words = !!opt('words'), film = () => loadFilm(pos[0], { requireShots: false, requireTimeline: false });
       if (opt('status')) {
-        const result = words ? wordTimelineStatus(film()) : voiceAlignmentStatus(pos[0]);
+        const result = words ? wordTimelineStatus(film(), { checkTotal: false }) : voiceAlignmentStatus(pos[0]);
         log(JSON.stringify(result, null, 2));return result.ready ? 0 : 2;
       }
       if (opt('prepare')) { const result = prepareVoiceAlignment(pos[0], { binary: opt('binary'), model: opt('model') });log(JSON.stringify(result, null, 2));return result.ready ? 0 : 2; }

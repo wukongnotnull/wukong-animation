@@ -91,7 +91,7 @@ function reveal(file) {
 }
 async function signoffExisting({ dir, step, note, id, openStatus }) {
   const args = ['signoff', dir, note, '--step', String(step), '--approval-id', id], logs = [];
-  if ([6, 7, 8].includes(step)) {
+  if ([7, 8, 9].includes(step)) {
     const report = finalDeliveryReport(dir), set = report.reviewSets[step];
     if (set?.bindings.length) args.push('--delivery-revision', set.deliveryRevision);
     if (openStatus) args.push('--open-status', openStatus);

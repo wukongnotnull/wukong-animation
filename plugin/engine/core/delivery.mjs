@@ -10,11 +10,13 @@ export { fileLink, readDecisions, decisionConflicts } from './delivery-inputs.mj
 import { aspectOf } from './variants.mjs';
 import { readProgress, assertActiveProduction } from './state.mjs';
 import { parseArgs } from './command-args.mjs';
+import { voiceReviewStatus } from './voice-review.mjs';
+import { scopedPath } from './workbench-catalog.mjs';
 export { finalDeliveryReport, writeFinalDelivery } from './final-delivery.mjs';
 
 function expectedFiles(dir,ctx,aspect) {
   const active=readJson(path.join(dir,'.cache/active-command.json'));
-  const {cmd,opt}=parseArgs(active?.argv||(readProgress(dir).step>=6?['final',dir]:[]));
+  const {cmd,opt}=parseArgs(active?.argv||(readProgress(dir).step>=7?['final',dir]:[]));
   const proxy=!!opt('proxy'),review=name=>reviewFile(dir,ctx.variant.review(name));
   if(cmd==='soundtrack')return ctx.film.audio?.build||ctx.film.audio?.tracks?.length||(ctx.film.audio?.voice_source!=='none'&&ctx.film.audio?.voices?.length)?[reviewFile(dir,'声轨.m4a')]:[];
   if(cmd==='animatic')return [review('动态分镜.mp4'),review('接触表.jpg')];
@@ -32,9 +34,30 @@ function expectedFiles(dir,ctx,aspect) {
 }
 
 const kind=file=>/声轨/.test(file)?'声轨':/接触表|sheet/.test(file)?'接触表':/动态分镜/.test(file)?'动态分镜':/\.json$/.test(file)?'检查结果':/\.(mp4|gif|webm)$/.test(file)?'视频':/\.(png|jpg)$/.test(file)?'图片':fs.statSync(file).isDirectory()?'草稿':'报告';
+function voiceDeliveryReport(dir, film, host, required) {
+  const review = voiceReviewStatus(dir), errors = [...review.issues];
+  const files = [...(film.audio?.voices || []).map(voice => ({ file: voice.file, kind: '人声录音' })),
+    { file: 'story.md', kind: '剧本' }, { file: 'review/台词/台词定位.md', kind: '台词定位' }];
+  const items = files.map(({ file, kind }) => {
+    const absolute = scopedPath(dir, file), exists = fs.existsSync(absolute);
+    const status = !exists ? 'missing' : review.ready ? 'current' : 'stale';
+    if (!exists) errors.push(`必需人声交付物缺失：${file}`);
+    return { path: absolute, kind, status, aspect: null, proxy: false, stage: 'voice', openStatus: 'not-tested',
+      ...(status === 'current' && host !== 'generic' ? { link: fileLink(absolute, { host }) } : {}) };
+  });
+  for (const file of required) {
+    const absolute = scopedPath(dir, file);
+    if (!items.some(item => item.path === absolute)) items.push({ path: absolute, kind: '附加必需项', status: fs.existsSync(absolute) ? 'unverified' : 'missing', openStatus: 'not-tested' });
+    if (items.find(item => item.path === absolute)?.status !== 'current') errors.push(`必需项未核实：${file}`);
+  }
+  return { version: 1, ok: !errors.length, aspect: null, host, items, errors, decisions: readDecisions(dir),
+    links: items.map(item => item.link).filter(Boolean), hostValidation: '未实际打开的录音均为 not-tested；存在性不代表已经试听或签批' };
+}
+
 export function deliveryReport(dir,{aspect=null,host='codex',required=[]}={}) {
   if(!['codex','claude','generic'].includes(host))throw new Error('host 应为 codex、claude 或 generic');
-  dir=path.resolve(dir);const ctx=loadFilm(dir,{requireShots:false,aspect:aspect==='all'?null:aspect});
+  dir=path.resolve(dir);const ctx=loadFilm(dir,{requireShots:false,requireTimeline:false,aspect:aspect==='all'?null:aspect});
+  if ((readProgress(dir).step === 4 || !ctx.shots.length) && ctx.film.audio?.voice_source !== 'none') return voiceDeliveryReport(dir, ctx.film, host, required);
   const selected=aspect==='all'?null:ctx.variant.aspect,items=[],seen=new Set();
   const add=(file,info={})=>{
     file=path.resolve(file);if(seen.has(file)||file.startsWith(path.join(dir,'.cache')+path.sep))return;seen.add(file);

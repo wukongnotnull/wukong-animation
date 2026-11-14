@@ -40,6 +40,24 @@ test('direct address serves films and immutable media without browser credential
   assert.match(file.headers.get('content-security-policy'), /sandbox/);
   assert.equal(listing.headers.get('set-cookie'), null);
 });
+test('HTTP report exposes complete voice recordings in stage four and streams their immutable bytes', async t => {
+  const f = await fixture(t), bytes = Buffer.from('complete recording fixture');
+  fs.writeFileSync(path.join(f.film, 'full.wav'), bytes);
+  fs.writeFileSync(path.join(f.film, 'film.json'), JSON.stringify({ audio: { voice_source: 'user', voices: [{ cue: 'v1', file: 'full.wav', at: 0, text: '原稿' }] } }));
+  fs.mkdirSync(path.join(f.film, 'review/台词'), { recursive: true });
+  fs.writeFileSync(path.join(f.film, 'review/台词/台词定位.md'), '# 录音内句段');
+  fs.writeFileSync(path.join(f.film, 'review/台词/逐词时间表.md'), '# 可选参考');
+  const report = await (await f.request('/api/report?film=' + f.id)).json(), stage = report.stages.find(s => s.step === 4);
+  assert.equal(report.stages.length, 9);
+  const recording = stage.items.find(i => i.relativePath === 'full.wav');
+  assert.equal(recording.required, true); assert.equal(recording.kind, 'audio');
+  assert.equal(stage.items.find(i => i.relativePath.endsWith('台词定位.md')).required, true);
+  assert.equal(stage.items.find(i => i.relativePath.endsWith('逐词时间表.md')).required, false);
+  fs.writeFileSync(path.join(f.film, 'full.wav'), 'later replacement');
+  const response = await f.request(`/api/file?film=${f.id}&artifact=${recording.id}&version=${recording.current.id}`);
+  assert.equal(response.status, 200); assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+});
+
 test('source checks reject foreign or missing metadata and cannot be bypassed by legacy tokens', async t => {
   const f = await fixture(t), valid = { Origin: f.server.origin, 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' };
   const invalid = [
@@ -203,7 +221,7 @@ test('CLI capture and pending work from a copied plugin without opening a server
   const run = args => spawnSync(process.execPath, [path.join(copy, 'plugin/engine/bin/wka.mjs'), ...args], { cwd: f.root, encoding: 'utf8', timeout: 10000 });
   const capture = run(['workbench', f.film, '--capture']);
   assert.equal(capture.status, 0, capture.stderr);
-  assert.equal(JSON.parse(capture.stdout).stages.length, 8);
+  assert.equal(JSON.parse(capture.stdout).stages.length, 9);
   const pending = run(['workbench', f.film, '--pending']);
   assert.equal(pending.status, 0, pending.stderr); assert.ok(Array.isArray(JSON.parse(pending.stdout).notes));
 });

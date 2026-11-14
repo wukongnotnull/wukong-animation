@@ -7,6 +7,7 @@ import { assertCompatibleProgress, assertActiveProduction, inspectProduction, FL
 import { lockProduction } from './operations.mjs';
 import { workbenchCatalog, workbenchDependencies, workbenchJson, scopedPath } from './workbench-catalog.mjs';
 import { verifyManifest } from './delivery-manifest.mjs';
+import { voiceReviewStatus } from './voice-review.mjs';
 
 import { archiveWorkbench, archiveFile } from './workbench-archive.mjs';
 
@@ -112,10 +113,11 @@ function report(dir, data, catalog) {
     return { ...a, current, revision, checked, notes, problem, category: a.availability === 'historical' ? 'history' : a.required ? 'formal' : 'reference',
       freshness: current && current.dependencies !== a.dependencies && !checked ? 'needs-review' : 'current' };
   });
+  const voice = voiceReviewStatus(dir);
   const stages = Object.entries(PRODUCTION_STEPS).map(([number, label]) => {
     const step = Number(number), chosen = items.filter(i => i.step === step);
     const formal = chosen.filter(i => i.required), active = formal.filter(i => i.availability !== 'historical');
-    const revision = digest({ step, items: active.map(i => i.revision), contract: step >= 6 ? catalog.contract?.id : null,
+    const revision = digest({ step, items: active.map(i => i.revision), voice: step === 4 ? voice.signature : null, contract: step >= 7 ? catalog.contract?.id : null,
       blockingNotes: formal.flatMap(i => i.notes.filter(n => n.blocking).map(n => [n.id, n.status, n.repair?.id || null])) });
     const decisions = data.decisions.filter(d => d.step === step), latest = decisions.at(-1);
     const blocks = [];
@@ -126,17 +128,22 @@ function report(dir, data, catalog) {
     }
     for (const item of formal) if (item.notes.some(n => n.blocking && !n.resolved)) blocks.push(`${item.label}：有未解决或待复验的阻塞意见`);
     if (!active.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的正式交付物，请在对话中补齐或登记');
-    if (step >= 6 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
+    if (step === 4) blocks.push(...voice.issues);
+    if (step >= 7 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
     const progress = workbenchJson(scopedPath(dir, '.wka/state.json'), { history: [] });
     const reviewCommit = verifyManifest(dir);
     reviewCommit.short = reviewCommit.ok ? '已提交' : reviewCommit.reason?.includes('已变化') ? '已变化' : '未提交';
     reviewCommit.ready = reviewCommit.ok;
     const historicalApproval = (progress.history || []).some(h => h.step === step && h.decision === 'approved');
     let status = catalog.notApplicable.has(step) && !active.length && !blocks.length ? 'not-applicable' : 'pending';
-    if (historicalApproval && !latest) status = 'approved';
-    else if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length && reviewCommit.ready ? 'approved' : 'needs-review';
+    if (step === 4 && status !== 'not-applicable' && !latest) {
+      if (voice.approved) status = 'approved';
+      else if (historicalApproval || progress.approved?.voice) status = 'needs-review';
+    } else if (historicalApproval && !latest) status = 'approved';
+    else if (latest?.decision === 'approved') status = latest.revision === revision && !blocks.length && (step === 4 ? voice.approved : reviewCommit.ready) ? 'approved' : 'needs-review';
     else if (latest?.decision === 'changes-requested' && latest.revision === revision) status = 'changes-requested';
     if (status === 'pending' && active.some(i => i.freshness === 'needs-review')) status = 'needs-review';
+    if (catalog.notApplicable.has(step) && !active.length && !blocks.length) status = 'not-applicable';
     return { step, label, gate: REVIEW_GATES[step] || null, revision, status, items: chosen, blocks, decisions, reviewCommit };
   });
   return { version: 1, readonly: false, flow: FLOW, flowLabel: '制作流程', ok: !items.some(i => i.availability === 'unreadable'), dir, title: catalog.film.title || path.basename(dir), stages, shots: catalog.shots,
@@ -164,7 +171,7 @@ export function captureWorkbenchLocked(dir, options = {}) {
 
 export function registerWorkbenchArtifact(dir, { file, step, label, depends, required = true }) {
   return locked(dir, root => {
-    if (!file || !Number.isInteger(step) || !PRODUCTION_STEPS[step]) throw new Error('登记需要文件路径及 1–8 的工序');
+    if (!file || !Number.isInteger(step) || !PRODUCTION_STEPS[step]) throw new Error('登记需要文件路径及 1–9 的工序');
     if (depends !== undefined && (!Array.isArray(depends) || depends.some(d => typeof d !== 'string'))) throw new Error('来源应为路径列表');
     for (const rel of depends || []) scopedPath(root, rel);
     const absolute = path.resolve(root, file), relative = path.relative(root, absolute);
@@ -303,6 +310,7 @@ export async function decideWorkbenchStage(dir, request, signoff) {
     if (decision === 'approved') {
       if (typeof signoff !== 'function') throw new Error('签批服务不可用，未批准');
       result = await signoff({ dir, step, note, id, openStatus: request.openStatus });
+      if (step === 4 && !voiceReviewStatus(dir).approved) throw new Error('人声签批未保存或已过期，请核实当前录音与定位');
       if (capture(dir).stages.find(s => s.step === step).revision !== revision) throw new Error('存档期间版本变化，请核实后重新审阅');
     }
     const data = ledger(dir), record = { id, step, revision, decision, note: note.trim(), at: now(), bindings: stage.items.map(i => ({ artifactId: i.id, versionId: i.current?.id, revision: i.revision })) };

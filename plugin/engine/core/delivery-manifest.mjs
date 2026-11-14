@@ -4,12 +4,14 @@ import { hashFile } from './file-hash.mjs';
 import { loadFilm } from './film-context.mjs';
 import { resolveVariant, suffixOf } from './variants.mjs';
 import { reviewFile, finalFile } from './layout.mjs';
-import { assertActiveProduction } from './state.mjs';
+import { assertActiveProduction, LAST_STEP, PRODUCTION_ROLES } from './state.mjs';
+import { scopedPath } from './workbench-catalog.mjs';
 
 const TEXT = {
   2: ['brief.md'],
   3: ['brief.md', 'story.md'],
-  4: ['brief.md', 'story.md', 'storyboard.md'],
+  4: ['brief.md', 'story.md'],
+  5: ['brief.md', 'story.md', 'storyboard.md'],
 };
 export const MANIFEST = 'review/交付/delivery-manifest.json';
 
@@ -52,14 +54,21 @@ export function buildManifest(dir, step) {
   assertActiveProduction(dir);
   dir = path.resolve(dir);
   const stepNumber = Number(step);
-  if (!Number.isInteger(stepNumber) || stepNumber < 2 || stepNumber > 8) throw new Error('待审工序无效');
+  if (!Number.isInteger(stepNumber) || stepNumber < 2 || stepNumber > LAST_STEP) throw new Error('待审工序无效');
   let tracked = [], media = [];
-  if (stepNumber <= 4) tracked = ['film.json', ...TEXT[stepNumber]].filter(file => exists(dir, file));
+  if (stepNumber === PRODUCTION_ROLES.voice) {
+    const ctx = loadFilm(dir, { requireShots: false, requireTimeline: false });
+    const recordings = (ctx.film.audio?.voices || []).map(voice => relative(dir, scopedPath(dir, voice.file)));
+    const evidence = ['.wka/voice-alignment.json', '.wka/word-timeline.json', 'review/台词/台词定位.md', 'review/台词/逐词时间表.md'];
+    tracked = ['film.json', ...TEXT[4], ...recordings, ...evidence].filter(file => exists(dir, file));
+    media = [...recordings, ...evidence].filter(file => exists(dir, file));
+  }
+  else if (stepNumber <= PRODUCTION_ROLES.storyboard) tracked = ['film.json', ...TEXT[stepNumber]].filter(file => exists(dir, file));
   else if (fs.existsSync(path.join(dir, 'film.json'))) {
     const ctx = loadFilm(dir, { requireShots: false });
-    tracked = [...TEXT[4].filter(file => exists(dir, file)), ...sourceFiles(dir, ctx.film)];
-    media = stepNumber === 5 ? generated(dir, ctx, true) : stepNumber === 6 ? generated(dir, ctx, false) : [];
-    if (stepNumber === 7) {
+    tracked = [...TEXT[5].filter(file => exists(dir, file)), ...sourceFiles(dir, ctx.film)];
+    media = stepNumber === PRODUCTION_ROLES.proxy ? generated(dir, ctx, true) : stepNumber === PRODUCTION_ROLES.final ? generated(dir, ctx, false) : [];
+    if (stepNumber === PRODUCTION_ROLES.variant) {
       for (const aspect of Object.keys(ctx.film.variants || {})) {
         const variant = resolveVariant(ctx, aspect);
         media.push(...['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md'].map(name => relative(dir, reviewFile(dir, variant.review(name)))));

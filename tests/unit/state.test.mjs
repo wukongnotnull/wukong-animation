@@ -8,7 +8,7 @@ import * as stateApi from '../../plugin/engine/core/state.mjs';
 
 test('同一批准重试只提交一次历史与定稿身份，输入变化拒绝',()=>{
   assert.equal(typeof stateApi.commitSignoff,'function');
-  const {film}=project();const record={id:'user-turn-1',step:6,note:'明确通过',signature:'current',main:{s01:'hash'}};
+  const {film}=project();const record={id:'user-turn-1',step:7,note:'明确通过',signature:'current',main:{s01:'hash'}};
   const first=stateApi.commitSignoff(film,record),identity=first.approved.mainId;
   stateApi.commitSignoff(film,record);
   assert.equal(readProgress(film).history.length,1);assert.equal(readProgress(film).approved.mainId,identity);
@@ -41,15 +41,31 @@ const OLD_HISTORY = [
   { step: 12, label: '终检与交付', gate: '⑧终审', note: '成片 v4 终审通过', sha: 'abc', at: '2026-10-26T01:03:00.000Z' },
 ];
 
+test('flow 7 stays read-only without renumbering its stages or inheriting approvals', t => {
+  const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const state = { flow: 7, step: 8, history: [{ step: 6, label: '制作成片', approvalId: 'old-final' }, { step: 8, label: '导出剪映草稿' }], approved: { mainId: 'legacy-main' } };
+  const raw = JSON.stringify(state, null, 2); fs.writeFileSync(stateFile(film), raw);
+  assert.deepEqual(migrateProgress(state), { state, migrated: false, readonly: true });
+  assert.deepEqual(readProgress(film), state);
+  assert.equal(stateApi.inspectProduction(film).mode, 'archive');
+  for (const run of [() => stateApi.initializeProduction(film), () => recordProgress(film, { step: 7 }),
+    () => stateApi.recordApproval(film, { main: {} }), () => stateApi.commitSignoff(film, { id: 'old-final', step: 6 })]) {
+    assert.throws(run, { code: 'WKA_LEGACY_READONLY', flow: 7, supportedFlow: 8 });
+    assert.equal(fs.readFileSync(stateFile(film), 'utf8'), raw);
+  }
+  const [archived] = listProductions(dir);
+  assert.equal(archived.readonly, true); assert.equal(archived.next, null); assert.equal(archived.step, 8);
+});
+
 test('future flows are never reinterpreted or written, including approval retries', t => {
   const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
-  for (const flow of [8, 99]) {
+  for (const flow of [9, 99]) {
     const st = { flow, step: 60, history: [{ step: 60, label: 'future', approvalId: 'same' }], approved: { mainId: 'keep' }, extra: ['keep'] };
     const before = JSON.stringify(st, null, 3); fs.writeFileSync(stateFile(film), before);
     for (const run of [() => migrateProgress(st), () => readProgress(film), () => recordProgress(film, { step: 1 }),
       () => stateApi.recordApproval(film, { main: {} }), () => stateApi.commitSignoff(film, { id: 'same', step: 1 })]) {
-      assert.throws(run, { code: 'WKA_FLOW_TOO_NEW', flow, supportedFlow: 7 });
+      assert.throws(run, { code: 'WKA_FLOW_TOO_NEW', flow, supportedFlow: 8 });
       assert.equal(JSON.stringify(st, null, 3), before);
       assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
     }
@@ -58,7 +74,7 @@ test('future flows are never reinterpreted or written, including approval retrie
 
 test('explicit invalid flows and corrupt states fail; only absent state/flow is historical', t => {
   const { dir, film } = project(); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  assert.deepEqual(readProgress(film), { flow: 7, step: 0, history: [] });
+  assert.deepEqual(readProgress(film), { flow: 8, step: 0, history: [] });
   assert.equal(fs.existsSync(stateFile(film)), true);
   fs.mkdirSync(path.dirname(stateFile(film)), { recursive: true });
   for (const flow of [null, 0, -1, '5', '6', 1.5, true, [], {}]) {
@@ -84,7 +100,7 @@ test('compatibility inspection is read only for legacy state and mixed lists iso
   assert.equal(fs.readFileSync(stateFile(film), 'utf8'), before);
   const future = path.join(dir, 'films', 'future'); fs.mkdirSync(path.join(future, '.wka'), { recursive: true });
   fs.writeFileSync(path.join(future, 'brief.md'), 'future brief');
-  const raw = '{ "flow": 8, "history": [{"step": 60}] }'; fs.writeFileSync(stateFile(future), raw);
+  const raw = '{ "flow": 9, "history": [{"step": 60}] }'; fs.writeFileSync(stateFile(future), raw);
   const list = listProductions(dir), incompatible = list.find(f => f.name === 'future');
   assert.equal(list.find(f => f.name === '寒江').next, null);
   assert.equal(incompatible.compatible, false);

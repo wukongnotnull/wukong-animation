@@ -29,7 +29,7 @@ function film(pipeline, count = 3, duration = 0.34, fps = 10) {
     fs.writeFileSync(path.join(dir, 'shots', id + '.' + ext), source);
     return { id, file: 'shots/' + id + '.' + ext, duration };
   });
-  fs.writeFileSync(path.join(dir,'film.json'), JSON.stringify({title:'时序', style:'timing-' + pipeline, size:[32,18],fps,seed:1,shots,variants:{'9:16':{}}}));
+  fs.writeFileSync(path.join(dir,'film.json'), JSON.stringify({title:'时序', style:'timing-' + pipeline, size:[32,18],fps,seed:1,shots,audio:{voice_source:'none'},variants:{'9:16':{}}}));
   return dir;
 }
 function frames(file) {
@@ -95,7 +95,7 @@ test('旧定稿帧长变化时，副版检查保留主版缓存与快照', {time
   const dir = film('browser');
   try {
     assert.equal(cli('render',dir).status,0);
-    const signed = cli('signoff',dir,'主版确认','--step','6');
+    const signed = cli('signoff',dir,'主版确认','--step','7');
     assert.equal(signed.status,0,signed.stderr);
     const manifest = fs.readFileSync(path.join(dir,'.cache','16x9','manifest.json'));
     const snapshot = fs.readFileSync(path.join(dir,'.wka','approved','s01.mp4'));
@@ -165,9 +165,9 @@ test('零帧镜头和小数fps拒绝，不改工程或启动渲染', () => {
 test('没有时间轴证据不能记录成片终审签批', () => {
   const dir=film('browser');
   try {
-    const r=cli('signoff',dir,'未经渲染的终审','--step','6');
+    const r=cli('signoff',dir,'未经渲染的终审','--step','7');
     assert.notEqual(r.status,0);
     assert.match(r.stderr,/时间轴未验证/);
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','state.json'))),{flow:7,step:0,history:[]});
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'.wka','state.json'))),{flow:8,step:0,history:[]});
   } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

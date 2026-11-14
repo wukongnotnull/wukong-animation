@@ -54,7 +54,7 @@ test('a truncated shot manifest recovers on rerun without changing protected fil
   for (const [rel, body] of Object.entries({
     'audio/original.wav': 'original audio',
     '.wka/approved/s01.mp4': 'approved snapshot', '.cache/9x16/manifest.json': '{"shots":{}}',
-    '.wka/state.json': '{"flow":7,"step":0,"history":[]}',
+    '.wka/state.json': '{"flow":8,"step":0,"history":[]}',
     'assets/reference.txt': 'reference', 'review/approved.mp4': 'reviewed video', 'out.mp4': 'delivered video',
   })) {
     const file = path.join(dir, rel);

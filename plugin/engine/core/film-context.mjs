@@ -9,10 +9,11 @@ import { resolveVariant, overrideShotPath } from './variants.mjs';
 import { assertActiveProduction } from './state.mjs';
 
 /**
- * @param {{requireShots?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
+ * @param {{requireShots?: boolean, requireTimeline?: boolean, aspect?: string|null}} [o] requireShots: false 时不检查镜头文件是否存在（声轨这一步还没画镜头）；
+ *   requireTimeline: false 用于独立录音工序，允许空镜头且不检查镜头文件；默认要求有效非空镜头时间轴。
  *   aspect: 要处理的画幅，缺省为主版。副版换成副版尺寸、优先用覆盖镜头文件 sNN.<后缀>.<扩展名>
  */
-export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
+export function loadFilm(filmDir, { requireShots = true, requireTimeline = true, aspect = null } = {}) {
   assertActiveProduction(filmDir);
   filmDir = path.resolve(filmDir);
   const file = path.join(filmDir, 'film.json');
@@ -23,6 +24,7 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   if (rawFilm.audio?.voice_source === 'ai' || (rawFilm.audio?.voices || []).some(v => v.voice || v.rate || v.pitch)) throw new Error('新制作流程仅使用用户提供的人声，不支持 AI 人声或自动变速。');
   const errs = validate('film', rawFilm, 'film.json');
   if (errs.length) throw new Error('film.json 校验失败:\n  ' + errs.join('\n  '));
+  if (requireTimeline && !rawFilm.shots.length) throw new Error('制作需要有效非空镜头时间轴，请先完成镜头编排');
   const ids = new Set();
   for (const shot of rawFilm.shots) {
     if (ids.has(shot.id)) throw new Error(`film.json 镜头编号重复：${shot.id}；请修改编号后重试`);
@@ -42,7 +44,7 @@ export function loadFilm(filmDir, { requireShots = true, aspect = null } = {}) {
   let t = 0;
   const shots = film.shots.map((s) => {
     const shot = { ...s, start: t, path: overrideShotPath(path.join(filmDir, s.file), variant.isMain ? null : variant.suffix) };
-    if (requireShots && !fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
+    if (requireTimeline && requireShots && !fs.existsSync(shot.path)) throw new Error(`镜头 ${s.id} 的文件不存在: ${s.file}`);
     t += s.duration;
     return shot;
   });

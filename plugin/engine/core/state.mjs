@@ -5,16 +5,17 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { atomicJson } from './evidence.mjs';
 
-/** 唯一在用的八道工序；旧项目只读，不保留旧制作流程。 */
+/** 唯一在用的九道工序；旧项目只读，不保留旧制作流程。 */
 export const PRODUCTION_STEPS = {
-  1: '制作准备', 2: '确定方案', 3: '编写剧本', 4: '规划镜头',
-  5: '制作小样', 6: '制作成片', 7: '调整画幅', 8: '导出剪映草稿',
+  1: '制作准备', 2: '确定方案', 3: '编写剧本', 4: '制作人声', 5: '规划镜头',
+  6: '制作小样', 7: '制作成片', 8: '调整画幅', 9: '导出剪映草稿',
 };
-export const LAST_STEP = 8;
-export const REVIEW_GATES = { 2: '①方案简报', 3: '②剧本', 4: '③分镜稿', 5: '④小样', 6: '⑤成片', 7: '⑥调整画幅', 8: '⑦剪映草稿' };
-export const FLOW = 7;
-export const PRODUCTION_ROLES = { storyboard: 4, proxy: 5, final: 6, variant: 7, draft: 8 };
-export const PRODUCTION_DELIVERABLES = { 1: '环境检查结果', 2: '方案简报', 3: '剧本', 4: '分镜稿', 5: '小样视频', 6: '成片视频', 7: '画幅成片', 8: '剪映草稿' };
+export const LAST_STEP = 9;
+export const REVIEW_GATES = { 2: '①方案简报', 3: '②剧本', 4: '③人声', 5: '④分镜稿', 6: '⑤小样', 7: '⑥成片', 8: '⑦调整画幅', 9: '⑧剪映草稿' };
+export const FLOW = 8;
+export const PRODUCTION_ROLES = { voice: 4, storyboard: 5, proxy: 6, final: 7, variant: 8, draft: 9 };
+export const PRODUCTION_DELIVERABLES = { 1: '环境检查结果', 2: '方案简报', 3: '剧本', 4: '人声录音与台词定位', 5: '分镜稿', 6: '小样视频', 7: '成片视频', 8: '画幅成片', 9: '剪映草稿' };
+export const hasNoVoice = film => film.audio?.voice_source === 'none' && !(film.audio?.voices || []).length;
 const HISTORY_FILES = ['brief.md', 'film.json', '.wka/workbench.json', '.wka/final-delivery.json', '.wka/pending-approval.json', '.wka/decisions.json', '.wka/operations.json', '.cache/operations.json'];
 const fileOf = dir => path.join(path.resolve(dir), '.wka', 'state.json');
 
@@ -105,19 +106,21 @@ export function nextProductionStep(filmDir, step) {
   const film = fs.existsSync(filmFile) ? JSON.parse(fs.readFileSync(filmFile, 'utf8')) : {};
   const decisions = fs.existsSync(path.join(filmDir, '.wka/decisions.json')) ? JSON.parse(fs.readFileSync(path.join(filmDir, '.wka/decisions.json'), 'utf8')) : {};
   const excluded = new Set();
-  if (!Object.keys(film.variants || {}).length) excluded.add(7);
-  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video') excluded.add(8);
+  if (hasNoVoice(film)) excluded.add(PRODUCTION_ROLES.voice);
+  if (!Object.keys(film.variants || {}).length) excluded.add(PRODUCTION_ROLES.variant);
+  if (decisions.delivery?.status === 'confirmed' && decisions.delivery.value === 'video') excluded.add(PRODUCTION_ROLES.draft);
   let next = Number(step) + 1;
   while (excluded.has(next)) next += 1;
   return next > LAST_STEP ? null : next;
 }
-export function commitSignoff(filmDir, { id, step, note, signature, main = null, variants = null, decision = 'approved', reviewSha = null, advanced = undefined }) {
+export function commitSignoff(filmDir, { id, step, note, signature, main = null, variants = null, voice = null, decision = 'approved', reviewSha = null, advanced = undefined }) {
   const st = assertActiveProduction(filmDir), number = checkedStep(step, st.step), old = st.history.find(h => h.approvalId === id);
   if (old) {
     if (old.signature !== signature || old.step !== number || old.note !== note) throw new Error('同一批准对应的输入或结论发生变化，不一致，需核实当前审阅');
     return st;
   }
   let approved = st.approved || {};
+  if (voice && decision === 'approved') approved = { ...approved, voice: { ...voice, approvalId: id } };
   if (main) approved = { ...approved, main, mainId: crypto.randomUUID() };
   if (variants) approved = { ...approved, variants: { ...approved.variants, ...Object.fromEntries(Object.entries(variants).map(([aspect, shots]) => [aspect, { shots, main: approved.main || null }])) } };
   const now = new Date().toISOString(), destination = decision === 'approved' ? Math.max(st.step, advanced === undefined ? number : (advanced ?? st.step)) : st.step;
@@ -128,7 +131,7 @@ export function commitSignoff(filmDir, { id, step, note, signature, main = null,
 
 const sameHashes = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 
-/** 副版签批之后主版又在第 6 道签批过、且主版镜头哈希变了：副版过期，要重做第 7 道。没签批过的副版不算过期。 */
+/** 副版签批之后主版又在第 7 道签批过、且主版镜头哈希变了：副版过期，要重做第 8 道。没签批过的副版不算过期。 */
 export function variantStale(st, aspect) {
   const v = st.approved?.variants?.[aspect];
   return !!v && !sameHashes(v.main, st.approved.main);
@@ -149,7 +152,7 @@ export function listProductions(projectDir = '.') {
       const film = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { title: d.name, style: '未定' };
       const next = identity.readonly || st.step >= LAST_STEP ? null : st.step + 1;
       return { name: d.name, dir, title: film.title || d.name, style: film.style || '未定', flow: identity.flow,
-        readonly: identity.readonly, flowLabel: identity.readonly ? '历史项目（只读）' : '八道制作流程',
+        readonly: identity.readonly, flowLabel: identity.readonly ? '历史项目（只读）' : '九道制作流程',
         step: st.step, next, nextLabel: identity.readonly ? '历史留档，续作请新建项目' : next ? PRODUCTION_STEPS[next] : '已完成',
         last: st.history?.at(-1), updated: st.updated, migrated: false, staleVariants: identity.readonly ? [] : staleVariants(st) };
     });

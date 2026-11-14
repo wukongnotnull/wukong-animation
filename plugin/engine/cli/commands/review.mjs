@@ -16,12 +16,11 @@ import { writeFinalDelivery, formatFinalDelivery, recordFinalEvidence, recheckEn
 import { digest, readJson, atomicJson, treeEvidence } from '../../core/evidence.mjs';
 import { fail } from '../context.mjs';
 
-import { voiceAlignmentStatus } from '../../audio/voice-alignment.mjs';
+import { requireVoiceReview } from '../../core/voice-review.mjs';
+import { PRODUCTION_ROLES } from '../../core/state.mjs';
 
-const SHOT_SIZE_STEP = 4;
-const PROXY_STEP = 5;
-const FINAL_REVIEW_STEP = 6;
-const VARIANT_STEP = 7;
+const { voice: VOICE_STEP, storyboard: SHOT_SIZE_STEP, proxy: PROXY_STEP,
+  final: FINAL_REVIEW_STEP, variant: VARIANT_STEP } = PRODUCTION_ROLES;
 
 export function reviewCommands({ pos, opt, log, aspectOpt }) {
   return {
@@ -51,34 +50,36 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       const step = opt('step') ? Number(opt('step')) : null;
       if (step && !PRODUCTION_STEPS[step]) fail(`--step 取 1–${LAST_STEP}`);
       let note = pos[1];
-      // 第 4 道分镜签批前检查景别；确实要这样拍可以 --force，问题会附在签批记录里
-      if (step === SHOT_SIZE_STEP) {
+      const decision = opt('decision') || 'approved';
+      if (!['approved', 'changes-requested'].includes(decision)) throw new Error('审阅结论无效');
+      const voiceReview = decision === 'approved' && step >= VOICE_STEP
+        ? requireVoiceReview(pos[0], { requireApproval: step > VOICE_STEP, checkTotal: step >= SHOT_SIZE_STEP, requireApplied: step === VOICE_STEP }) : null;
+      if (step === VOICE_STEP && voiceReview && !voiceReview.applicable) throw new Error('明确无人声时自动跳过制作人声，不生成无产物签批');
+      // 分镜签批前检查景别；--force 仅能豁免景别，不绕过人声签批。
+      if (decision === 'approved' && step === SHOT_SIZE_STEP) {
         const problems = checkShotSizes(loadFilm(pos[0], { requireShots: false }).film.shots);
         if (problems.length && !opt('force')) fail(`景别检查未通过，分镜先别签批：\n  ${problems.join('\n  ')}\n  改 film.json 的 shots[].size 和 storyboard.md 的景别栏；确实要这样拍，加 --force`);
         if (problems.length) note = `${note}（景别检查未通过：${problems.join('；')}）`;
       }
-      if ([5, 6, 7, 8].includes(step) && !voiceAlignmentStatus(pos[0]).applied) throw new Error('录音定位缺失、待确认、已过期或尚未用于制作，请先核实当前声音并更新小样');
       const pendingFile=path.join(path.resolve(pos[0]),'.wka/pending-approval.json');
       const pending=readJson(pendingFile),id=String(opt('approval-id')||(pending?.status!=='completed'&&pending?.note===note?pending.id:crypto.randomUUID()));
       const revision=opt('delivery-revision');
       if(revision===true)throw new Error('--delivery-revision 需要完整摘要');
       const deliveryApproval=revision?prepareFinalApproval(pos[0],{id,step,revision,source:'用户明确签批（signoff）',note,openEvidence:opt('open-status')?{status:opt('open-status'),source:note}:null}):null;
-      const decision = opt('decision') || 'approved';
-      if (!['approved', 'changes-requested'].includes(decision)) throw new Error('审阅结论无效');
       const manifest = buildManifest(pos[0], step);
       writeManifest(pos[0], manifest);
-      const signature=digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','成片','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===6||step===7?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
+      const signature=step === VOICE_STEP && voiceReview ? voiceReview.signature : digest({sources:treeEvidence(path.resolve(pos[0]),(rel,ent)=>ent.isDirectory()&&['.git','.cache','.wka','review','成片','generated','node_modules'].includes(ent.name)),implementation:implementationState(),decisions:readDecisions(pos[0]),shots:step===FINAL_REVIEW_STEP||step===VARIANT_STEP?shotHashes(pos[0]):null,...(revision?{deliveryRevision:revision}:{})});
       if(pending?.id===id&&pending.signature!==signature) throw new Error('待存档批准之后输入已变化，请重新核实审阅，不能沿用旧批准');
       const deliveryProof=deliveryApproval?{deliveryApproval:deliveryApproval.existing&&pending?.deliveryApproval?.review?pending.deliveryApproval:deliveryApproval}:{};
       atomicJson(pendingFile,{id,step,note,signature,status:'prepared',...deliveryProof});
-      if (step === FINAL_REVIEW_STEP) {
+      if (decision === 'approved' && step === FINAL_REVIEW_STEP) {
         const ctx=loadFilm(pos[0]);requireTiming(ctx,{fresh:true,log});
       }
-      if (step === PROXY_STEP) {
+      if (decision === 'approved' && step === PROXY_STEP) {
         const ctx=loadFilm(pos[0]);
         requireTiming(ctx,{proxy:true,fresh:true,log});
       }
-      if (step === VARIANT_STEP) {
+      if (decision === 'approved' && step === VARIANT_STEP) {
         const { film } = loadFilm(pos[0]);
         for (const aspect of Object.keys(film.variants || {})) {
           const ctx = loadFilm(pos[0], { aspect });
@@ -106,7 +107,8 @@ export function reviewCommands({ pos, opt, log, aspectOpt }) {
       const prepared = [...reviewPaths, ...dirtyReviewPaths(pos[0]), ...receipts, '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/pending-approval.json'].filter((file, index, all) => all.indexOf(file) === index && fs.existsSync(path.join(pos[0], file)));
       const review = commitPaths(pos[0], { message: `${label}: 待审 ${PRODUCTION_STEPS[step]}`, paths: prepared }, { log });
       if (readProgress(pos[0]).history.some(h => h.reviewSha === review.sha && h.decision === 'changes-requested')) throw new Error('这一版已经退回，请重新提交后再签批');
-      commitSignoff(pos[0],{id,step,note,signature,main,variants,decision,reviewSha:review.sha,advanced:decision==='approved'?nextProductionStep(pos[0],step):null});
+      if (voiceReview && requireVoiceReview(pos[0], { requireApproval: step > VOICE_STEP, checkTotal: step >= SHOT_SIZE_STEP, requireApplied: step === VOICE_STEP }).signature !== voiceReview.signature) throw new Error('存档期间人声输入变化，请重新核实审阅');
+      commitSignoff(pos[0],{id,step,note,signature,main,variants,voice:step===VOICE_STEP&&voiceReview?{signature:voiceReview.signature}:null,decision,reviewSha:review.sha,advanced:decision==='approved'?nextProductionStep(pos[0],step):null});
       if(decision==='approved'&&deliveryApproval)commitFinalApproval(pos[0],deliveryApproval);
       atomicJson(pendingFile,{id,step,note,signature,status:'completed',decision,git:'committed',sha:review.sha,...deliveryProof});
       const conclusionPaths=['.wka/state.json','.wka/pending-approval.json','.wka/final-delivery.json',...receipts].filter(file=>fs.existsSync(path.join(pos[0],file)));

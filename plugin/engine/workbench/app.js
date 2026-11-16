@@ -155,11 +155,16 @@ function renderFileList() {
     }
   }
 }
+function clearViewer() {
+  const viewer = $('viewer');
+  for (const child of [...viewer.children]) if (!child.classList.contains('exit-fullscreen')) child.remove();
+  if (!viewer.querySelector('.exit-fullscreen')) viewer.append(button('退出全屏', async () => { await document.exitFullscreen(); $('fullscreen').focus(); }, 'exit-fullscreen'));
+}
 async function renderViewer(serial) {
   const file = item(), v = version(), key = ui.film + '/' + ui.item + '/' + ui.version;
   if (ui.media && ui.viewKey) { ui.mediaStates.set(ui.viewKey, { time: ui.media.currentTime, rate: ui.media.playbackRate }); ui.media.pause(); }
   documentSearch.bind(null, ui.film + '/' + ui.item);
-  ui.media = null; ui.viewKey = key; ui.documentText = null; $('viewer').replaceChildren(); $('timeline').hidden = true; $('read-mode').hidden = true; $('shot-jump').hidden = true;
+  ui.media = null; ui.viewKey = key; ui.documentText = null; clearViewer(); $('timeline').hidden = true; $('read-mode').hidden = true; $('shot-jump').hidden = true;
   $('stage-name').textContent = '第 ' + ui.step + ' 道 · ' + stage().label; $('file-name').textContent = file?.label || stage().label;
   $('file-path').textContent = file?.relativePath || file?.path || '本地素材 · 只读预览'; $('file-path').title = file?.path || ''; $('locate').disabled = !file || file.availability !== 'present';
   $('view-state').textContent = v ? (current() ? file.availability === 'present' ? '当前版本 · v' : '最近保存 · v' : '历史版本 · v') + v.number : '尚无交付物';

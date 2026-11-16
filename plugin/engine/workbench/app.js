@@ -235,19 +235,13 @@ function renderBatch() {
   }
 }
 function renderSent() {
-  const file = item(), sent = [...file?.notes || []].reverse(), groups = [[false, '待办', '还没确认解决'], [true, '已完成', '你已确认解决']];
+  const file = item(), sent = [...file?.notes || []].reverse();
   $('sent-notes').replaceChildren(); $('sent-heading').hidden = !sent.length;
-  $('sent-count').textContent = groups.map(([done, name]) => name + ' ' + sent.filter(note => !!note.resolved === done).length).join(' · ');
-  for (const [done, name, meaning] of groups) {
-    const rows = sent.filter(note => !!note.resolved === done);
-    if (!rows.length) continue;
-    const group = el('section', undefined, 'sent-group'); group.append(el('h3', name + ' · ' + rows.length + ' 条　' + meaning));
-    for (const note of rows) {
-      const row = el('article', undefined, done ? 'note-card sent-note resolved' : 'note-card sent-note'), number = file.versions.find(v => v.id === note.versionId)?.number;
-      const copy = el('div'); copy.append(el('p', anchorText(note.anchor), 'meta'), el('p', note.text), el('p', [number ? 'v' + number : '', date(note.at)].filter(Boolean).join(' · '), 'meta'));
-      row.append(copy); group.append(row);
-    }
-    $('sent-notes').append(group);
+  $('sent-count').textContent = sent.length ? sent.length + ' 条' : '';
+  for (const note of sent) {
+    const row = el('article', undefined, 'note-card sent-note'), number = file.versions.find(v => v.id === note.versionId)?.number;
+    const copy = el('div'); copy.append(el('p', anchorText(note.anchor), 'meta'), el('p', note.text), el('p', [number ? 'v' + number : '', date(note.at)].filter(Boolean).join(' · '), 'meta'));
+    row.append(copy); $('sent-notes').append(row);
   }
 }
 const textChanges = new Map();

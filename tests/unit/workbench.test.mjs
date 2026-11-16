@@ -84,6 +84,19 @@ test('changing one local shot leaves unrelated local previews current', async t 
   assert.equal(items.find(i => i.path.endsWith('s02.mp4')).freshness, 'current');
 });
 
+test('main-aspect local previews are listed under step 6 and alternate-aspect ones under step 8', async t => {
+  const { api, dir, put } = await setup(t);
+  put('film.json', JSON.stringify({ title: '竖版', style: 'ink-wash', size: [18, 32], fps: 10, seed: 1, shots: [{ id: 's01', file: 'shots/s01.js', duration: 1 }], subtitles: { mode: 'none' } }));
+  put('shots/s01.js', 'one');
+  put('review/小样/局部小样-9x16/s01.mp4', 'main'); put('review/小样/局部小样-16x9/s01.mp4', 'alternate');
+  const view = api.captureWorkbench(dir);
+  const main = at(view, 6).items.find(i => i.relativePath === 'review/小样/局部小样-9x16/s01.mp4');
+  assert.ok(main, '主画幅局部小样登记在制作小样');
+  assert.equal(main.label, '局部小样 s01');
+  assert.equal(main.required, false);
+  assert.ok(at(view, 8).items.some(i => i.relativePath === 'review/小样/局部小样-16x9/s01.mp4'));
+});
+
 test('failed signing never creates a successful workbench decision and releases the lock', async t => {
   const { api, dir, put } = await setup(t);
   put('review/交付/delivery-manifest.json', JSON.stringify({ version: 1, step: 2, tracked: [], generated: [] }));

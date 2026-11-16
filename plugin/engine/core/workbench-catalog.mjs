@@ -45,9 +45,11 @@ function walk(root, relative) {
   return out;
 }
 
-function inferredStep(file) {
+// The main aspect also carries a suffix (局部小样-9x16/); only other aspects belong to step 8.
+function inferredStep(file, mainSuffix) {
   if (/台词定位|逐词时间表/.test(file)) return 4;
-  if (/(?:[-./\\])\d+x\d+(?=[./\\-]|$)/.test(file)) return 8;
+  const suffixes = [...file.matchAll(/[-./\\](\d+x\d+)(?=[./\\-]|$)/g)].map(match => match[1]);
+  if (suffixes.some(suffix => suffix !== mainSuffix)) return 8;
   if (/QC报告(?!-proxy)|最终交付|主版不变/.test(file)) return 7;
   return 6;
 }
@@ -91,7 +93,8 @@ export function workbenchCatalog(dir, registrations = []) {
     // A directory may also contain user references; discovery alone is not a review contract.
     if (!items.has(scopedPath(dir, file))) {
       const formal = /^review\/(?:(?:小样|QC)\/)?(?:小样|QC报告|主版不变)[-.]/u.test(file.split(path.sep).join('/'));
-      add(file, inferredStep(file), { required: formal });
+      const preview = file.split(path.sep).join('/').match(/(局部小样|局部原画质)[^/]*\/([^/]+)\.\w+$/u);
+      add(file, inferredStep(file, mainSuffix), { required: formal, ...(preview ? { label: `${preview[1]} ${preview[2]}` } : {}) });
     }
   }
   for (const file of walk(dir, FINAL_DIR)) if (/\.(mp4|webm|gif)$/.test(file) && !/subtitles/.test(file)) add(file, mainSuffix && file.endsWith(`-${mainSuffix}${path.extname(file)}`) ? 7 : /-\d+x\d+/.test(file) ? 8 : 7, { required: false });
@@ -100,7 +103,7 @@ export function workbenchCatalog(dir, registrations = []) {
       if (!output.file || /字幕|subtitles/.test(output.file)) continue;
       const rel = path.relative(dir, path.resolve(dir, output.file));
       if (rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).some(p => p.startsWith('.'))) continue;
-      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel), { required: !/局部/.test(rel) && /小样|QC报告/.test(rel) });
+      if (['text', 'image', 'audio', 'video'].includes(workbenchKind(rel))) add(rel, inferredStep(rel, mainSuffix), { required: !/局部/.test(rel) && /小样|QC报告/.test(rel) });
     }
   }
   let contract = null;

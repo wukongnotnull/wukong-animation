@@ -40,6 +40,59 @@ test('direct address serves films and immutable media without browser credential
   assert.match(file.headers.get('content-security-policy'), /sandbox/);
   assert.equal(listing.headers.get('set-cookie'), null);
 });
+test('localhost document entry redirects GET and HEAD to the canonical address preserving the film query', async t => {
+  const f = await fixture(t), host = 'localhost:' + new URL(f.server.origin).port;
+  const queries = ['', '?film=' + f.id, '?next=https://evil.example&film=%2F%2Fevil.example'];
+  for (const method of ['GET', 'HEAD']) for (const query of queries) {
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(f.server.origin + '/' + query, {
+        method, headers: { Host: host, ...(query ? { 'Sec-Fetch-Site': 'none', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document' } : {}) },
+      }, res => {
+        let body = '';
+        res.on('data', chunk => { body += chunk; });
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
+      });
+      req.on('error', reject); req.end();
+    });
+    assert.equal(response.status, 307, method);
+    assert.equal(response.headers.location, f.server.origin + '/' + query);
+    assert.equal(response.headers['cache-control'], 'no-store');
+    assert.equal(response.body, '');
+    const page = await fetch(response.headers.location, { method });
+    assert.equal(page.status, 200);
+    if (method === 'GET') assert.match(await page.text(), /审阅工作台/);
+  }
+});
+
+test('localhost redirect never admits API, control, write, foreign-origin or foreign-host requests', async t => {
+  const f = await fixture(t), port = new URL(f.server.origin).port, host = 'localhost:' + port;
+  const invalid = [
+    { route: '/api/films' }, { route: '/app.js' }, { route: '/_workbench/status' },
+    { method: 'POST' }, { headers: { Origin: 'https://evil.example' } },
+    { headers: { Origin: '' } }, { headers: { Origin: 'null' } },
+    { headers: { 'Sec-Fetch-Dest': 'empty' } },
+    { headers: { Origin: f.server.origin } },
+    { headers: { 'Sec-Fetch-Dest': 'iframe' } },
+    { headers: { Host: 'evil.example:' + port } },
+    { headers: { Host: 'localhost:1' } },
+    { headers: { Host: 'localhost.evil.example:' + port } },
+  ];
+  for (const entry of invalid) {
+    const response = await new Promise((resolve, reject) => {
+      const req = http.request(f.server.origin + (entry.route || '/'), {
+        method: entry.method || 'GET', headers: { Host: host, ...entry.headers },
+      }, res => {
+        res.resume(); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers }));
+      });
+      req.on('error', reject); req.end();
+    });
+    assert.equal(response.status, 403, JSON.stringify(entry));
+    assert.equal(response.headers.location, undefined);
+    assert.equal(response.headers['access-control-allow-origin'], undefined);
+  }
+  assert.equal(fs.existsSync(path.join(f.root, '.wka/workbench-local/state.json')), false);
+});
+
 test('HTTP report exposes complete voice recordings in stage four and streams their immutable bytes', async t => {
   const f = await fixture(t), bytes = Buffer.from('complete recording fixture');
   fs.writeFileSync(path.join(f.film, 'full.wav'), bytes);

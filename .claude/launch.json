@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "workbench-local-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["plugin/engine/bin/wka.mjs", "workbench", "films/示范片", "--port", "63711"],
+      "port": 63711,
+      "url": "http://127.0.0.1:63711"
+    },
+    {
       "name": "workbench-search-preview",
       "runtimeExecutable": "node",
       "runtimeArgs": ["tests/browser/workbench-search-server.mjs", "63917"],

@@ -128,12 +128,18 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
     res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
     try {
+      const url = new URL(req.url, origin), route = url.pathname;
+      // Canonicalize only the local document entry; APIs keep their strict Host check.
+      if (req.headers.host === 'localhost:' + server.address().port && route === '/' && ['GET', 'HEAD'].includes(req.method)
+        && req.headers.origin === undefined && [undefined, 'document'].includes(req.headers['sec-fetch-dest'])) {
+        res.writeHead(307, { Location: origin + '/' + url.search, 'Content-Length': 0 });
+        res.end(); return;
+      }
       const sameOrigin = req.headers['sec-fetch-site'] === 'same-origin';
       // Some header extensions strip only the Origin port. Accept that exact form
       // only when browser-controlled Fetch Metadata still identifies this origin.
       const originMatches = req.headers.origin === origin || (sameOrigin && req.headers.origin === 'http://127.0.0.1');
       if (req.headers.host !== new URL(origin).host || (req.headers.origin && !originMatches)) { send(res, 403, { error: '仅接受本机工作台的同源请求' }); return; }
-      const url = new URL(req.url, origin), route = url.pathname;
       if (route.startsWith('/_workbench/')) {
         const token = Buffer.from(req.headers['x-wka-control'] || ''), expected = Buffer.from(control?.token || '');
         if (!control || req.headers.origin !== undefined || req.headers['sec-fetch-site'] !== undefined || token.length !== expected.length || !timingSafeEqual(token, expected)) {

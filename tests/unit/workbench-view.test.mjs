@@ -15,6 +15,57 @@ test('formatted document pieces retain exact raw offsets, tables and shot identi
   assert.ok(blocks.some(b => b.parts?.some(p => p.text.includes('<script>'))));
 });
 
+test('story voice lines stay together with exact source offsets', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = [
+    '## 人声文案',
+    '',
+    '9. [P01] 旁白：\\',
+    '   等雨停了，\\',
+    '   我们再沿河出发。',
+    '10. [P02] 小舟（对白）：先看上游，\\',
+    '    再找一条回家的路。',
+    '11. [P02] 阿禾（对白）：好。',
+    '',
+    '## 屏幕文字',
+  ].join('\r\n');
+  const blocks = parseDocument(raw);
+
+  assert.deepEqual(blocks.map(block => block.type), ['heading', 'list', 'list', 'list', 'heading']);
+  assert.deepEqual(blocks.slice(1, -1).map(({ parts }) => parts.map(({ text, style }) => style === 'br' ? '\n' : text).join('')), [
+    '[P01] 旁白：\n等雨停了，\n我们再沿河出发。',
+    '[P02] 小舟（对白）：先看上游，\n再找一条回家的路。',
+    '[P02] 阿禾（对白）：好。',
+  ]);
+  for (const { parts } of blocks) {
+    for (const { text, start } of parts) assert.equal(raw.slice(start, start + text.length), text);
+  }
+});
+
+test('voice layout keeps literal escapes and leaves storyboard lines intact', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = [
+    '1. [P01] 旁白：反斜线 \\\\',
+    '   后续说明。',
+    '2. [P02] 旁白：句末反斜线 \\',
+    '',
+    '| 镜 | 人声 | 音效 |',
+    '|---|---|---|',
+    '| s01 | 「等雨停了，我们再沿河出发。」 | 雨声 |',
+    '| s02 | — | 风声 |',
+    '| s03 | 「用 <br> 举例。」 | — |',
+  ].join('\n');
+  const [first, followup, second, table] = parseDocument(raw);
+
+  assert.equal(first.parts[0].text, '[P01] 旁白：反斜线 \\\\');
+  assert.equal(followup.type, 'paragraph');
+  assert.equal(second.parts[0].text, '[P02] 旁白：句末反斜线 \\');
+  assert.deepEqual(table.rows.map(row => row.shotId), ['s01', 's02', 's03']);
+  assert.deepEqual(table.rows.map(row => row.cells[1].parts.map(part => part.text)), [
+    ['「等雨停了，我们再沿河出发。」'], ['—'], ['「用 <br> 举例。」'],
+  ]);
+});
+
 test('queue filters find feedback and historical items; restoration never substitutes an unknown version silently', async () => {
   const { reviewRows, restorePosition, noteKey, stageKey, playbackContext, formatClock, formatSpan, parseClock } = await moduleAt('model');
   const item = { id: 'a', step: 2, label: '简报', category: 'formal', required: true, availability: 'present', checked: false, freshness: 'current', versions: [{ id: 'v1' }, { id: 'v2' }], current: { id: 'v2' }, notes: [{ text: '受众不明确', blocking: true, resolved: false }] };

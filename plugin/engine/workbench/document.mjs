@@ -39,14 +39,37 @@ export function parseDocument(raw) {
       blocks.push({ type: 'table', header, rows }); continue;
     }
     const heading = /^(#{1,6})\s+/.exec(line.text), list = /^\s*(?:[-*+] |\d+\. )/.exec(line.text), quote = /^>\s?/.exec(line.text);
-    const prefix = heading?.[0] || list?.[0] || quote?.[0] || '';
-    blocks.push({ type: heading ? 'heading' : list ? 'list' : quote ? 'quote' : 'paragraph', level: heading?.[1].length, parts: parts(line.text.slice(prefix.length), line.start + prefix.length) });
+    const prefixLength = (heading?.[0] || list?.[0] || quote?.[0] || '').length;
+    let content = line.text.slice(prefixLength);
+    let start = line.start + prefixLength;
+    const inline = [];
+    // Keep Markdown hard breaks within the list item and retain the source offsets for notes.
+    while (list && /(?<!\\)(?:\\\\)*\\$/.test(content)) {
+      const next = lines[i + 1];
+      if (!next?.text.startsWith(' '.repeat(prefixLength)) || !next.text.trim()) break;
+      const breakAt = content.length - 1;
+      inline.push(...parts(content.slice(0, breakAt), start), { text: '\\', start: start + breakAt, style: 'br' });
+      i++;
+      content = next.text.slice(prefixLength);
+      start = next.start + prefixLength;
+    }
+    inline.push(...parts(content, start));
+    blocks.push({ type: heading ? 'heading' : list ? 'list' : quote ? 'quote' : 'paragraph', level: heading?.[1].length, parts: inline });
   }
   return blocks;
 }
 export function renderDocument(raw, formatted = true) {
   const root = document.createElement(formatted ? 'article' : 'pre'); root.className = 'document ' + (formatted ? 'formatted' : 'raw'); root.id = 'document'; root.tabIndex = 0; root.setAttribute('aria-label', '只读文档');
-  const append = (parent, values) => { for (const part of values) { const span = document.createElement(part.style || 'span'); span.dataset.source = part.start; span.textContent = part.text; parent.append(span); } };
+  const append = (parent, values) => {
+    for (const part of values) {
+      const node = document.createElement(part.style || 'span');
+      if (part.style !== 'br') {
+        node.dataset.source = part.start;
+        node.textContent = part.text;
+      }
+      parent.append(node);
+    }
+  };
   if (!formatted) { append(root, [{ text: raw, start: 0 }]); return root; }
   for (const block of parseDocument(raw)) {
     if (block.type === 'table') {

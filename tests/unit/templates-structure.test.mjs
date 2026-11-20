@@ -153,8 +153,10 @@ test('新建影片生成三个空白文档，简报、剧本和分镜稿都不�
   const env = { ...process.env, WUKONG_ANIMATION_HOME: path.join(dir, 'home') };
   execFileSync(process.execPath, [cli, 'brief', '模板验收', '--dir', dir], { env });
   execFileSync(process.execPath, [cli, 'init', '模板验收', '--style', 'keynote', '--dir', dir], { env });
+  const film = path.join(dir, 'films', '模板验收');
+  assert.match(read(path.join(film, 'story.md')), /^## 人声文案\n\n汉字数：\n\n1\. \[P01\]/m);
   for (const template of TEMPLATES) {
-    const generated = read(path.join(dir, 'films', '模板验收', path.basename(template)));
+    const generated = read(path.join(film, path.basename(template)));
     assert.deepEqual(structure(generated), structure(read(path.join(PLUGIN, template))), template);
     assert.doesNotMatch(generated, /版本号|剧本\s*v\d+/);
   }

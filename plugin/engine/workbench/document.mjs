@@ -1,17 +1,11 @@
 // A deliberately small, non-executing Markdown reader with original-source coordinates.
-function parts(text, start, cellBreaks = false) {
+function parts(text, start) {
   const out = []; let at = 0;
-  const pattern = /\*\*([^*\n]+)\*\*|`([^`\n]+)`|(<br[ \t]*\/?>)/gi;
+  const pattern = /\*\*([^*\n]+)\*\*|`([^`\n]+)`/g;
   for (const match of text.matchAll(pattern)) {
-    if (match[3] && !cellBreaks) continue;
     if (match.index > at) out.push({ text: text.slice(at, match.index), start: start + at });
-    if (match[3]) {
-      out.push({ text: match[3], start: start + match.index, style: 'br' });
-    } else {
-      const bold = match[1] !== undefined, offset = bold ? 2 : 1;
-      out.push({ text: match[1] ?? match[2], start: start + match.index + offset, style: bold ? 'strong' : 'code' });
-    }
-    at = match.index + match[0].length;
+    const bold = match[1] !== undefined, offset = bold ? 2 : 1;
+    out.push({ text: match[1] ?? match[2], start: start + match.index + offset, style: bold ? 'strong' : 'code' }); at = match.index + match[0].length;
   }
   if (at < text.length) out.push({ text: text.slice(at), start: start + at });
   return out;
@@ -23,7 +17,7 @@ function cells(line) {
     const start = ranges[i] + 1, text = line.text.slice(start, ranges[i + 1]);
     if ((i === 0 || i === ranges.length - 2) && !text.trim()) continue;
     const trim = text.length - text.trimStart().length;
-    out.push({ text: text.trim(), parts: parts(text.trim(), line.start + start + trim, true) });
+    out.push({ text: text.trim(), parts: parts(text.trim(), line.start + start + trim) });
   }
   return out;
 }
@@ -45,8 +39,22 @@ export function parseDocument(raw) {
       blocks.push({ type: 'table', header, rows }); continue;
     }
     const heading = /^(#{1,6})\s+/.exec(line.text), list = /^\s*(?:[-*+] |\d+\. )/.exec(line.text), quote = /^>\s?/.exec(line.text);
-    const prefix = heading?.[0] || list?.[0] || quote?.[0] || '';
-    blocks.push({ type: heading ? 'heading' : list ? 'list' : quote ? 'quote' : 'paragraph', level: heading?.[1].length, parts: parts(line.text.slice(prefix.length), line.start + prefix.length) });
+    const prefixLength = (heading?.[0] || list?.[0] || quote?.[0] || '').length;
+    let content = line.text.slice(prefixLength);
+    let start = line.start + prefixLength;
+    const inline = [];
+    // Keep Markdown hard breaks within the list item and retain the source offsets for notes.
+    while (list && /(?<!\\)(?:\\\\)*\\$/.test(content)) {
+      const next = lines[i + 1];
+      if (!next?.text.startsWith(' '.repeat(prefixLength)) || !next.text.trim()) break;
+      const breakAt = content.length - 1;
+      inline.push(...parts(content.slice(0, breakAt), start), { text: '\\', start: start + breakAt, style: 'br' });
+      i++;
+      content = next.text.slice(prefixLength);
+      start = next.start + prefixLength;
+    }
+    inline.push(...parts(content, start));
+    blocks.push({ type: heading ? 'heading' : list ? 'list' : quote ? 'quote' : 'paragraph', level: heading?.[1].length, parts: inline });
   }
   return blocks;
 }

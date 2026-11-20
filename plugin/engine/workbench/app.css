@@ -31,7 +31,6 @@ body{height:100dvh;display:flex;flex-direction:column;overflow:hidden}.topbar{mi
 @container(max-width:850px){.viewer-toolbar{grid-template-columns:minmax(0,1fr) auto}.document-search{grid-column:1 / -1;grid-row:2;max-width:460px;justify-self:center}}
 @container(max-width:480px){.viewer-toolbar,.viewer-toolbar:not(:has(.document-search:not([hidden]))){grid-template-columns:minmax(0,1fr)}.viewer-toolbar>.viewer-actions{grid-row:2;justify-self:start;justify-content:flex-start}.document-search{grid-row:3}}
 @media(prefers-reduced-motion:reduce){.document-search button{transition:none}}
-@media(min-width:601px){.document td[data-label="人声"]{min-width:16em}}
 
 .sent-heading{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:650;margin:20px 0 10px}.sent-note p{margin:4px 0}.sent-note p.meta{font-size:10px}
 #sent-count{font-size:10px;font-weight:400}

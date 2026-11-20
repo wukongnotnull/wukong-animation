@@ -3,7 +3,7 @@ import type { Rect } from "./theme";
 
 /**
  * Everything that depends on the canvas shape. The landscape spec is the
- * Apple-keynote spec mapped at 2 px/pt (unchanged from the 16:9 video); the
+ * Apple-keynote spec mapped at 2 px/pt and adjusted for video; the
  * portrait spec re-lays the same masters for a 9:16 phone screen, keeping
  * content clear of short-video platform UI (top bar, right-hand buttons,
  * bottom caption area).
@@ -76,10 +76,10 @@ const LANDSCAPE: FrameSpec = {
   },
   layout: {
     L01: { phrase: { x: 120, y: 260, w: 1680, h: 440 }, sub: { x: 320, y: 720, w: 1280, h: 140 } },
-    // L02 / L03 images take everything under the title down to the safe-area edge (a video is not a slide deck)
-    L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 264, w: 1440, h: 584 } },
-    L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 264, w: 1680, h: 584 } },
-    // L04 image runs to the safe-area edge (spec: 816 wide) and from the safe-area top down to the
+    // Centre the main images vertically, leaving 16 px below the title slot.
+    L02: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 240, y: 248, w: 1440, h: 584 } },
+    L03: { title: { x: 120, y: 80, w: 1440, h: 152 }, image: { x: 120, y: 248, w: 1680, h: 584 } },
+    // L04 reserves the lower part of the canvas for subtitles.
     L04: {
       title: { x: 120, y: 240, w: 520, h: 260 },
       body: { x: 120, y: 548, w: 520, h: 240 },
@@ -92,11 +92,11 @@ const LANDSCAPE: FrameSpec = {
     },
     L06: {
       title: { x: 120, y: 80, w: 1440, h: 152 },
-      labelA: { x: 120, y: 300, w: 808, h: 80 },
-      labelB: { x: 992, y: 300, w: 808, h: 80 },
-      imageA: { x: 120, y: 396, w: 808, h: 392 },
-      imageB: { x: 992, y: 396, w: 808, h: 392 },
-      note: { x: 120, y: 800, w: 1680, h: 44 },
+      labelA: { x: 120, y: 248, w: 808, h: 80 },
+      labelB: { x: 992, y: 248, w: 808, h: 80 },
+      imageA: { x: 120, y: 344, w: 808, h: 392 },
+      imageB: { x: 992, y: 344, w: 808, h: 392 },
+      note: { x: 120, y: 748, w: 1680, h: 44 },
     },
     L07: {
       cards: [

@@ -45,6 +45,22 @@ for (const [name, f] of Object.entries(FRAMES)) {
   });
 }
 
+test('横屏 L02、L03 和 L06 的主图居中，并给标题和注释留出间距', () => {
+  const { H, layout: { L02, L03, L06 } } = FRAMES.landscape;
+  for (const [id, { title, image }, width] of [['L02', L02, 1440], ['L03', L03, 1680]]) {
+    assert.deepEqual([image.w, image.h], [width, 584], `${id} 主图尺寸`);
+    assert.equal(image.y + image.h / 2, H / 2, `${id} 主图中心`);
+    assert.ok(image.y - (title.y + title.h) >= 16, `${id} 主图与标题间距`);
+  }
+  for (const [label, image] of [[L06.labelA, L06.imageA], [L06.labelB, L06.imageB]]) {
+    assert.deepEqual([image.w, image.h], [808, 392], 'L06 主图尺寸');
+    assert.equal(image.y + image.h / 2, H / 2, 'L06 主图中心');
+    assert.ok(label.y - (L06.title.y + L06.title.h) >= 16, 'L06 标签与标题间距');
+    assert.equal(image.y - (label.y + label.h), 16, 'L06 主图与标签间距');
+    assert.equal(L06.note.y - (image.y + image.h), 12, 'L06 注释与主图间距');
+  }
+});
+
 test('ShotRoot picks the frame spec from s.orientation given by the engine', () => {
   const src = fs.readFileSync(path.join(ROOT, 'plugin/skills/keynote/scripts/shot.tsx'), 'utf8');
   assert.match(src, /s\.orientation/);

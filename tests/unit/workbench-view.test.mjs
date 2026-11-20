@@ -15,6 +15,27 @@ test('formatted document pieces retain exact raw offsets, tables and shot identi
   assert.ok(blocks.some(b => b.parts?.some(p => p.text.includes('<script>'))));
 });
 
+test('storyboard voice cells keep explicit pauses and source offsets', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = '| 镜 | 人声 | 音效 |\r\n|---|---|---|\r\n'
+    + '| s01 | 「等雨停了，<br>我们再出门。」 | 风声 |\r\n'
+    + '| s02 | 「到了。」 | — |\r\n'
+    + '| s03 | — | `<br>` <br id="example"> |\r\n';
+  const [table] = parseDocument(raw);
+  const [first, second, third] = table.rows;
+
+  assert.deepEqual(table.rows.map(row => row.shotId), ['s01', 's02', 's03']);
+  assert.equal(first.cells.length, 3);
+  assert.deepEqual(first.cells[1].parts, [
+    { text: '「等雨停了，', start: raw.indexOf('「等') },
+    { text: '<br>', start: raw.indexOf('<br>'), style: 'br' },
+    { text: '我们再出门。」', start: raw.indexOf('我们') },
+  ]);
+  assert.equal(first.cells[2].text, '风声');
+  assert.equal(second.cells[1].parts[0].text, '「到了。」');
+  assert.deepEqual(third.cells[2].parts.map(part => part.style), ['code', undefined]);
+});
+
 test('queue filters find feedback and historical items; restoration never substitutes an unknown version silently', async () => {
   const { reviewRows, restorePosition, noteKey, stageKey, playbackContext, formatClock, formatSpan, parseClock } = await moduleAt('model');
   const item = { id: 'a', step: 2, label: '简报', category: 'formal', required: true, availability: 'present', checked: false, freshness: 'current', versions: [{ id: 'v1' }, { id: 'v2' }], current: { id: 'v2' }, notes: [{ text: '受众不明确', blocking: true, resolved: false }] };

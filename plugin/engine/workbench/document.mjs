@@ -1,11 +1,17 @@
 // A deliberately small, non-executing Markdown reader with original-source coordinates.
-function parts(text, start) {
+function parts(text, start, cellBreaks = false) {
   const out = []; let at = 0;
-  const pattern = /\*\*([^*\n]+)\*\*|`([^`\n]+)`/g;
+  const pattern = /\*\*([^*\n]+)\*\*|`([^`\n]+)`|(<br[ \t]*\/?>)/gi;
   for (const match of text.matchAll(pattern)) {
+    if (match[3] && !cellBreaks) continue;
     if (match.index > at) out.push({ text: text.slice(at, match.index), start: start + at });
-    const bold = match[1] !== undefined, offset = bold ? 2 : 1;
-    out.push({ text: match[1] ?? match[2], start: start + match.index + offset, style: bold ? 'strong' : 'code' }); at = match.index + match[0].length;
+    if (match[3]) {
+      out.push({ text: match[3], start: start + match.index, style: 'br' });
+    } else {
+      const bold = match[1] !== undefined, offset = bold ? 2 : 1;
+      out.push({ text: match[1] ?? match[2], start: start + match.index + offset, style: bold ? 'strong' : 'code' });
+    }
+    at = match.index + match[0].length;
   }
   if (at < text.length) out.push({ text: text.slice(at), start: start + at });
   return out;
@@ -17,7 +23,7 @@ function cells(line) {
     const start = ranges[i] + 1, text = line.text.slice(start, ranges[i + 1]);
     if ((i === 0 || i === ranges.length - 2) && !text.trim()) continue;
     const trim = text.length - text.trimStart().length;
-    out.push({ text: text.trim(), parts: parts(text.trim(), line.start + start + trim) });
+    out.push({ text: text.trim(), parts: parts(text.trim(), line.start + start + trim, true) });
   }
   return out;
 }
@@ -46,7 +52,16 @@ export function parseDocument(raw) {
 }
 export function renderDocument(raw, formatted = true) {
   const root = document.createElement(formatted ? 'article' : 'pre'); root.className = 'document ' + (formatted ? 'formatted' : 'raw'); root.id = 'document'; root.tabIndex = 0; root.setAttribute('aria-label', '只读文档');
-  const append = (parent, values) => { for (const part of values) { const span = document.createElement(part.style || 'span'); span.dataset.source = part.start; span.textContent = part.text; parent.append(span); } };
+  const append = (parent, values) => {
+    for (const part of values) {
+      const node = document.createElement(part.style || 'span');
+      if (part.style !== 'br') {
+        node.dataset.source = part.start;
+        node.textContent = part.text;
+      }
+      parent.append(node);
+    }
+  };
   if (!formatted) { append(root, [{ text: raw, start: 0 }]); return root; }
   for (const block of parseDocument(raw)) {
     if (block.type === 'table') {

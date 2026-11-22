@@ -1,6 +1,28 @@
 export const noteKey = (film, item, version) => `note:${film}:${item}:${version}`;
 export const stageKey = (film, step, revision) => `stage:${film}:${step}:${revision}`;
 export function allItems(report) { return [...new Map(report.stages.flatMap(s => s.items).map(i => [i.id, i])).values()]; }
+export function documentReferencePath(documentPath, reference) {
+  if (!documentPath) return null;
+  let relative;
+  try { relative = decodeURIComponent(reference); } catch { return null; }
+  if (!relative || /^(?:\/|[a-z][a-z\d+.-]*:)/i.test(relative) || /[\\\u0000-\u001f\u007f]/u.test(relative)) return null;
+
+  const parts = documentPath.split('/').slice(0, -1);
+  for (const segment of relative.split('/')) {
+    if (segment === '..') {
+      if (!parts.length) return null;
+      parts.pop();
+    } else if (segment && segment !== '.') parts.push(segment);
+  }
+  return parts.join('/') || null;
+}
+export function documentWebUrl(reference) {
+  if (!/^https?:\/\//i.test(reference)) return null;
+  try {
+    const url = new URL(reference);
+    return url.username || url.password ? null : url.href;
+  } catch { return null; }
+}
 export function reviewRows(report, { query = '', filter = 'all', category = 'all' } = {}) {
   const term = query.trim().toLocaleLowerCase();
   return allItems(report).map(item => {

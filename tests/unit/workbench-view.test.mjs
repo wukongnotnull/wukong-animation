@@ -15,6 +15,40 @@ test('formatted document pieces retain exact raw offsets, tables and shot identi
   assert.ok(blocks.some(b => b.parts?.some(p => p.text.includes('<script>'))));
 });
 
+test('document images retain source positions and ignore code examples', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = '图例 ![动作](<./图例 和备注 (1).jpg>)\n\n`![代码](example.png)`\n\n| 镜 | 画面 |\n| --- | --- |\n| s01 | ![设计帧](./review/s01.jpg) |';
+  const [paragraph, code, table] = parseDocument(raw);
+  const first = paragraph.parts[1];
+  assert.deepEqual(first.reference, { label: '动作', path: './图例 和备注 (1).jpg', embedded: true });
+  assert.equal(raw.slice(first.start, first.start + first.text.length), first.text);
+  assert.equal(code.parts[0].style, 'code');
+  assert.equal(code.parts[0].reference, undefined);
+  assert.deepEqual(table.rows[0].cells[1].parts[0].reference, { label: '设计帧', path: './review/s01.jpg', embedded: true });
+});
+
+test('Markdown link labels and destinations preserve their source range', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = '听 [原声](<./review/完整 录音.m4a>)';
+  const [, part] = parseDocument(raw)[0].parts;
+  assert.deepEqual(part.reference, { label: '原声', path: './review/完整 录音.m4a', embedded: false });
+  assert.equal(raw.slice(part.start, part.start + part.text.length), part.text);
+});
+
+test('document links stay within the current film or open a safe web URL', async () => {
+  const { documentReferencePath, documentWebUrl } = await moduleAt('model');
+  assert.equal(documentReferencePath('storyboard.md', './review/静帧/动作.jpg'), 'review/静帧/动作.jpg');
+  assert.equal(documentReferencePath('资料/参考.md', '../media/设计%20稿.png'), 'media/设计 稿.png');
+  for (const candidate of ['https://example.invalid/p.png', '//other/p.png', 'file:///tmp/p.png', '/tmp/p.png', '../p.png', '%2e%2e/p.png', 'a/../../p.png', 'a\\p.png', '%E0%A4%A']) {
+    assert.equal(documentReferencePath('storyboard.md', candidate), null, candidate);
+  }
+  assert.equal(documentReferencePath(null, 'p.png'), null);
+  assert.equal(documentWebUrl('https://example.invalid/show?q=1'), 'https://example.invalid/show?q=1');
+  for (const value of ['javascript:alert(1)', 'file:///tmp/p.png', 'https://name:pass@example.invalid/', '//example.invalid', 'https:///']) {
+    assert.equal(documentWebUrl(value), null, value);
+  }
+});
+
 test('story voice lines stay together with exact source offsets', async () => {
   const { parseDocument } = await moduleAt('document');
   const raw = [

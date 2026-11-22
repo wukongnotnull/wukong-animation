@@ -43,13 +43,19 @@ export function parseDocument(raw) {
     let content = line.text.slice(prefixLength);
     let start = line.start + prefixLength;
     const inline = [];
-    // Keep Markdown hard breaks within the list item and retain the source offsets for notes.
-    while (list && /(?<!\\)(?:\\\\)*\\$/.test(content)) {
-      const next = lines[i + 1];
-      if (!next?.text.startsWith(' '.repeat(prefixLength)) || !next.text.trim()) break;
-      const breakAt = content.length - 1;
-      inline.push(...parts(content.slice(0, breakAt), start), { text: '\\', start: start + breakAt, style: 'br' });
-      i++;
+    const voiceItem = /^\d+\. \[P\d+\] [^:：]+[:：]/u.test(line.text);
+    const indent = ' '.repeat(prefixLength);
+    // Keep voice paragraphs and legacy hard breaks inside the item while preserving source offsets.
+    while (list) {
+      const paragraphBreak = voiceItem && lines[i + 1]?.text.trim() === '';
+      const hardBreak = !paragraphBreak && /(?<!\\)(?:\\\\)*\\$/.test(content);
+      if (!paragraphBreak && !hardBreak) break;
+      const nextIndex = i + (paragraphBreak ? 2 : 1);
+      const next = lines[nextIndex];
+      if (!next?.text.startsWith(indent) || !next.text.trim()) break;
+      const breakAt = hardBreak ? content.length - 1 : content.length;
+      inline.push(...parts(content.slice(0, breakAt), start), { text: hardBreak ? '\\' : '', start: start + breakAt, style: 'br' });
+      i = nextIndex;
       content = next.text.slice(prefixLength);
       start = next.start + prefixLength;
     }

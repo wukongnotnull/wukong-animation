@@ -42,6 +42,29 @@ test('story voice lines stay together with exact source offsets', async () => {
   }
 });
 
+test('voice paragraphs inside numbered lines stay grouped with exact source offsets', async () => {
+  const { parseDocument } = await moduleAt('document');
+  const raw = [
+    '## 人声文案', '',
+    '9. [P01] 旁白：', '',
+    '   先看上游。', '',
+    '   再找回家的路。', '',
+    '10. [P02] 小舟：等等。', '',
+    '    我也一起去。', '',
+    '## 自检与待确认', '',
+    '1. 普通列表', '',
+    '   普通段落。',
+  ].join('\r\n');
+  const blocks = parseDocument(raw);
+  assert.deepEqual(blocks.map(block => block.type), ['heading', 'list', 'list', 'heading', 'list', 'paragraph']);
+  assert.deepEqual(blocks.slice(1, 3).map(({ parts }) => parts.map(({ text, style }) => style === 'br' ? '\n' : text).join('')), [
+    '[P01] 旁白：\n先看上游。\n再找回家的路。', '[P02] 小舟：等等。\n我也一起去。',
+  ]);
+  for (const { parts } of blocks) {
+    for (const { text, start } of parts) assert.equal(raw.slice(start, start + text.length), text);
+  }
+});
+
 test('voice layout keeps literal escapes and leaves storyboard lines intact', async () => {
   const { parseDocument } = await moduleAt('document');
   const raw = [

@@ -43,13 +43,19 @@ export function parseDocument(raw) {
     let content = line.text.slice(prefixLength);
     let start = line.start + prefixLength;
     const inline = [];
-    // Keep Markdown hard breaks within the list item and retain the source offsets for notes.
-    while (list && /(?<!\\)(?:\\\\)*\\$/.test(content)) {
-      const next = lines[i + 1];
-      if (!next?.text.startsWith(' '.repeat(prefixLength)) || !next.text.trim()) break;
-      const breakAt = content.length - 1;
-      inline.push(...parts(content.slice(0, breakAt), start), { text: '\\', start: start + breakAt, style: 'br' });
-      i++;
+    const voiceItem = /^\d+\. \[P\d+\] [^:：]+[:：]/u.test(line.text);
+    const indent = ' '.repeat(prefixLength);
+    // Keep voice paragraphs and legacy hard breaks inside the item while preserving source offsets.
+    while (list) {
+      const paragraphBreak = voiceItem && lines[i + 1]?.text.trim() === '';
+      const hardBreak = !paragraphBreak && /(?<!\\)(?:\\\\)*\\$/.test(content);
+      if (!paragraphBreak && !hardBreak) break;
+      const nextIndex = i + (paragraphBreak ? 2 : 1);
+      const next = lines[nextIndex];
+      if (!next?.text.startsWith(indent) || !next.text.trim()) break;
+      const breakAt = hardBreak ? content.length - 1 : content.length;
+      inline.push(...parts(content.slice(0, breakAt), start), { text: hardBreak ? '\\' : '', start: start + breakAt, style: 'br' });
+      i = nextIndex;
       content = next.text.slice(prefixLength);
       start = next.start + prefixLength;
     }
@@ -77,7 +83,13 @@ export function renderDocument(raw, formatted = true) {
       const table = document.createElement('table'), head = document.createElement('thead'), body = document.createElement('tbody');
       for (const [index, row] of [block.header, ...block.rows].entries()) {
         const tr = document.createElement('tr'); if (row.shotId) { tr.dataset.shot = row.shotId; tr.tabIndex = -1; }
-        row.cells.forEach((cell, column) => { const td = document.createElement(index ? 'td' : 'th'); if (!index) td.scope = 'col'; else td.dataset.label = block.header.cells[column]?.text || ''; append(td, cell.parts); tr.append(td); });
+        row.cells.forEach((cell, column) => {
+          const td = document.createElement(index ? 'td' : 'th');
+          td.dataset.label = block.header.cells[column]?.text || '';
+          if (!index) td.scope = 'col';
+          append(td, cell.parts);
+          tr.append(td);
+        });
         (index ? body : head).append(tr);
       }
       table.append(head, body); wrap.append(table); root.append(wrap);

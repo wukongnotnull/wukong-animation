@@ -33,7 +33,9 @@ test('direct address serves films and immutable media without browser credential
   assert.equal(listing.status, 200);
   assert.equal((await listing.json()).films[0].id, f.id);
   const view = await (await fetch(f.server.origin + '/api/report?film=' + f.id, { headers })).json();
-  const item = view.stages.find(s => s.step === 2).items[0];
+  const brief = view.stages.find(s => s.step === 2);
+  assert.equal(brief.label, '确定简报');
+  const item = brief.items[0];
   const file = await fetch(f.server.origin + `/api/file?film=${f.id}&artifact=${item.id}&version=${item.current.id}`, { headers: { ...headers, Range: 'bytes=0-4' } });
   assert.equal(file.status, 206); assert.equal((await file.arrayBuffer()).byteLength, 5);
   assert.equal(file.headers.get('cache-control'), 'no-store');

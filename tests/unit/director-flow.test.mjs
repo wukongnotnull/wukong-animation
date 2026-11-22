@@ -25,7 +25,7 @@ test('独立人声使用新存储身份和九道工序，旧 flow 7 不复用签
   assert.equal(FLOW, 8);
   assert.equal(LAST_STEP, 9);
   assert.deepEqual(Object.values(PRODUCTION_STEPS), [
-    '制作准备', '确定方案', '编写剧本', '制作人声', '规划镜头',
+    '制作准备', '确定简报', '编写剧本', '制作人声', '规划镜头',
     '制作小样', '制作成片', '调整画幅', '导出剪映草稿',
   ]);
   assert.equal(Object.keys(REVIEW_GATES).length, 8);

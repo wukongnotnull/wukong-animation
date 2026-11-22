@@ -91,7 +91,7 @@ codex plugin add wukong-animation@wukong-animation
 
 ### 其他 Agent 工具
 
-Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.26.4 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.26.4) 里的 `wukong-animation-agent-skills-v0.26.4.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
+Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完整技能包，引擎和风格随包安装。下载 [v0.26.5 发布包](https://github.com/wukongnotnull/wukong-animation/releases/tag/v0.26.5) 里的 `wukong-animation-agent-skills-v0.26.5.zip` 和 `SHA256SUMS`。安装、更新、卸载及逐平台验证边界见 [Agent 安装指南](docs/agent-installation.md)。
 
 ## 拍你的第一支片
 
@@ -110,7 +110,7 @@ Cursor、Copilot、Gemini CLI、OpenCode、Roo Code 等工具使用同一份完�
 | 工序 | 交付物 | 你要检查什么 |
 |---|---|---|
 | 1 · 制作准备 | 环境检查结果 | 确认本机可以制作 |
-| 2 · 确定方案 | 方案简报 | 用途、内容、画幅、时长与美术方向 |
+| 2 · 确定简报 | 方案简报 | 用途、内容、画幅、时长与美术方向 |
 | 3 · 编写剧本 | 剧本 | 内容与表达 |
 | 4 · 制作人声 | 人声录音与定位结果 | 试听完整录音、核对稿件与句段时间 |
 | 5 · 规划镜头 | 分镜稿 | 镜头安排与节奏 |

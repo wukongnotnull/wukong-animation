@@ -30,15 +30,17 @@ import { loadFilm } from './film-context.mjs';
 export { loadFilm } from './film-context.mjs';
 
 /** 构建传给管线的任务描述。 */
-function createRenderJob(ctx, { proxy = false, nativeFps = false, log }) {
+function createRenderJob(ctx, { proxy = false, nativeFps = false, workDir, shotIds = null, log }) {
   const [W0, H0] = ctx.film.size;
   const { W, H } = outputSize(ctx.film, proxy);
   const fps = nativeFps ? ctx.film.fps : outputSize(ctx.film, proxy).fps;
   const everyNthFrame = nativeFps ? 1 : proxySampling(ctx.film, proxy, ctx.pipeline.name);
   const timeline = buildFrameTimeline(ctx.shots, fps);
   const native = buildFrameTimeline(ctx.shots, ctx.film.fps);
-  const shots = ctx.shots.map((s, i) => ({ ...s, frames: timeline.shots[i].frames, nativeFrames: native.shots[i].frames, startFrame: timeline.shots[i].startFrame }));
-  const workDir = ensureDir(path.join(ctx.variant.cacheDir, 'work'));
+  const shots = ctx.shots.map((s, i) => ({ ...s, frames: timeline.shots[i].frames, nativeFrames: native.shots[i].frames, startFrame: timeline.shots[i].startFrame }))
+    .filter(shot => !shotIds || shotIds.has(shot.id));
+  const defaultWorkDir = path.join(ctx.variant.cacheDir, 'work');
+  workDir = ensureDir(workDir ?? defaultWorkDir);
   const text = collectText([...ctx.shots.map((s) => s.path), ...ctx.styleScripts, ...ctx.filmScripts]);
   const fonts = prepareFonts(ctx.style.fonts || [], { text, workDir, log });
   return prepareWordShots({
@@ -54,6 +56,7 @@ function createRenderJob(ctx, { proxy = false, nativeFps = false, log }) {
     seed: ctx.film.seed,
     fonts,
     workDir,
+    browserBaseDir: workDir !== defaultWorkDir ? defaultWorkDir : null,
     runtimeDir: path.join(ENGINE_ROOT, 'runtime'),
     log,
   });
@@ -253,12 +256,50 @@ export async function writeReview(filmDir, file, args) {
  * at:    [{shot:'s02', t:1.5}]；省略则每镜取 frames 张（均匀分布）
  * contactSheet: 把所有静帧拼成一张接触表，方便一次看完
  * wordReview: 指定 at 时默认不做词级检查（只渲请求的帧）；为 true 时只检查 at 涉及的镜头。未指定 at 时检查整片（增量复用）。
+ * isolated: 主版点位自查，所有渲染文件写到本批的临时目录。
  */
-export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, wordReview = false, log = console.log } = {}) {
-  const ctx = loadFilm(filmDir, { aspect });
+export async function stills(filmDir, { at = null, frames = 1, contactSheet = true, proxy = false, aspect = null, wordReview = false, isolated = false, log = console.log } = {}) {
+  if (isolated && (!at?.length || wordReview)) throw new Error('--isolated 需要 --at 指定帧，不能与 --word-review 同用');
+  const ctx = loadFilm(filmDir, { aspect, requireShots: !isolated });
+  const options = { at, frames, contactSheet, proxy, wordReview, log };
+  if (!isolated) return renderStillSet(ctx, options);
+  if (!ctx.variant.isMain) throw new Error('--isolated 仅支持主版；副版请走正常静帧和主版核验流程');
+
+  const shotIds = new Set();
+  for (const point of at) {
+    const shot = ctx.shots.find(s => s.id === point.shot);
+    if (!shot) throw new Error(`没有镜头 ${point.shot}`);
+    if (!fs.existsSync(shot.path)) throw new Error(`镜头 ${shot.id} 的文件不存在: ${shot.file}`);
+    if (!Number.isFinite(point.t) || point.t < 0) throw new Error(`镜头 ${shot.id} 的 --at 时间必须是非负秒数`);
+    shotIds.add(shot.id);
+  }
+
+  const outDir = fs.mkdtempSync(path.resolve(os.tmpdir(), 'wka-still-'));
+  const workDir = path.join(outDir, '.work');
+  try {
+    return await renderStillSet(ctx, { ...options, shotIds, workDir, outDir, isolated: true });
+  } catch (error) {
+    fs.rmSync(outDir, { recursive: true, force: true });
+    throw error;
+  } finally {
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+async function renderStillSet(ctx, { at, frames, contactSheet, proxy, wordReview, log, workDir, shotIds, outDir = ctx.variant.stillsDir, isolated = false }) {
   // 静帧只取一张，保留Remotion原生时间定位精度，不必跟随视频小样降帧。
-  const job = createRenderJob(ctx, { proxy, nativeFps: ctx.pipeline.name === 'remotion', log });
+  const job = createRenderJob(ctx, { proxy, nativeFps: ctx.pipeline.name === 'remotion', workDir, shotIds, log });
   const mod = await pipelineModule(job);
+  const renderPoints = (points, directory) => {
+    if (ctx.pipeline.name !== 'remotion') return mod.renderStills(job, points, directory);
+    const byId = new Map(job.shots.map(shot => [shot.id, shot]));
+    const shots = [...new Set(points.map(point => point.shot))].map(id => {
+      const shot = byId.get(id);
+      if (!shot) throw new Error(`没有镜头 ${id}`);
+      return shot;
+    });
+    return shots.length ? mod.renderStills({ ...job, shots }, points, directory) : [];
+  };
   let points = at;
   if (!points) {
     points = [];
@@ -269,12 +310,12 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
       }
     }
   }
-  const outDir = ensureDir(ctx.variant.stillsDir);
-  const files = await mod.renderStills(job, points, outDir);
+  ensureDir(outDir);
+  const files = await renderPoints(points, outDir);
   if (!at || wordReview) {
-    await writeWordReview(job, { renderStills: (pts, dir) => mod.renderStills(job, pts, dir), shotKey: shotHash, shots: at ? [...new Set(points.map((point) => point.shot))] : null });
+    await writeWordReview(job, { renderStills: renderPoints, shotKey: shotHash, shots: at ? [...new Set(points.map((point) => point.shot))] : null });
   } else log('  已跳过词级检查（只渲了 --at 指定的帧）；需要时加 --word-review，或不带 --at 跑整片静帧');
-  log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
+  if (!isolated) log(`  静帧 ${files.length} 张 → ${path.relative(ctx.filmDir, outDir)}/`);
   let contactSheetFile = null;
   if (contactSheet && files.length) {
     const { cols, rows, tw, th } = contactSheetLayout(files.length, job.W, job.H, frames);
@@ -295,8 +336,9 @@ export async function stills(filmDir, { at = null, frames = 1, contactSheet = tr
       : `${scaled};${files.map((_, i) => `[v${i}]`).join('')}xstack=inputs=${files.length}:layout=${layout}:fill=gray`;
     // 每个滤镜分支各开线程，上百张时会耗尽系统线程（swscaler 报 Resource temporarily unavailable）：滤镜图单线程
     await run([...inputs, '-filter_complex_threads', '1', '-filter_complex', filter, '-frames:v', '1', '-q:v', '3', contactSheetFile]);
-    log(`  接触表 → ${path.relative(ctx.filmDir, contactSheetFile)} (${cols}×${rows})`);
+    if (!isolated) log(`  接触表 → ${path.relative(ctx.filmDir, contactSheetFile)} (${cols}×${rows})`);
   }
+  if (isolated) log(`  静帧 ${files.length} 张 → ${outDir}/`);
   return { files, contactSheet: contactSheetFile };
 }
 

@@ -68,6 +68,24 @@ test('a refused lock preserves the other owner and the previous recovery command
   assert.equal(fs.readFileSync(f.active, 'utf8'), 'previous command');
 });
 
+test('isolated stills require specific frames while production commands still respect the lock', t => {
+  const f = fixture(t);
+  const owner = JSON.stringify({ pid: process.pid, host: os.hostname(), token: 'other-owner' });
+  fs.writeFileSync(f.lock, owner);
+  for (const args of [['--isolated'], ['--isolated', '--at', 's01:0.5', '--word-review']]) {
+    const result = f.run(['still', f.film, ...args]);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /--isolated.*--at.*--word-review/);
+  }
+  for (const args of [['still', f.film, '--at', 's01:0.5'], ['render', f.film, '--proxy']]) {
+    const result = f.run(args);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /工程正在写入/);
+  }
+  assert.equal(fs.readFileSync(f.lock, 'utf8'), owner);
+  assert.equal(fs.existsSync(f.active), false);
+});
+
 test('a failing output callback still releases exactly one owned lock', t => {
   const f = fixture(t);
   fs.writeFileSync(path.join(f.film, 'film.json'), JSON.stringify({ title: 'Output error', style: 'ink-wash', size: [32, 18], fps: 10, seed: 1, shots: [{ id: 's01', file: 'missing.js', duration: 1 }] }));

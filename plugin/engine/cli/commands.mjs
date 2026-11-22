@@ -8,6 +8,7 @@ import { workbenchCommands } from './commands/workbench.mjs';
 
 // 唯一命令目录：处理器与保护策略一起维护。
 export function commandsFor(context) {
+  const isolatedStill = Boolean(context.opt('isolated'));
   const groups = {
     'environment': environmentCommands(context),
     'project': projectCommands(context),
@@ -34,7 +35,7 @@ export function commandsFor(context) {
     'qc': { preflight: 'film', lock: 'film', active: true, run: groups['review']['qc'] },
     'estimate': { preflight: 'film', lock: 'none', active: false, run: groups['media']['estimate'] },
     'materials': { preflight: 'film', lock: 'film', active: false, run: groups['media']['materials'] },
-    'still': { preflight: 'film', lock: 'film', active: true, run: groups['media']['still'] },
+    'still': { preflight: 'film', lock: isolatedStill ? 'none' : 'film', active: !isolatedStill, observe: !isolatedStill, run: groups['media']['still'] },
     'animatic': { preflight: 'film', lock: 'film', active: true, run: groups['media']['animatic'] },
     'preview': { preflight: 'film', lock: 'film', active: true, run: groups['media']['preview'] },
     'clean': { preflight: 'film', lock: 'film', active: true, run: groups['media']['clean'] },

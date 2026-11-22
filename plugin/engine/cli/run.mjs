@@ -35,7 +35,7 @@ export async function runCli(argv, { log: write = console.log, error = console.e
       if (inspectProduction(dir).readonly) assertActiveProduction(dir);
     } else if (pos[0] && ['film', 'film-unless-list'].includes(command.preflight)) assertActiveProduction(pos[0]);
 
-    const observe = pos[0] && ['signoff', 'qc', 'still', 'animatic', 'preview', 'render', 'soundtrack', 'final'].includes(cmd) && hasWorkbench(pos[0]);
+    const observe = pos[0] && command.observe !== false && ['signoff', 'qc', 'still', 'animatic', 'preview', 'render', 'soundtrack', 'final'].includes(cmd) && hasWorkbench(pos[0]);
     if (observe) assertWorkbenchScope(pos[0]);
     const needsLock = observe || command.lock === 'film' || (command.lock === 'final-record' && opt('final') && opt('record'));
     const unlock = needsLock && pos[0] ? lockProduction(pos[0], { waitMs: Number(process.env.WKA_LOCK_WAIT_MS ?? 30000) }) : () => {};

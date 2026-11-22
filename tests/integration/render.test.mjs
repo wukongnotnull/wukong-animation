@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { check } from '../../plugin/engine/pipelines/browser/index.mjs';
 import { inspectVideo } from '../../plugin/engine/core/timing.mjs';
 
@@ -42,6 +42,32 @@ const setCues = (dir, cues) => {
   const f = path.join(dir, 'film.json');
   fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), cues }));
 };
+
+test('Browser 独立抽帧与普通静帧画面一致，失败时清理独立目录', opts, t => {
+  const dir = makeFilm({ s01: SHOT('ctx.fillRect(5, 5, 20, 20);'), s02: SHOT("throw new Error('broken frame');") });
+  const assetURL = pathToFileURL(path.join(dir, 'media/example.png')).href;
+  fs.writeFileSync(path.join(dir, 'shots/s01.js'), SHOT(`
+    if (new URL('../../../media/example.png', document.baseURI).href !== ${JSON.stringify(assetURL)}) throw new Error('影片相对素材路径变了');
+    ctx.fillRect(5, 5, 20, 20);
+  `));
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-isolated-browser-test-'));
+  t.after(() => { for (const folder of [dir, temp]) fs.rmSync(folder, { recursive: true, force: true }); });
+  const regular = wka('still', dir, '--at', 's01:0.5');
+  assert.equal(regular.status, 0, regular.stderr);
+  const env = { TMPDIR: temp, TMP: temp, TEMP: temp, WKA_LOCK_WAIT_MS: '0' };
+  const isolated = wkaEnv(env, 'still', dir, '--at', 's01:0.5', '--isolated');
+  assert.equal(isolated.status, 0, isolated.stderr);
+  const sheet = isolated.stdout.match(/^接触表：(.+)$/m)?.[1];
+  assert.ok(sheet, isolated.stdout);
+  const image = 's01-0.50s.png';
+  assert.deepEqual(fs.readFileSync(path.join(path.dirname(sheet), image)), fs.readFileSync(path.join(dir, 'review/静帧/16x9', image)));
+  const before = fs.readdirSync(temp).filter(name => name.startsWith('wka-still-'));
+  assert.equal(before.length, 1);
+  const failed = wkaEnv(env, 'still', dir, '--at', 's01:0.5,s02:0.5', '--isolated');
+  assert.equal(failed.status, 1, failed.stderr);
+  assert.match(failed.stderr, /broken frame/);
+  assert.deepEqual(fs.readdirSync(temp).filter(name => name.startsWith('wka-still-')), before);
+});
 
 test('a truncated shot manifest recovers on rerun without changing protected files', opts, (t) => {
   const dir = makeFilm({ s01: SHOT('ctx.fillRect(5, 5, 20, 20);') });

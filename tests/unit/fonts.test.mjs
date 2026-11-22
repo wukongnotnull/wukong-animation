@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 // FONT_CACHE_DIR 在模块加载时由 WUKONG_ANIMATION_HOME 决定，所以先设环境变量再动态导入
 const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-fonts-'));
@@ -101,6 +103,37 @@ test('falls through to the next source when the first one fails', () => {
   const file = ensureFontFile('Ma Shan Zheng', { urls });
   assert.equal(file, path.join(FONT_CACHE_DIR, 'MaShanZheng.ttf'));
   assert.equal(fs.readdirSync(FONT_CACHE_DIR).filter((f) => f.endsWith('.part')).length, 0);
+});
+
+test('concurrent font downloads publish through separate temporary files', { skip: process.platform === 'win32' }, async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-font-race-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const source = path.join(directory, 'source.ttf');
+  fakeFont(source);
+  fs.writeFileSync(path.join(directory, 'curl'), `#!/bin/sh
+[ "$1" = --version ] && exit 0
+while [ "$1" != -o ]; do shift; done
+printf '%s' "$2" > "$TEST_FONT_DIR/$TEST_FONT_JOB"
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  [ -s "$TEST_FONT_DIR/one" ] && [ -s "$TEST_FONT_DIR/two" ] && break
+  sleep 0.1
+done
+cp "$TEST_FONT_DIR/source.ttf" "$2"
+`, { mode: 0o755 });
+  const moduleURL = new URL('../../plugin/engine/core/fonts.mjs', import.meta.url).href;
+  const script = `import { ensureFontFile } from ${JSON.stringify(moduleURL)};
+    console.log(ensureFontFile('Inter', { urls: ['https://unused.invalid/font.ttf'] }));`;
+  const run = promisify(execFile);
+  const fontHome = path.join(directory, 'home');
+  const outputs = await Promise.allSettled(['one', 'two'].map(job => run(process.execPath, ['--input-type=module', '-e', script], {
+    env: { ...process.env, PATH: directory + path.delimiter + process.env.PATH, WUKONG_ANIMATION_HOME: fontHome, TEST_FONT_DIR: directory, TEST_FONT_JOB: job },
+    timeout: 5000,
+  })));
+  assert.notEqual(fs.readFileSync(path.join(directory, 'one'), 'utf8'), fs.readFileSync(path.join(directory, 'two'), 'utf8'));
+  const cache = path.join(fontHome, 'cache/fonts'), font = path.join(cache, 'Inter.ttf');
+  for (const output of outputs) assert.equal(output.value?.stdout.trim(), font, output.reason?.stderr);
+  assert.deepEqual(fs.readdirSync(cache), ['Inter.ttf']);
+  assert.deepEqual(fs.readFileSync(font), fs.readFileSync(source));
 });
 
 test('a failure marker blocks retries only for the same source list', () => {

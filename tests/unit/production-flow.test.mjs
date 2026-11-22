@@ -24,7 +24,7 @@ function contents(dir) {
 test('唯一在用流程有九道工序、八个审片门及独立人声节点', () => {
   assert.equal(state.FLOW, 8);
   assert.equal(state.LAST_STEP, 9);
-  assert.deepEqual(Object.values(state.PRODUCTION_STEPS), ['制作准备', '确定方案', '编写剧本', '制作人声', '规划镜头', '制作小样', '制作成片', '调整画幅', '导出剪映草稿']);
+  assert.deepEqual(Object.values(state.PRODUCTION_STEPS), ['制作准备', '确定简报', '编写剧本', '制作人声', '规划镜头', '制作小样', '制作成片', '调整画幅', '导出剪映草稿']);
   assert.equal(Object.keys(state.REVIEW_GATES).length, 8);
   assert.equal(state.REVIEW_GATES[1], undefined);
   assert.match(state.REVIEW_GATES[4], /人声/);
@@ -42,7 +42,7 @@ test('只有输入素材时可新建，身份在补齐简报与影片文件后�
   assert.equal(state.readProgress(dir).flow, 8);
   assert.equal(fs.readFileSync(path.join(dir, '录音.wav'), 'utf8'), 'existing input');
   state.recordProgress(dir, { step: 2, note: '方案简报通过' });
-  assert.equal(state.readProgress(dir).history[0].label, '确定方案');
+  assert.equal(state.readProgress(dir).history[0].label, '确定简报');
   assert.equal(state.readProgress(dir).history[0].gate, state.REVIEW_GATES[2]);
 });
 

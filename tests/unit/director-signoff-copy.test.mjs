@@ -7,7 +7,7 @@ const page = fs.readFileSync(new URL('../../plugin/engine/workbench/index.html',
 const app = fs.readFileSync(new URL('../../plugin/engine/workbench/app.js', import.meta.url), 'utf8');
 
 test('the director opens the workbench automatically before the brief sign-off', () => {
-  const start = skill.indexOf('### 第 2 道 · 确定方案');
+  const start = skill.indexOf('### 第 2 道 · 确定简报');
   const end = skill.indexOf('### 第 3 道');
   assert.ok(start > 0 && end > start);
   const stage = skill.slice(start, end);

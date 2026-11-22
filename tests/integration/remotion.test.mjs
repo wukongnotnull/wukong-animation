@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { check } from '../../plugin/engine/pipelines/remotion/index.mjs';
 
@@ -79,8 +80,8 @@ test('渲染出与 film.json 一致的片段，再渲全部命中缓存，改一
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('同一帧渲染两次逐像素一致', opts, () => {
-  const dir = makeFilm({ s01: SHOT('#111111') });
+test('普通 Remotion 抽帧跳过未请求的构建错误，同一帧渲染两次逐像素一致', opts, () => {
+  const dir = makeFilm({ s01: SHOT('#111111'), s02: "import Missing from './missing.tsx'; export default Missing;" });
   const shoot = () => {
     const r = wka('still', dir, '--at', 's01:0.5');
     assert.equal(r.status, 0, r.stderr);
@@ -90,6 +91,44 @@ test('同一帧渲染两次逐像素一致', opts, () => {
   const b = shoot();
   assert.ok(a.equals(b));
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('两批 Remotion 静帧可在工程锁持有期间独立完成', opts, async t => {
+  const dir = makeFilm({
+    s01: SHOT('#111111'),
+    s02: SHOT('#242426', "if (s.start !== 1) throw new Error('静帧须沿用全片时间轴');"),
+    s03: "import Missing from './missing.tsx'; export default Missing;",
+  });
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-isolated-test-'));
+  t.after(() => { for (const folder of [dir, temp]) fs.rmSync(folder, { recursive: true, force: true }); });
+  const capture = wka('workbench', dir, '--capture');
+  assert.equal(capture.status, 0, capture.stderr);
+  const ledger = path.join(dir, '.wka/workbench.json');
+  const lock = path.join(dir, '.cache/operation.lock');
+  fs.mkdirSync(path.dirname(lock), { recursive: true });
+  const owner = JSON.stringify({ pid: process.pid, host: os.hostname(), token: 'production' });
+  fs.writeFileSync(lock, owner);
+  const before = fs.readdirSync(dir, { recursive: true }).sort();
+  const workbenchBefore = fs.readFileSync(ledger);
+  const run = promisify(execFile);
+  const env = { ...process.env, TMPDIR: temp, TMP: temp, TEMP: temp, WUKONG_ANIMATION_HOME: HOME, WKA_NO_FONT_DOWNLOAD: '1', WKA_LOCK_WAIT_MS: '0' };
+  const results = await Promise.allSettled(['s01', 's02'].map(id =>
+    run(process.execPath, [WKA, 'still', dir, '--at', id + ':0.5', '--isolated'], { env, timeout: 45_000 })));
+  const sheets = results.map((result, index) => {
+    assert.equal(result.status, 'fulfilled', result.reason?.stderr);
+    const sheet = result.value.stdout.match(/^接触表：(.+)$/m)?.[1];
+    assert.ok(sheet && path.isAbsolute(sheet), result.value.stdout);
+    const output = path.dirname(sheet);
+    assert.ok(fs.realpathSync(output).startsWith(fs.realpathSync(temp) + path.sep));
+    assert.ok(fs.statSync(sheet).size > 0);
+    assert.deepEqual(fs.readdirSync(output).sort(), [`s0${index + 1}-0.50s.png`, 'sheet.jpg']);
+    assert.ok(fs.statSync(path.join(output, `s0${index + 1}-0.50s.png`)).size > 0);
+    return sheet;
+  });
+  assert.notEqual(...sheets);
+  assert.deepEqual(fs.readdirSync(dir, { recursive: true }).sort(), before);
+  assert.deepEqual(fs.readFileSync(ledger), workbenchBefore);
+  assert.equal(fs.readFileSync(lock, 'utf8'), owner);
 });
 
 test('小样不放大小尺寸，低于15fps时保留原帧率', opts, () => {

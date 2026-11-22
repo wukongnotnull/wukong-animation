@@ -4,6 +4,7 @@
 // 下载来源依次是：WKA_FONT_MIRROR（自配镜像）→ GitHub → jsDelivr（国内通常能连上）。
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { FONT_CACHE_DIR, ensureDir } from './paths.mjs';
@@ -78,18 +79,24 @@ export function ensureFontFile(family, { log = () => {}, urls = fontUrls(family)
   // 标记里记着当时试过的来源，换了来源（比如刚配了 WKA_FONT_MIRROR）就立刻重试
   const failed = dest + '.failed';
   const tried = urls.join('\n');
-  if (fs.existsSync(failed) && fs.readFileSync(failed, 'utf8') === tried && Date.now() - fs.statSync(failed).mtimeMs < 24 * 3600e3) return null;
+  try {
+    if (Date.now() - fs.statSync(failed).mtimeMs < 24 * 3600e3 && fs.readFileSync(failed, 'utf8') === tried) return null;
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
   log(`下载字体 ${family} …`);
-  const tmp = dest + '.part';
-  for (const url of urls) {
-    if (download(url, tmp) && isFontFile(tmp)) {
-      fs.renameSync(tmp, dest);
-      fs.rmSync(failed, { force: true });
-      return dest;
+  const tmp = `${dest}.${randomUUID()}.part`;
+  try {
+    for (const url of urls) {
+      if (download(url, tmp) && isFontFile(tmp)) {
+        fs.renameSync(tmp, dest);
+        fs.rmSync(failed, { force: true });
+        return dest;
+      }
+      fs.rmSync(tmp, { force: true });
     }
-    fs.rmSync(tmp, { force: true });
-  }
-  fs.writeFileSync(failed, tried);
+    if (fs.existsSync(dest) && isFontFile(dest)) return dest;
+    fs.writeFileSync(tmp, tried);
+    fs.renameSync(tmp, failed);
+  } finally { fs.rmSync(tmp, { force: true }); }
   log(`  ! 字体 ${family} 下载失败（试过 ${urls.length} 个来源）。可设置 WKA_FONT_MIRROR 指向镜像，或手动放到 ${dest}`);
   return null;
 }

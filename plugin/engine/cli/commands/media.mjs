@@ -37,15 +37,16 @@ export function mediaCommands({ pos, opt, log, aspectOpt }) {
     },
     'still': async () => {
       if (!pos[0]) fail('用法：wka still <片目录>');
+      const isolated = !!opt('isolated'), wordReview = !!opt('word-review');
       const at = opt('at')
         ? String(opt('at')).split(',').map((x) => {
             const [shot, t] = x.split(':');
             return { shot, t: parseFloat(t) };
           })
         : null;
-      await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
-      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), wordReview: !!opt('word-review'), log });
-      registerReview(pos[0],'stills',[...r.files,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
+      if (!isolated) await checkMainUnchanged(pos[0], { aspect: aspectOpt(), log });
+      const r = await stills(pos[0], { at, frames: Number(opt('frames', 1)), proxy: !!opt('proxy'), aspect: aspectOpt(), wordReview, isolated, log });
+      if (!isolated) registerReview(pos[0],'stills',[...r.files,...(r.contactSheet?[r.contactSheet]:[])],aspectOpt(),!!opt('proxy'));
       if (r.contactSheet) log(`接触表：${r.contactSheet}`);
       return;
     },

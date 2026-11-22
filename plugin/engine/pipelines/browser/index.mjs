@@ -71,7 +71,9 @@ function buildHost(job) {
     cues: job.film.cues || {},
   };
   const tpl = fs.readFileSync(path.join(job.runtimeDir, 'host.html'), 'utf8');
+  const base = job.browserBaseDir && pathToFileURL(job.browserBaseDir + path.sep).href.replaceAll('&', '&amp;').replaceAll('"', '%22');
   const html = tpl
+    .replace('<head>', base ? `<head><base href="${base}">` : '<head>')
     .replace('{{FONT_CSS}}', job.fonts.css)
     .replace('{{CONFIG}}', JSON.stringify(config))
     .replace('{{W}}', job.W)

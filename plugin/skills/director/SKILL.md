@@ -49,7 +49,7 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka sfx <片目录> [--list]` | 风格带录音音效清单时用：`--list` 只列来源与大小给用户确认，不带参数则下载并处理到本机缓存 |
 | `wka align-voice <片目录> [--words\|--prepare --binary 路径 --model 路径\|--status\|--import 时间点.json --confirm "用户确认说明"]` | 本地台词定位；默认同时生成逐词时间表（`--words` 只重算词表，`--words --status` 查看）；首次准备与人工补点见 [录音定位](references/LOCAL-SPEECH.md) |
 | `wka soundtrack <片目录>` | 合成配乐、音效和环境声，接入用户录音，写入声音同步点，输出声轨 `.cache/mix.wav` 和审听用的 `review/声轨/声轨.m4a`；不要求镜头文件已写好 |
-| `wka still <片目录> [--frames N] [--at s02:1.5] [--word-review] [--aspect 9:16]` | 渲染静帧 + 接触表；带 `--at` 时默认不做词级检查 |
+| `wka still <片目录> [--frames N] [--at s02:1.5] [--word-review] [--isolated] [--aspect 9:16]` | 渲染静帧与接触表。带 `--at` 时默认跳过词级检查，加 `--isolated` 可并行自查主版指定帧 |
 | `wka animatic <片目录> [--proxy] [--aspect 9:16]` | 动态分镜：每镜代表帧按镜头时长停留、配上声轨，输出 `review/小样/动态分镜-<后缀>.mp4` + `review/小样/接触表-<后缀>.jpg` |
 | `wka preview <片目录> [--only s03] [--native] [--aspect 9:16]` | 日常局部预览，只更新受影响镜头，不拼接整片；`--native` 检查原帧率动作 |
 | `wka clean <片目录> --render-cache [--aspect 9:16]` | 用户需要空间时主动清理可再生渲染缓存，保留声音、成片和签批快照 |
@@ -59,6 +59,8 @@ node <插件根目录>/engine/bin/wka.mjs
 | `wka final <片目录> [--proxy] [--only s03] [--formats mp4,gif] [--aspect 9:16\|all]` | 混音、渲染和编码成片（第 7 道）；`--formats jianying` 导出剪映草稿（第 9 道） |
 
 **`--aspect`**：不写就是主版（`film.json` 的 `size`）；写副版画幅（`film.json` 的 `variants` 里的键）就处理副版，缓存放 `.cache/<后缀>/`。所有画幅的输出文件名都带 `-<后缀>`，主版也带（如 `review/小样/小样-16x9.mp4`、`成片/春晓-16x9.mp4`）；镜头源文件不带，主版 `shots/s03.tsx`，副版覆盖 `shots/s03.9x16.tsx`。副版只在第 8 道「调整画幅」用，见该道细则。
+
+多章同时自查主版时，每章把检查点合到一条 `wka still <片目录> --at s02:0.5,s03:1.2 --isolated`。各批使用自己的系统临时目录，命令打印静帧和接触表路径，可同时运行，也不占工程写入锁或触发工作台快照。需要工作台审阅、词级检查或副版核验时，使用普通 `wka still`。
 
 恢复与交付辅助命令：`wka resume <片目录> [--json]` 核对阶段和已完成产物；`wka delivery <片目录> --host codex|claude|generic [--aspect all|9:16] [--json]` 生成文件存在性、新旧状态及宿主链接清单。它们不会替用户签批。阶段日志中的画幅是实际计算的画幅；副版准备时的「主版验证」仍是在检查主版，不是副版渲染进度。
 

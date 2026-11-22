@@ -77,7 +77,13 @@ export function renderDocument(raw, formatted = true) {
       const table = document.createElement('table'), head = document.createElement('thead'), body = document.createElement('tbody');
       for (const [index, row] of [block.header, ...block.rows].entries()) {
         const tr = document.createElement('tr'); if (row.shotId) { tr.dataset.shot = row.shotId; tr.tabIndex = -1; }
-        row.cells.forEach((cell, column) => { const td = document.createElement(index ? 'td' : 'th'); if (!index) td.scope = 'col'; else td.dataset.label = block.header.cells[column]?.text || ''; append(td, cell.parts); tr.append(td); });
+        row.cells.forEach((cell, column) => {
+          const td = document.createElement(index ? 'td' : 'th');
+          td.dataset.label = block.header.cells[column]?.text || '';
+          if (!index) td.scope = 'col';
+          append(td, cell.parts);
+          tr.append(td);
+        });
         (index ? body : head).append(tr);
       }
       table.append(head, body); wrap.append(table); root.append(wrap);

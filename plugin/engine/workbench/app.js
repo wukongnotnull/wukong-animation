@@ -181,11 +181,14 @@ async function renderViewer(serial) {
     if (shots.length) { const first = el('option', '定位镜号…'); first.value = ''; $('shot-jump').append(first); for (const shot of shots) { const option = el('option', shot.dataset.shot); option.value = shot.dataset.shot; $('shot-jump').append(option); } }
     if (ui.anchor.type === 'text') revealDocumentAnchor(doc, ui.anchor);
   } else if (file.kind === 'image') {
-    const wrap = el('div', undefined, 'image-wrap'), img = el('img'); img.src = url; img.alt = file.label; img.tabIndex = 0; img.setAttribute('aria-label', file.label + '，方向键调整批注位置，回车记录');
+    const wrap = el('div', undefined, 'image-wrap'), img = el('img'); img.alt = file.label; img.tabIndex = 0; img.setAttribute('aria-label', file.label + '，方向键调整批注位置，回车记录');
+    img.addEventListener('load', () => {
+      if (img.naturalWidth && img.naturalHeight) wrap.style.setProperty('--image-aspect', String(img.naturalWidth / img.naturalHeight));
+    });
     img.addEventListener('error', () => notice('图片无法预览，请检查原文件。', true));
     img.addEventListener('click', event => { const r = img.getBoundingClientRect(); setAnchor({ type: 'image', x: (event.clientX - r.left) / r.width, y: (event.clientY - r.top) / r.height }); captureDrafts(); $('note-text').focus(); });
     img.addEventListener('keydown', event => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) { event.preventDefault(); const a = ui.anchor.type === 'image' ? { ...ui.anchor } : { type: 'image', x: 0.5, y: 0.5 }; a.x = Math.max(0, Math.min(1, a.x + (event.key === 'ArrowLeft' ? -0.02 : event.key === 'ArrowRight' ? 0.02 : 0))); a.y = Math.max(0, Math.min(1, a.y + (event.key === 'ArrowUp' ? -0.02 : event.key === 'ArrowDown' ? 0.02 : 0))); setAnchor(a); captureDrafts(); if (event.key === 'Enter') { $('note-text').focus(); } } });
-    wrap.append(img); $('viewer').append(wrap); setAnchor(ui.anchor);
+    img.src = url; wrap.append(img); $('viewer').append(wrap); setAnchor(ui.anchor);
   } else if (['audio', 'video'].includes(file.kind)) {
     const media = el(file.kind), previous = ui.mediaStates.get(key); media.controls = true; media.preload = 'metadata'; media.src = url; media.setAttribute('aria-label', file.label); ui.media = media;
     media.playbackRate = previous?.rate || 1; $('speed').value = String(media.playbackRate);

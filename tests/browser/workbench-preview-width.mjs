@@ -1,11 +1,13 @@
-// node tests/browser/workbench-wide-tables.mjs [screenshot.png]
+// node tests/browser/workbench-preview-width.mjs [screenshot.png]
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { startWorkbench } from '../../plugin/engine/cli/workbench-server.mjs';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { registerWorkbenchArtifact } from '../../plugin/engine/core/workbench.mjs';
 
 const require = createRequire(new URL('../../plugin/engine/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -21,6 +23,17 @@ try {
     '| s01 | P01 | 3.2 秒 0:00.0–0:03.2 | — | 远景 | 片名稳在左上，八张卡片各有图标、名称和用途。参考：[构图](./media/' + 'reference-image-'.repeat(20) + '.png) | 八卡沿弧线轮播，再依次展开为两行四列。 | 片名与八个名称 | 开头介绍内容与用途。 | 卡片掠过音 |',
     '| s02 | P02 | 5 秒 0:03.2–0:08.2 | hold | 中景 | 卡片移到左栏，右侧展示笔记。 | 两张笔记先后落下，保留尚未填上出处的位置。 | 笔记与出处 | 选题时会收集许多资料。 | 纸张落下音 |',
   ].join('\n'));
+  for (const [file, label, width, height] of [['wide.svg', '横图', 400, 100], ['tall.svg', '竖图', 100, 400]]) {
+    fs.writeFileSync(path.join(directory, file), `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#2d6a32"/></svg>`);
+    registerWorkbenchArtifact(directory, { file, step: 3, label });
+  }
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=duration=1', path.join(directory, 'sample.wav')]);
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=s=320x180:d=1', '-c:v', 'libx264', path.join(directory, 'sample.mp4')]);
+  registerWorkbenchArtifact(directory, { file: 'sample.wav', step: 3, label: '音频样本' });
+  registerWorkbenchArtifact(directory, { file: 'sample.mp4', step: 3, label: '视频样本' });
+  fs.mkdirSync(path.join(directory, 'draft'));
+  fs.writeFileSync(path.join(directory, 'draft', 'project.json'), '{}');
+  registerWorkbenchArtifact(directory, { file: 'draft', step: 3, label: '工程样本' });
   app = await startWorkbench(directory);
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1414, height: 1000 } });
@@ -31,15 +44,20 @@ try {
   const table = document.locator('.table-wrap');
   await table.waitFor();
 
-  const layout = () => document.evaluate(doc => {
-    const viewer = doc.parentElement;
+  const layout = (content = document) => content.evaluate(node => {
+    const viewer = node.closest('#viewer');
     const style = getComputedStyle(viewer);
-    const available = viewer.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    return { available, width: doc.getBoundingClientRect().width };
+    const availableWidth = viewer.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const availableHeight = viewer.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    const { width, height } = node.getBoundingClientRect();
+    return { availableWidth, availableHeight, width, height, fit: getComputedStyle(node).objectFit };
   });
+  const assertFullWidth = async (content = document) => {
+    const { width, availableWidth } = await layout(content);
+    assert.ok(Math.abs(availableWidth - width) <= 1, `内容宽 ${width}px，预览可用宽度 ${availableWidth}px`);
+  };
   const assertTableFits = async () => {
-    const { width, available } = await layout();
-    assert.ok(Math.abs(available - width) <= 1, `文档宽 ${width}px，预览可用宽度 ${available}px`);
+    await assertFullWidth();
     const fit = await table.evaluate(wrap => {
       const headers = [...wrap.querySelectorAll('th')];
       const right = wrap.getBoundingClientRect().right;
@@ -62,7 +80,7 @@ try {
   await page.getByRole('button', { name: '查看原文' }).click();
   await page.locator('#document.raw').waitFor();
   await page.locator('#toggle-inspector').click();
-  assert.equal((await layout()).width, 1100);
+  await assertFullWidth();
   await page.getByRole('button', { name: '排版阅读' }).click();
   await table.waitFor();
   await page.locator('#toggle-library').click();
@@ -76,9 +94,35 @@ try {
   await page.setViewportSize({ width: 1414, height: 1000 });
   await page.locator('#toggle-library').click();
   await page.getByRole('button', { name: /编写剧本/ }).click();
-  await document.getByRole('heading', { name: '剧本' }).waitFor();
-  assert.equal((await layout()).width, 1100);
-  console.log('分镜表验证通过（桌面双侧栏状态、原文、手机和普通剧本）');
+  const openFile = async (label, selector) => {
+    await page.locator('#files .file').filter({ hasText: label }).click();
+    const content = page.locator(selector);
+    await content.waitFor();
+    return content;
+  };
+  await assertFullWidth(await openFile('剧本', '#document.formatted'));
+  await assertFullWidth(await openFile('音频样本', '#viewer audio'));
+  const video = await openFile('视频样本', '#viewer video');
+  await page.waitForFunction(() => document.querySelector('#viewer video').videoWidth > 0);
+  await assertFullWidth(video);
+  const videoLayout = await layout(video);
+  assert.ok(Math.abs(videoLayout.height - videoLayout.availableHeight) <= 1);
+  assert.equal(videoLayout.fit, 'contain');
+  await assertFullWidth(await openFile('工程样本', '#viewer .directory'));
+
+  for (const [label, aspect] of [['横图', 4], ['竖图', 1 / 4]]) {
+    const image = await openFile(label, '#viewer img');
+    await page.waitForFunction(() => document.querySelector('#viewer img').naturalWidth > 0);
+    const { width, height, availableWidth, availableHeight } = await layout(image);
+    assert.ok(Math.abs(width - Math.min(availableWidth, availableHeight * aspect)) <= 1, label);
+    assert.ok(Math.abs(height - width / aspect) <= 1, label);
+    await image.click({ position: { x: width / 4, y: height * 3 / 4 } });
+    const pin = await page.locator('#viewer .pin').boundingBox();
+    const bounds = await image.boundingBox();
+    assert.ok(Math.abs(pin.x + pin.width / 2 - (bounds.x + width / 4)) <= 1);
+    assert.ok(Math.abs(pin.y + pin.height / 2 - (bounds.y + height * 3 / 4)) <= 1);
+  }
+  console.log('全宽预览验证通过（分镜、原文、普通文档、音视频、工程列表及图片批注）');
 } finally {
   await browser?.close();
   await app?.close();

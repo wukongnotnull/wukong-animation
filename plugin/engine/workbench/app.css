@@ -23,6 +23,9 @@ body{height:100dvh;display:flex;flex-direction:column;overflow:hidden}.topbar{mi
   .document table:has(th:nth-child(7)) th:is([data-label="时长"],[data-label="时长 · 全片位置"]){width:9%}
   .document table:has(th:nth-child(7)) th:is([data-label="画面"],[data-label="运镜 / 动效"]){width:20%}
 }
+#viewer .document .document-media{display:block;max-width:100%;margin:8px 0;box-shadow:none}
+#viewer .document :is(img,video).document-media{height:auto}
+.document .document-link{color:var(--note-link);text-underline-offset:.15em}
 .review-pin{background:var(--review-pin);outline:2px dashed var(--review-pin);outline-offset:3px}
 .theme-switch{display:flex;flex-shrink:0;margin-left:auto}.theme-switch button{padding:6px 10px;font-size:11px}.theme-switch button+button{margin-left:-1px}.theme-switch button:first-child{border-radius:6px 0 0 6px}.theme-switch button:last-child{border-radius:0 6px 6px 0}:root[data-theme="dark"] .theme-switch [data-theme-choice="dark"],:root[data-theme="light"] .theme-switch [data-theme-choice="light"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}:root[data-theme="dark"] .theme-switch [data-theme-choice="dark"]:hover,:root[data-theme="light"] .theme-switch [data-theme-choice="light"]:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 @media(max-width:600px){.theme-switch button{padding:6px 8px;font-size:10px}}

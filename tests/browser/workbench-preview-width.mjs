@@ -18,9 +18,13 @@ try {
   fs.writeFileSync(path.join(directory, 'story.md'), '# 剧本\n\n旁白正文。\n');
   fs.writeFileSync(path.join(directory, 'storyboard.md'), [
     '# 分镜稿', '',
+    '![动作概览](<./wide.svg>)', '',
+    '![缺图](./missing.svg) · ![外部图](https://example.invalid/image.png)', '',
+    '[图例](./wide.svg) · [试看](./sample.mp4) · [试听](./sample.wav) · [打开剧本](./story.md)', '',
+    '[项目页面](https://example.invalid/details) · [无效链接](javascript:alert%281%29)', '',
     '| 镜 | 段落 | 时长 · 全片位置 | 转场 | 景别 | 画面 | 运镜 / 动效 | 屏幕文字 | 人声 | 音效 |',
     '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-    '| s01 | P01 | 3.2 秒 0:00.0–0:03.2 | — | 远景 | 片名稳在左上，八张卡片各有图标、名称和用途。参考：[构图](./media/' + 'reference-image-'.repeat(20) + '.png) | 八卡沿弧线轮播，再依次展开为两行四列。 | 片名与八个名称 | 开头介绍内容与用途。 | 卡片掠过音 |',
+    '| s01 | P01 | 3.2 秒 0:00.0–0:03.2 | — | 远景 | ![设计帧](./wide.svg) 片名稳在左上，八张卡片各有图标、名称和用途。参考：[构图](./media/' + 'reference-image-'.repeat(20) + '.png) | 八卡沿弧线轮播，再依次展开为两行四列。 | 片名与八个名称 | 开头介绍内容与用途。 | 卡片掠过音 |',
     '| s02 | P02 | 5 秒 0:03.2–0:08.2 | hold | 中景 | 卡片移到左栏，右侧展示笔记。 | 两张笔记先后落下，保留尚未填上出处的位置。 | 笔记与出处 | 选题时会收集许多资料。 | 纸张落下音 |',
   ].join('\n'));
   for (const [file, label, width, height] of [['wide.svg', '横图', 400, 100], ['tall.svg', '竖图', 100, 400]]) {
@@ -34,15 +38,56 @@ try {
   fs.mkdirSync(path.join(directory, 'draft'));
   fs.writeFileSync(path.join(directory, 'draft', 'project.json'), '{}');
   registerWorkbenchArtifact(directory, { file: 'draft', step: 3, label: '工程样本' });
+  fs.appendFileSync(path.join(directory, 'storyboard.md'), '\n\n当前分镜版本。');
   app = await startWorkbench(directory);
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1414, height: 1000 } });
+  const imageRequests = [], mediaRequests = [];
+  page.on('request', request => {
+    if (request.resourceType() === 'image') imageRequests.push(request.url());
+    if (request.resourceType() === 'media') mediaRequests.push(request.url());
+  });
   await page.goto(app.url);
   await page.locator('#toggle-inspector').click();
   await page.getByRole('button', { name: /规划镜头/ }).click();
   const document = page.locator('#document');
   const table = document.locator('.table-wrap');
   await table.waitFor();
+  const embedded = document.locator('img.document-media');
+  assert.equal(await embedded.count(), 3, '嵌图和普通图片链接都应直接显示');
+  for (const alt of ['动作概览', '设计帧', '图例']) {
+    const picture = document.getByRole('img', { name: alt });
+    await picture.scrollIntoViewIfNeeded();
+    await page.waitForFunction(alt => [...document.querySelectorAll('#document img')].some(img => img.alt === alt && img.naturalWidth > 0), alt);
+    assert.match(await picture.getAttribute('src'), /^\/api\/file\?/);
+  }
+  assert.match(await document.innerText(), /!\[缺图\]/);
+  assert.match(await document.innerText(), /!\[外部图\]/);
+  assert.ok(imageRequests.length > 0 && imageRequests.every(url => url.startsWith(app.origin + '/api/file?')));
+
+  const web = document.getByRole('link', { name: '项目页面' });
+  assert.equal(await web.getAttribute('href'), 'https://example.invalid/details');
+  assert.equal(await web.getAttribute('target'), '_blank');
+  assert.equal(await document.getByRole('link', { name: '无效链接' }).count(), 0);
+  for (const kind of ['audio', 'video']) {
+    const player = document.locator(kind);
+    assert.equal(await player.isVisible(), true, '打开分镜就应显示 ' + kind + ' 控件');
+    assert.equal(await player.evaluate(node => node.controls && node.paused && node.preload === 'none'), true);
+  }
+  assert.deepEqual(mediaRequests, []);
+  const diagram = document.getByRole('link', { name: '图例', exact: true });
+  await diagram.click();
+  assert.equal(await document.getByRole('img', { name: '图例' }).count(), 0);
+  for (const [name, kind] of [['试看','video'], ['试听','audio']]) {
+    const link = document.getByRole('link', { name, exact: true });
+    const player = document.locator(kind);
+    await player.waitFor();
+    assert.equal(await player.evaluate(node => node.controls), true);
+    await player.evaluate(node => node.play());
+    await page.waitForFunction(kind => document.querySelector('#document ' + kind)?.currentTime > 0, kind);
+    await link.click();
+    assert.equal(await player.evaluate(node => node.paused), true);
+  }
 
   const layout = (content = document) => content.evaluate(node => {
     const viewer = node.closest('#viewer');
@@ -77,8 +122,17 @@ try {
   if (process.argv[2]) await page.screenshot({ path: process.argv[2] });
   await page.locator('#toggle-inspector').click();
   await assertTableFits();
+  const versions = await page.locator('#versions option').evaluateAll(options => options.map(option => option.value));
+  assert.equal(versions.length, 2);
+  await page.locator('#versions').selectOption(versions[1]);
+  await document.getByText('![动作概览]', { exact: false }).waitFor();
+  assert.equal(await embedded.count(), 0);
+  await page.locator('#versions').selectOption(versions[0]);
+  await embedded.first().waitFor();
   await page.getByRole('button', { name: '查看原文' }).click();
   await page.locator('#document.raw').waitFor();
+  assert.match(await document.innerText(), /!\[动作概览\]/);
+  assert.equal(await embedded.count(), 0);
   await page.locator('#toggle-inspector').click();
   await assertFullWidth();
   await page.getByRole('button', { name: '排版阅读' }).click();
@@ -93,7 +147,8 @@ try {
 
   await page.setViewportSize({ width: 1414, height: 1000 });
   await page.locator('#toggle-library').click();
-  await page.getByRole('button', { name: /编写剧本/ }).click();
+  await document.getByRole('link', { name: '打开剧本', exact: true }).click();
+  await page.locator('#file-name').filter({ hasText: '剧本' }).waitFor();
   const openFile = async (label, selector) => {
     await page.locator('#files .file').filter({ hasText: label }).click();
     const content = page.locator(selector);
@@ -112,7 +167,10 @@ try {
 
   for (const [label, aspect] of [['横图', 4], ['竖图', 1 / 4]]) {
     const image = await openFile(label, '#viewer img');
-    await page.waitForFunction(() => document.querySelector('#viewer img').naturalWidth > 0);
+    await page.waitForFunction(() => {
+      const image = document.querySelector('#viewer .image-wrap img');
+      return image?.complete && image.parentElement.style.getPropertyValue('--image-aspect');
+    });
     const { width, height, availableWidth, availableHeight } = await layout(image);
     assert.ok(Math.abs(width - Math.min(availableWidth, availableHeight * aspect)) <= 1, label);
     assert.ok(Math.abs(height - width / aspect) <= 1, label);

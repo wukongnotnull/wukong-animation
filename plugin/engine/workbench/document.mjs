@@ -1,11 +1,14 @@
 // A deliberately small, non-executing Markdown reader with original-source coordinates.
 function parts(text, start) {
   const out = []; let at = 0;
-  const pattern = /\*\*([^*\n]+)\*\*|`([^`\n]+)`/g;
+  const pattern = /(?<!\\)(!?)\[([^\[\]\n]*)\]\((?:<([^<>\n]+)>|([^\s()]+))\)|\*\*([^*\n]+)\*\*|`([^`\n]+)`/g;
   for (const match of text.matchAll(pattern)) {
     if (match.index > at) out.push({ text: text.slice(at, match.index), start: start + at });
-    const bold = match[1] !== undefined, offset = bold ? 2 : 1;
-    out.push({ text: match[1] ?? match[2], start: start + match.index + offset, style: bold ? 'strong' : 'code' }); at = match.index + match[0].length;
+    const [source, marker, label, angledPath, barePath, bold, code] = match;
+    const offset = start + match.index;
+    if (label !== undefined) out.push({ text: source, start: offset, reference: { label, path: angledPath ?? barePath, embedded: marker === '!' } });
+    else out.push({ text: bold ?? code, start: offset + (bold ? 2 : 1), style: bold ? 'strong' : 'code' });
+    at = match.index + source.length;
   }
   if (at < text.length) out.push({ text: text.slice(at), start: start + at });
   return out;
@@ -64,7 +67,59 @@ export function parseDocument(raw) {
   }
   return blocks;
 }
-export function renderDocument(raw, formatted = true) {
+function documentMedia(target, label, fallback) {
+  const media = document.createElement(target.kind === 'image' ? 'img' : target.kind);
+  media.className = 'document-media';
+  if (target.kind === 'image') {
+    media.alt = label;
+    media.loading = 'lazy';
+  } else {
+    media.controls = true;
+    media.preload = 'none';
+    media.setAttribute('aria-label', label);
+    if (target.kind === 'video') media.playsInline = true;
+  }
+  media.addEventListener('error', () => media.replaceWith(fallback), { once: true });
+  media.src = target.url;
+  return media;
+}
+
+function documentReference(part, target, fallback) {
+  const { label, embedded } = part.reference;
+  const canPreview = ['image', 'video', 'audio'].includes(target.kind);
+  if (embedded && target.kind === 'image') return documentMedia(target, label, fallback);
+
+  const link = document.createElement('a');
+  link.href = target.url;
+  link.className = 'document-link';
+  link.textContent = label || target.label || target.url;
+  if (label) link.dataset.source = part.start + (embedded ? 2 : 1);
+  if (target.external) {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    return link;
+  }
+
+  const panel = canPreview ? document.createElement('span') : null;
+  if (panel) {
+    panel.append(documentMedia(target, label || target.label, fallback));
+    link.setAttribute('aria-expanded', 'true');
+  }
+  link.addEventListener('click', event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (!panel) { target.open(); return; }
+    panel.hidden = !panel.hidden;
+    link.setAttribute('aria-expanded', String(!panel.hidden));
+    if (panel.hidden) panel.firstElementChild?.pause?.();
+  });
+  if (!panel) return link;
+  const group = document.createElement('span');
+  group.append(link, panel);
+  return group;
+}
+
+export function renderDocument(raw, formatted = true, resolveReference) {
   const root = document.createElement(formatted ? 'article' : 'pre'); root.className = 'document ' + (formatted ? 'formatted' : 'raw'); root.id = 'document'; root.tabIndex = 0; root.setAttribute('aria-label', '只读文档');
   const append = (parent, values) => {
     for (const part of values) {
@@ -73,7 +128,8 @@ export function renderDocument(raw, formatted = true) {
         node.dataset.source = part.start;
         node.textContent = part.text;
       }
-      parent.append(node);
+      const target = part.reference && resolveReference?.(part.reference);
+      parent.append(target ? documentReference(part, target, node) : node);
     }
   };
   if (!formatted) { append(root, [{ text: raw, start: 0 }]); return root; }

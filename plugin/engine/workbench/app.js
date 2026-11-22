@@ -1,4 +1,4 @@
-import { allItems, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineChanges, formatLineDiff, formatChangeExcerpts, versionChanges } from './model.mjs';
+import { allItems, documentReferencePath, documentWebUrl, restorePosition, noteKey, playbackContext, inSpan, formatClock, formatSpan, parseClock, chatPrompt, chatLink, formatBytes, lineChanges, formatLineDiff, formatChangeExcerpts, versionChanges } from './model.mjs';
 import { renderDocument, documentAnchor, revealDocumentAnchor } from './document.mjs';
 import { createSession } from './session.mjs';
 import { createDocumentSearch } from './search.mjs';
@@ -157,6 +157,7 @@ function renderFileList() {
 }
 function clearViewer() {
   const viewer = $('viewer');
+  for (const media of viewer.querySelectorAll('.document-media:is(audio,video)')) media.pause();
   for (const child of [...viewer.children]) if (!child.classList.contains('exit-fullscreen')) child.remove();
   if (!viewer.querySelector('.exit-fullscreen')) viewer.append(button('退出全屏', async () => { await document.exitFullscreen(); $('fullscreen').focus(); }, 'exit-fullscreen'));
 }
@@ -175,7 +176,18 @@ async function renderViewer(serial) {
     const response = await fetch(url); if (!response.ok) throw new Error((await response.json()).error || '文档读取失败');
     const raw = await response.text(); if (serial !== ui.render) return; ui.documentText = raw;
     const markdown = /\.md$/i.test(file.path); $('read-mode').hidden = !markdown; $('read-mode').textContent = ui.raw ? '排版阅读' : '查看原文';
-    const doc = renderDocument(raw, markdown && !ui.raw); $('viewer').append(doc);
+    const formatted = markdown && !ui.raw;
+    const files = new Map((formatted && current() ? allItems(ui.report) : [])
+      .filter(i => i.relativePath && i.current?.snapshot.kind === 'file' && i.availability === 'present')
+      .map(i => [i.relativePath, i]));
+    const doc = renderDocument(raw, formatted, reference => {
+      const url = !reference.embedded && documentWebUrl(reference.path);
+      if (url) return { url, external: true };
+      const linked = files.get(documentReferencePath(file.relativePath, reference.path));
+      if (!linked) return null;
+      return { kind: linked.kind, label: linked.label, url: mediaUrl(linked, linked.current), open: () => action(() => choose(linked)) };
+    });
+    $('viewer').append(doc);
     documentSearch.bind(doc, ui.film + '/' + ui.item);
     const shots = [...doc.querySelectorAll('[data-shot]')]; $('shot-jump').replaceChildren(); $('shot-jump').hidden = !shots.length;
     if (shots.length) { const first = el('option', '定位镜号…'); first.value = ''; $('shot-jump').append(first); for (const shot of shots) { const option = el('option', shot.dataset.shot); option.value = shot.dataset.shot; $('shot-jump').append(option); } }

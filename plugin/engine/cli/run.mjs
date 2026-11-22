@@ -49,13 +49,13 @@ export async function runCli(argv, { log: write = console.log, error = console.e
       if (command.active && pos[0]) atomicJson(path.join(path.resolve(pos[0]), '.cache/active-command.json'), { argv });
       const operationsFile = pos[0] ? path.join(path.resolve(pos[0]), '.wka/operations.json') : null;
       const before = observe ? workbenchJson(operationsFile, { stages: {} }).stages : null;
-      if (observe) captureWorkbenchLocked(pos[0]);
+      if (observe) captureWorkbenchLocked(pos[0], { incremental: cmd !== 'signoff' });
       const code = await command.run();
       if (observe) {
         const after = workbenchJson(operationsFile, { stages: {} }).stages;
         const producedPaths = Object.entries(after || {}).filter(([key, value]) => value.status === 'completed' &&
           (value.id !== before?.[key]?.id || value.checkedAt !== before?.[key]?.checkedAt)).flatMap(([, value]) => (value.outputs || []).map(o => o.file));
-        captureWorkbenchLocked(pos[0], { producedPaths });
+        captureWorkbenchLocked(pos[0], { producedPaths, incremental: cmd !== 'signoff' });
       }
       return Number.isInteger(code) ? code : 0;
     } finally {

@@ -11,7 +11,7 @@ import { reviewCommands } from './commands/review.mjs';
 import { commitSnapshot } from '../core/project.mjs';
 import { finalDeliveryReport } from '../core/final-delivery.mjs';
 import { scopedPath, workbenchJson } from '../core/workbench-catalog.mjs';
-import { captureWorkbench, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, recordWorkbenchRepair, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
+import { readWorkbenchReport, workbenchFile, workbenchOriginal, workbenchPending, addWorkbenchNote, recordWorkbenchRepair, resolveWorkbenchNote, checkWorkbenchArtifact, decideWorkbenchStage } from '../core/workbench.mjs';
 import { readWorkbenchUI, writeWorkbenchUI, workbenchStatus } from '../core/workbench-ui.mjs';
 
 const assets = fileURLToPath(new URL('../workbench/', import.meta.url));
@@ -175,7 +175,7 @@ export async function startWorkbench(directory, { directories = [], port = 0, si
       if (route === '/api/ui' && ['GET', 'POST'].includes(req.method)) { send(res, 200, req.method === 'GET' ? readWorkbenchUI(uiRoot) : writeWorkbenchUI(uiRoot, body)); return; }
       const film = films.find(f => f.id === (body.film || url.searchParams.get('film')));
       if (!film) throw new Error('影片不在本次工作台授权范围内');
-      if (route === '/api/report' && req.method === 'GET') { send(res, 200, captureWorkbench(film.dir)); return; }
+      if (route === '/api/report' && req.method === 'GET') { send(res, 200, readWorkbenchReport(film.dir)); return; }
       if (route === '/api/status' && req.method === 'GET') { send(res, 200, workbenchStatus(film.dir)); return; }
       if (route === '/api/pending' && req.method === 'GET') { send(res, 200, workbenchPending(film.dir)); return; }
       if (route === '/api/file' && ['GET', 'HEAD'].includes(req.method)) {

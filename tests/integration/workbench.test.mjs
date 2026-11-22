@@ -1,4 +1,5 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { lockProduction } from '../../plugin/engine/core/operations.mjs';
 import { buildManifest, writeManifest } from '../../plugin/engine/core/delivery-manifest.mjs';
 import { initReviewRepo } from '../helpers/review-repo.mjs';
 import { test } from 'node:test';
@@ -24,6 +25,46 @@ async function fixture(t) {
   const id = listing.films[0].id;
   return { root, film, server, headers, request, id };
 }
+test('report reads a fresh CLI capture without opening the production lock, then captures changes', async t => {
+  const f = await fixture(t);
+  const { captureWorkbenchLocked } = await import('../../plugin/engine/core/workbench.mjs');
+  const findBrief = view => view.stages.find(s => s.step === 2).items[0];
+  const release = lockProduction(f.film);
+  let first;
+  try { first = findBrief(captureWorkbenchLocked(f.film, { incremental: true })); }
+  finally { release(); }
+  let lockOpens = 0;
+  const open = fs.openSync;
+  t.mock.method(fs, 'openSync', (file, flags, ...args) => {
+    if (typeof file === 'string' && file.endsWith('operation.lock') && flags === 'wx') lockOpens++;
+    return open(file, flags, ...args);
+  });
+  const report = async () => {
+    const response = await f.request('/api/report?film=' + f.id);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  assert.equal(findBrief(await report()).current.id, first.current.id);
+  assert.equal(lockOpens, 0);
+  const original = path.join(f.film, 'brief.md');
+  const { mtime } = fs.statSync(original);
+  fs.writeFileSync(original, '# 审阅内容\n需要更新');
+  fs.utimesSync(original, mtime, mtime);
+  const updated = findBrief(await report());
+  assert.notEqual(updated.current.id, first.current.id);
+  assert.equal(lockOpens, 1);
+  assert.equal(findBrief(await report()).current.id, updated.current.id);
+  assert.equal(lockOpens, 1);
+  const finish = lockProduction(f.film);
+  try {
+    fs.writeFileSync(original, '# 第三版');
+    const busy = await report();
+    assert.equal(busy.producing, true);
+    assert.equal(findBrief(busy).current.id, updated.current.id);
+    assert.equal(lockOpens, 2);
+  } finally { finish(); }
+});
+
 test('direct address serves films and immutable media without browser credentials', async t => {
   const f = await fixture(t);
   assert.equal(f.server.url, f.server.origin + '/');

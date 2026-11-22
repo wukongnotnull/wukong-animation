@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { atomicJson, digest } from './evidence.mjs';
+import { fileVersion } from './file-hash.mjs';
+import { loadWorkbenchObservation, observationRevision } from './workbench-observation.mjs';
 import { assertCompatibleProgress, inspectProduction, assertActiveProduction } from './state.mjs';
 import { scopedPath, workbenchJson } from './workbench-catalog.mjs';
 
@@ -13,7 +15,8 @@ export function readWorkbenchUI(dir) {
   return value;
 }
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
-function operationBusy(file) {
+export function workbenchProductionBusy(root) {
+  const file = scopedPath(root, '.cache/operation.lock');
   let owner;
   try { owner = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) { return error.code !== 'ENOENT'; }
   return !(owner && owner.host === os.hostname() && Number.isInteger(owner.pid) && !alive(owner.pid));
@@ -44,19 +47,26 @@ export function writeWorkbenchUI(dir, { key, expected, value }) {
   } finally { if (held) fs.rmSync(lock, { force: true }); }
 }
 
-export function workbenchStatus(dir) {
-  const root = scope(dir), rows = [];
+export function workbenchRevision(root, ledger) {
+  const rows = [];
   const walk = (file, key) => {
-    let st; try { st = fs.lstatSync(file); } catch (error) { if (error.code === 'ENOENT') { rows.push([key, null]); return; } throw error; }
+    let st; try { st = fs.lstatSync(file, { bigint: true }); } catch (error) { if (error.code === 'ENOENT') { rows.push([key, null]); return; } throw error; }
     if (st.isSymbolicLink()) { rows.push([key, 'link']); return; }
     if (st.isDirectory()) {
       for (const name of fs.readdirSync(file).sort()) if (!name.startsWith('.') && name !== 'node_modules') walk(path.join(file, name), key + '/' + name);
-    } else if (st.isFile()) rows.push([key, st.size, st.mtimeMs, st.ctimeMs]);
+    } else if (st.isFile()) rows.push([key, [st.dev, st.ino, st.size, st.mtimeNs, st.ctimeNs].map(String)]);
   };
   walk(root, '.');
-  for (const rel of ['.wka/workbench.json', '.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/operations.json']) walk(scopedPath(root, rel), rel);
-  const ledger = workbenchJson(scopedPath(root, '.wka/workbench.json'), { registrations: [], artifacts: [] });
+  for (const rel of ['.wka/final-delivery.json', '.wka/decisions.json', '.wka/state.json', '.wka/operations.json', '.wka/voice-alignment.json', '.wka/voice-sources.json', '.wka/word-timeline.json']) walk(scopedPath(root, rel), rel);
   const external = new Set([...ledger.registrations || [], ...ledger.artifacts || []].filter(x => x.external).map(x => x.path));
   for (const file of external) walk(file, 'external:' + file);
-  return { revision: digest(rows), busy: operationBusy(scopedPath(root, '.cache/operation.lock')), at: new Date().toISOString() };
+  return digest(rows);
+}
+
+export function workbenchStatus(dir) {
+  const root = scope(dir), file = scopedPath(root, '.wka/workbench.json');
+  const ledger = workbenchJson(file, { registrations: [], artifacts: [] });
+  const busy = workbenchProductionBusy(root), observed = loadWorkbenchObservation(root);
+  const revision = digest([fileVersion(file), workbenchRevision(root, ledger), observed && observationRevision(observed.files)]);
+  return { revision, busy, at: new Date().toISOString() };
 }

@@ -8,6 +8,9 @@ import { lockProduction } from './operations.mjs';
 import { workbenchCatalog, workbenchDependencies, workbenchJson, scopedPath } from './workbench-catalog.mjs';
 import { verifyManifest } from './delivery-manifest.mjs';
 import { voiceReviewStatus } from './voice-review.mjs';
+import { fileVersion } from './file-hash.mjs';
+import { loadWorkbenchObservation, observeWorkbenchFiles, observationRevision, saveWorkbenchObservation } from './workbench-observation.mjs';
+import { workbenchRevision, workbenchProductionBusy } from './workbench-ui.mjs';
 
 import { archiveWorkbench, archiveFile } from './workbench-archive.mjs';
 
@@ -32,20 +35,24 @@ function locked(dir, fn) {
 }
 export function hasWorkbench(dir) { return fs.existsSync(path.join(dir, '.wka/workbench.json')); }
 
-function snapshot(dir, item) {
+function snapshot(dir, item, observation) {
   const entries = [], directory = fs.lstatSync(item.path).isDirectory();
   const store = scopedPath(dir, '.wka/workbench/objects');
   if (item.path === dir || item.path === store || store.startsWith(item.path + path.sep) || item.path.startsWith(store + path.sep)) throw new Error('不能将工作台自身存储登记为交付物');
-  fs.mkdirSync(store, { recursive: true });
-  fs.writeFileSync(scopedPath(dir, '.wka/workbench/objects/.gitignore'), '*\n!.gitignore\n');
+  const ignore = scopedPath(dir, '.wka/workbench/objects/.gitignore');
+  if (!fs.existsSync(ignore)) {
+    fs.mkdirSync(store, { recursive: true });
+    fs.writeFileSync(ignore, '*\n!.gitignore\n');
+  }
   const walk = (file, rel) => {
+    observation.track(file);
     const st = fs.lstatSync(file);
     if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile())) throw new Error(`不保存链接或特殊文件：${file}`);
     if (st.isDirectory()) {
       for (const name of fs.readdirSync(file).sort()) walk(path.join(file, name), rel ? rel + '/' + name : name);
       return;
     }
-    const sha256 = fileDigest(file), object = scopedPath(dir, '.wka/workbench/objects/' + sha256);
+    const sha256 = observation.hash(file), object = scopedPath(dir, '.wka/workbench/objects/' + sha256);
     if (!fs.existsSync(object)) {
       const temp = object + '.' + crypto.randomUUID() + '.part';
       try {
@@ -53,7 +60,8 @@ function snapshot(dir, item) {
         if (fileDigest(temp) !== sha256 || fileDigest(file) !== sha256) throw new Error(`保存期间文件变化，请重试：${file}`);
         fs.renameSync(temp, object);
       } finally { fs.rmSync(temp, { force: true }); }
-    } else if (fileDigest(object) !== sha256) throw new Error(`历史快照损坏，请从备份恢复：${sha256}`);
+    }
+    if (observation.hash(object) !== sha256) throw new Error(`历史快照损坏，请从备份恢复：${sha256}`);
     entries.push({ path: rel || path.basename(file), sha256, size: st.size });
   };
   walk(item.path, '');
@@ -67,22 +75,27 @@ function mediaDuration(item) {
 }
 
 // Caller holds the production lock; repeated capture never rewrites the film or migrates state.
-function capture(dir, { producedPaths = [], observeOnly = false } = {}) {
-  const data = ledger(dir), before = digest(data), catalog = workbenchCatalog(dir, data.registrations);
+function capture(dir, { producedPaths = [], observeOnly = false, incremental = false } = {}) {
+  const data = ledger(dir), before = digest(data);
+  const revision = observeOnly ? null : workbenchRevision(dir, data);
+  const observation = observeWorkbenchFiles(incremental ? loadWorkbenchObservation(dir) : null);
+  const catalog = workbenchCatalog(dir, data.registrations);
+  const artifacts = new Map(data.artifacts.map(artifact => [artifact.id, artifact]));
+  const produced = new Set(producedPaths.map(file => path.resolve(dir, file)));
   for (const item of catalog.items) {
-    let artifact = data.artifacts.find(a => a.id === item.id);
+    let artifact = artifacts.get(item.id);
     if (!artifact) { artifact = { ...item, versions: [] }; data.artifacts.push(artifact); }
     Object.assign(artifact, item);
-    artifact.dependencies = workbenchDependencies(dir, item, catalog.film);
+    artifact.dependencies = workbenchDependencies(dir, item, catalog.film, observation);
     artifact.error = null;
     if (observeOnly) { artifact.availability = artifact.versions.length ? 'present' : 'not-generated'; continue; }
-    if (!fs.existsSync(item.path)) { artifact.availability = artifact.versions.length ? 'missing' : 'not-generated'; continue; }
+    if (!observation.track(item.path)) { artifact.availability = artifact.versions.length ? 'missing' : 'not-generated'; continue; }
     try {
-      const snap = snapshot(dir, item), old = artifact.versions.at(-1);
-      const produced = producedPaths.some(file => path.resolve(dir, file) === item.path);
-      if (!old || old.snapshot.digest !== snap.digest || (produced && old.dependencies !== artifact.dependencies)) {
+      const snap = snapshot(dir, item, observation), old = artifact.versions.at(-1);
+      const wasProduced = produced.has(item.path);
+      if (!old || old.snapshot.digest !== snap.digest || (wasProduced && old.dependencies !== artifact.dependencies)) {
         artifact.versions.push({ id: crypto.randomUUID(), number: artifact.versions.length + 1, at: now(), snapshot: snap,
-          dependencies: artifact.dependencies, duration: mediaDuration(item), provenance: produced ? 'produced' : 'observed',
+          dependencies: artifact.dependencies, duration: mediaDuration(item), provenance: wasProduced ? 'produced' : 'observed',
           context: { shots: catalog.shots, duration: catalog.duration, step: item.step, required: item.required, technical: item.technical || null } });
       }
       artifact.availability = 'present';
@@ -92,9 +105,16 @@ function capture(dir, { producedPaths = [], observeOnly = false } = {}) {
     }
   }
   // Keep earlier records even when configuration no longer lists them.
-  for (const artifact of data.artifacts) if (!catalog.items.some(i => i.id === artifact.id)) artifact.availability = 'historical';
-  if (!observeOnly && (digest(data) !== before || !fs.existsSync(ledgerPath(dir)))) save(dir, data);
-  return { ...report(dir, data, catalog), ...(observeOnly ? { producing: true } : {}) };
+  const active = new Set(catalog.items.map(item => item.id));
+  for (const artifact of data.artifacts) if (!active.has(artifact.id)) artifact.availability = 'historical';
+  if (observeOnly) return { ...report(dir, data, catalog), producing: true };
+  observation.verify();
+  const view = report(dir, data, catalog);
+  if (digest(data) !== before || !fs.existsSync(ledgerPath(dir))) save(dir, data);
+  if (view.ok && revision === workbenchRevision(dir, data)) {
+    saveWorkbenchObservation(dir, { ...observation.evidence(), revision, ledger: fileVersion(ledgerPath(dir)) });
+  }
+  return view;
 }
 
 function normalizedNote(note) { return { ...note, status: note.status || (note.resolved ? 'resolved' : 'pending'), history: note.history || [] }; }
@@ -114,6 +134,10 @@ function report(dir, data, catalog) {
       freshness: current && current.dependencies !== a.dependencies && !checked ? 'needs-review' : 'current' };
   });
   const voice = voiceReviewStatus(dir);
+  const progress = workbenchJson(scopedPath(dir, '.wka/state.json'), { history: [] });
+  const reviewCommit = verifyManifest(dir);
+  reviewCommit.short = reviewCommit.ok ? '已提交' : reviewCommit.reason?.includes('已变化') ? '已变化' : '未提交';
+  reviewCommit.ready = reviewCommit.ok;
   const stages = Object.entries(PRODUCTION_STEPS).map(([number, label]) => {
     const step = Number(number), chosen = items.filter(i => i.step === step);
     const formal = chosen.filter(i => i.required), active = formal.filter(i => i.availability !== 'historical');
@@ -130,10 +154,6 @@ function report(dir, data, catalog) {
     if (!active.length && !catalog.notApplicable.has(step)) blocks.push('尚无登记的正式交付物，请在对话中补齐或登记');
     if (step === 4) blocks.push(...voice.issues);
     if (step >= 7 && !catalog.notApplicable.has(step)) blocks.push(...catalog.warnings);
-    const progress = workbenchJson(scopedPath(dir, '.wka/state.json'), { history: [] });
-    const reviewCommit = verifyManifest(dir);
-    reviewCommit.short = reviewCommit.ok ? '已提交' : reviewCommit.reason?.includes('已变化') ? '已变化' : '未提交';
-    reviewCommit.ready = reviewCommit.ok;
     const historicalApproval = (progress.history || []).some(h => h.step === step && h.decision === 'approved');
     let status = catalog.notApplicable.has(step) && !active.length && !blocks.length ? 'not-applicable' : 'pending';
     if (step === 4 && status !== 'not-applicable' && !latest) {
@@ -150,21 +170,59 @@ function report(dir, data, catalog) {
     duration: catalog.duration, warnings: catalog.warnings, notes: data.notes, history: items.filter(i => i.availability === 'historical') };
 }
 
+function captureWithRetry(dir, options) {
+  try { return capture(dir, options); }
+  catch (error) {
+    if (!options.incremental || error.code !== 'WKA_WORKBENCH_SOURCE_CHANGED') throw error;
+    return capture(dir, options);
+  }
+}
+
 export function captureWorkbench(dir, options = {}) {
   dir = rootOf(dir); const identity = inspectProduction(dir);
   if (identity.mode === 'archive') return archiveWorkbench(dir, ledger(dir), identity);
-  try { return locked(dir, root => capture(root, options)); }
+  try { return locked(dir, root => captureWithRetry(root, options)); }
   catch (error) {
     // Production holds the write lock for a whole render; keep viewing the last registered versions without writing.
     if (!/工程正在写入|工程忙/.test(error.message)) throw error;
+    if (options.incremental) return registeredReport(dir, ledger(dir), true);
     return capture(dir, { observeOnly: true });
   }
 }
+function registeredReport(dir, data, busy) {
+  return { ...report(dir, data, workbenchCatalog(dir, data.registrations)), ...(busy ? { producing: true } : {}) };
+}
+
+function currentRegisteredReport(dir, data, ledgerVersion) {
+  const cached = loadWorkbenchObservation(dir);
+  if (cached?.ledger === ledgerVersion &&
+      cached.revision === workbenchRevision(dir, data) &&
+      observationRevision(cached.files) === digest(cached.files) &&
+      ledgerVersion === fileVersion(ledgerPath(dir))) {
+    return registeredReport(dir, data, false);
+  }
+  return null;
+}
+
+export function readWorkbenchReport(dir) {
+  dir = rootOf(dir);
+  const ledgerVersion = fileVersion(ledgerPath(dir)), data = ledger(dir);
+  const identity = inspectProduction(dir);
+  if (identity.mode === 'archive') return archiveWorkbench(dir, data, identity);
+  if (workbenchProductionBusy(dir)) return registeredReport(dir, data, true);
+  return currentRegisteredReport(dir, data, ledgerVersion) ?? captureWorkbench(dir, { incremental: true });
+}
+
 export function assertWorkbenchScope(dir) { return rootOf(dir); }
 // Only the CLI pipeline can use this while it already owns the same production lock.
 export function captureWorkbenchLocked(dir, options = {}) {
   dir = rootOf(dir); assertActiveProduction(dir);
-  const view = capture(dir, options);
+  let current;
+  if (options.incremental && !options.producedPaths?.length) {
+    const ledgerVersion = fileVersion(ledgerPath(dir));
+    current = currentRegisteredReport(dir, ledger(dir), ledgerVersion);
+  }
+  const view = current ?? captureWithRetry(dir, options);
   if (!view.ok) throw new Error('交付版本未能完整保存：' + [...new Set(view.stages.flatMap(s => s.items).filter(i => i.availability === 'unreadable').map(i => i.error))].join('；'));
   return view;
 }

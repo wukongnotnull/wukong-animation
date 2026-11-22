@@ -42,9 +42,10 @@ try {
   app = await startWorkbench(directory);
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1414, height: 1000 } });
-  const imageRequests = [];
+  const imageRequests = [], mediaRequests = [];
   page.on('request', request => {
     if (request.resourceType() === 'image') imageRequests.push(request.url());
+    if (request.resourceType() === 'media') mediaRequests.push(request.url());
   });
   await page.goto(app.url);
   await page.locator('#toggle-inspector').click();
@@ -53,8 +54,8 @@ try {
   const table = document.locator('.table-wrap');
   await table.waitFor();
   const embedded = document.locator('img.document-media');
-  assert.equal(await embedded.count(), 2);
-  for (const alt of ['动作概览', '设计帧']) {
+  assert.equal(await embedded.count(), 3, '嵌图和普通图片链接都应直接显示');
+  for (const alt of ['动作概览', '设计帧', '图例']) {
     const picture = document.getByRole('img', { name: alt });
     await picture.scrollIntoViewIfNeeded();
     await page.waitForFunction(alt => [...document.querySelectorAll('#document img')].some(img => img.alt === alt && img.naturalWidth > 0), alt);
@@ -68,15 +69,17 @@ try {
   assert.equal(await web.getAttribute('href'), 'https://example.invalid/details');
   assert.equal(await web.getAttribute('target'), '_blank');
   assert.equal(await document.getByRole('link', { name: '无效链接' }).count(), 0);
-  assert.equal(await document.locator('video,audio').count(), 0);
+  for (const kind of ['audio', 'video']) {
+    const player = document.locator(kind);
+    assert.equal(await player.isVisible(), true, '打开分镜就应显示 ' + kind + ' 控件');
+    assert.equal(await player.evaluate(node => node.controls && node.paused && node.preload === 'none'), true);
+  }
+  assert.deepEqual(mediaRequests, []);
   const diagram = document.getByRole('link', { name: '图例', exact: true });
-  await diagram.click();
-  await document.getByRole('img', { name: '图例' }).waitFor();
   await diagram.click();
   assert.equal(await document.getByRole('img', { name: '图例' }).count(), 0);
   for (const [name, kind] of [['试看','video'], ['试听','audio']]) {
     const link = document.getByRole('link', { name, exact: true });
-    await link.click();
     const player = document.locator(kind);
     await player.waitFor();
     assert.equal(await player.evaluate(node => node.controls), true);

@@ -75,7 +75,7 @@ function documentMedia(target, label, fallback) {
     media.loading = 'lazy';
   } else {
     media.controls = true;
-    media.preload = 'metadata';
+    media.preload = 'none';
     media.setAttribute('aria-label', label);
     if (target.kind === 'video') media.playsInline = true;
   }
@@ -102,8 +102,8 @@ function documentReference(part, target, fallback) {
 
   const panel = canPreview ? document.createElement('span') : null;
   if (panel) {
-    panel.hidden = true;
-    link.setAttribute('aria-expanded', 'false');
+    panel.append(documentMedia(target, label || target.label, fallback));
+    link.setAttribute('aria-expanded', 'true');
   }
   link.addEventListener('click', event => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -112,7 +112,6 @@ function documentReference(part, target, fallback) {
     panel.hidden = !panel.hidden;
     link.setAttribute('aria-expanded', String(!panel.hidden));
     if (panel.hidden) panel.firstElementChild?.pause?.();
-    else if (!panel.firstChild) panel.append(documentMedia(target, label || target.label, fallback));
   });
   if (!panel) return link;
   const group = document.createElement('span');

@@ -330,7 +330,7 @@ async function poll() {
     const film = ui.film, state = await api('/api/status?film=' + film); if (film !== ui.film) return;
     ui.busy = state.busy;
     connection(state.busy ? '制作进行中 · 可查看已载入内容，正式提交暂不可用' : '已连接 · 素材保留本机', state.busy);
-    if (!state.busy && state.revision !== ui.fingerprint && !ui.applyingUpdate) {
+    if (!state.busy && (state.revision !== ui.fingerprint || ui.report?.producing) && !ui.applyingUpdate) {
       ui.applyingUpdate = true;
       try {
         stash();

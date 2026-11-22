@@ -1,4 +1,5 @@
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { lockProduction } from '../../plugin/engine/core/operations.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -20,6 +21,74 @@ test('all 9 active stages are visible before film.json exists', async t => {
  const {api,dir}=await setup(t);const report=api.captureWorkbench(dir);
  assert.equal(report.stages.length,9);assert.equal(report.stages.filter(s=>s.gate).length,8);
  assert.equal(at(report,2).items[0].availability,'present');assert.equal(at(report,5).items[0].availability,'not-generated');
+});
+
+test('automatic capture reuses unchanged snapshots and hashes each shared dependency once', async t => {
+  const { api, dir, put } = await setup(t);
+  put('shared.bin', 'a dependency used by two items');
+  put('review/first.png', 'first image');
+  put('review/second.png', 'second image');
+  for (const name of ['first', 'second']) api.registerWorkbenchArtifact(dir, {
+    file: 'review/' + name + '.png', step: 6, depends: ['shared.bin'], required: false,
+  });
+  const autoCapture = () => {
+    const release = lockProduction(dir);
+    try { return api.captureWorkbenchLocked(dir, { incremental: true }); }
+    finally { release(); }
+  };
+  const reads = new Map(), open = fs.openSync;
+  t.mock.method(fs, 'openSync', (file, flags, ...args) => {
+    if (typeof file === 'string' && flags === 'r') reads.set(path.basename(file), (reads.get(path.basename(file)) || 0) + 1);
+    return open(file, flags, ...args);
+  });
+  put('shared.bin', 'a new shared dependency');
+  const first = at(autoCapture(), 6).items.find(i => i.path.endsWith('first.png'));
+  assert.equal(reads.get('shared.bin'), 1);
+  reads.clear();
+  put('review/first.png', 'new image');
+  const secondPass = at(autoCapture(), 6).items;
+  assert.equal(secondPass.find(i => i.id === first.id).versions.length, first.versions.length + 1);
+  assert.equal(reads.get('shared.bin') || 0, 0);
+  assert.equal(reads.get('second.png') || 0, 0);
+  reads.clear();
+  const unchanged = at(autoCapture(), 6).items;
+  assert.deepEqual(unchanged.map(i => i.current.id), secondPass.map(i => i.current.id));
+  assert.equal(reads.get('first.png') || 0, 0);
+  assert.equal(reads.get('second.png') || 0, 0);
+  assert.equal(reads.get('shared.bin') || 0, 0);
+  const second = secondPass.find(i => i.path.endsWith('second.png'));
+  const object = api.workbenchFile(dir, second.id, second.current.id).file;
+  const mtime = fs.statSync(object).mtime;
+  fs.writeFileSync(object, 'X'.repeat(fs.statSync(object).size));
+  fs.utimesSync(object, mtime, mtime);
+  assert.throws(autoCapture, /历史快照损坏/);
+  assert.equal(at(api.captureWorkbench(dir), 6).items.find(i => i.id === second.id).availability, 'unreadable');
+});
+
+test('automatic capture retries once when a shared source changes during capture', async t => {
+  const { api, dir, put } = await setup(t);
+  put('shared.bin', 'old shared dependency');
+  put('review/still.png', 'first frame');
+  api.registerWorkbenchArtifact(dir, { file: 'review/still.png', step: 6, depends: ['shared.bin'] });
+  put('review/still.png', 'second frame');
+  const open = fs.openSync;
+  const frame = fs.realpathSync(path.join(dir, 'review/still.png'));
+  let edited = false;
+  t.mock.method(fs, 'openSync', (file, flags, ...args) => {
+    if (file === frame && flags === 'r' && !edited) {
+      edited = true;
+      put('shared.bin', 'a newly saved shared dependency');
+    }
+    return open(file, flags, ...args);
+  });
+  const release = lockProduction(dir);
+  let automated;
+  try { automated = at(api.captureWorkbenchLocked(dir, { incremental: true }), 6).items.find(i => i.path.endsWith('still.png')); }
+  finally { release(); }
+  const explicit = at(api.captureWorkbench(dir), 6).items.find(i => i.id === automated.id);
+  assert.equal(edited, true);
+  assert.equal(automated.current.id, explicit.current.id);
+  assert.equal(automated.current.dependencies, explicit.dependencies);
 });
 
 test('overwriting a deliverable preserves immutable bytes and does not duplicate unchanged versions', async t => {

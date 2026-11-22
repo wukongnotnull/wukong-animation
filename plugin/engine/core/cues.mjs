@@ -27,8 +27,8 @@ export function usedCueNames(sources) {
 }
 
 /** 从 cues 里挑出镜头用到的那部分（键排好序，保证哈希稳定）。 */
-export function pickCues(cues = {}, files) {
-  const names = usedCueNames(files.filter((f) => fs.existsSync(f)).map((f) => fs.readFileSync(f, 'utf8')));
+export function pickCues(cues = {}, files, read = file => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null) {
+  const names = usedCueNames(files.map(read).filter(source => source !== null));
   const isCharOf = (base) => (k) => k.startsWith(`${base}#`) && /^\d+$/.test(k.slice(base.length + 1));
   const keys = names
     ? [...names].flatMap((n) => (n.endsWith(CHARS_MARK) ? Object.keys(cues).filter(isCharOf(n.slice(0, -CHARS_MARK.length))) : [n]))

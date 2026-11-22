@@ -33,13 +33,14 @@ export function workbenchKind(file) {
   return 'file';
 }
 
-function walk(root, relative) {
+function walk(root, relative, track = () => {}) {
   const base = scopedPath(root, relative);
+  track(base);
   if (!fs.existsSync(base)) return [];
   const out = [];
   for (const ent of fs.readdirSync(base, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const rel = path.join(relative, ent.name); scopedPath(root, rel);
-    if (ent.isDirectory()) out.push(...walk(root, rel));
+    if (ent.isDirectory()) out.push(...walk(root, rel, track));
     else if (ent.isFile()) out.push(rel);
   }
   return out;
@@ -133,14 +134,16 @@ export function workbenchCatalog(dir, registrations = []) {
   return { film, items: [...items.values()], warnings, notApplicable, shots, duration: start, contract };
 }
 
-export function workbenchDependencies(dir, item, film) {
+export function workbenchDependencies(dir, item, film, observation = null) {
   const files = new Set(), projections = {};
   const add = file => { if (typeof file === 'string') files.add(file); };
+  const hash = observation?.hash || fileDigest;
   const source = rel => {
     const file = scopedPath(dir, rel);
+    observation?.track(file);
     if (!fs.existsSync(file)) return [rel, null];
-    if (fs.statSync(file).isDirectory()) return [rel, walk(dir, rel).map(f => [f, fileDigest(scopedPath(dir, f))])];
-    return [rel, fileDigest(file)];
+    if (fs.statSync(file).isDirectory()) return [rel, walk(dir, rel, observation?.track).map(f => [f, hash(scopedPath(dir, f))])];
+    return [rel, hash(file)];
   };
   if (item.depends) item.depends.forEach(add);
   else {
@@ -165,11 +168,14 @@ export function workbenchDependencies(dir, item, film) {
       const addScript = rel => {
         if (!rel || seen.has(rel)) return; seen.add(rel); add(rel);
         const file = scopedPath(dir, rel);
-        if (!fs.existsSync(file)) return;
-        const source = fs.readFileSync(file, 'utf8');
+        const source = observation ? observation.text(file) : fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+        if (source === null) return;
         for (const match of source.matchAll(/(?:from\s*|import\s*\(?\s*|require\s*\(\s*)['"](\.[^'"]+)['"]/g)) {
           const base = path.resolve(path.dirname(file), match[1]);
-          const found = [base, ...['.js', '.mjs', '.ts', '.tsx', '.jsx'].map(ext => base + ext)].find(f => fs.existsSync(f) && fs.statSync(f).isFile());
+          const found = [base, ...['.js', '.mjs', '.ts', '.tsx', '.jsx'].map(ext => base + ext)].find(f => {
+            observation?.track(f);
+            return fs.statSync(f, { throwIfNoEntry: false })?.isFile();
+          });
           if (found) addScript(path.relative(dir, found));
         }
       };
@@ -177,7 +183,7 @@ export function workbenchDependencies(dir, item, film) {
       for (const script of film.scripts || []) addScript(script);
       const start = selected ? (film.shots || []).slice(0, film.shots.indexOf(selected)).reduce((sum, shot) => sum + (Number(shot.duration) || 0), 0) : null;
       projections.picture = { style: film.style, size: film.size, fps: film.fps, seed: film.seed, shots, start,
-        cues: pickCues(film.cues || {}, [...seen].map(f => scopedPath(dir, f))), variants: item.step === 8 ? film.variants : undefined };
+        cues: pickCues(film.cues || {}, [...seen].map(f => scopedPath(dir, f)), observation?.text), variants: item.step === 8 ? film.variants : undefined };
       add('brief.md'); add('story.md'); add('storyboard.md');
     }
 

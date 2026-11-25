@@ -109,7 +109,7 @@ export default function S01({ dur, s }: ShotProps) {
 - `scripts` 列出 `scripts/` 下全部文件（进镜头哈希；单元测试保证不漏列）。
 - 字体：Inter、Noto Sans SC、JetBrains Mono（`core/fonts.mjs` 的 `KNOWN_FONTS` 加 Inter 与 JetBrains Mono 两行）。
 - `subtitles`：Noto Sans SC，白色，细描边加柔阴影，无底框（远端 style-defaults 的字幕规则）。
-- `qc`：底色 `#111111`，强调色 `#D97757`，强调色占比上限、帧差、硬切阈值在示范片实测后定值写入。
+- `qc`：强调色按 [Keynote 配色规范](../../../plugin/skills/keynote/STYLE.md#2-色彩) 设置，底色识别和各项阈值以 `style.json` 为准。
 
 从远端 template 移植进 `scripts/` 的内容：
 
@@ -165,7 +165,7 @@ export default function S01({ dur, s }: ShotProps) {
 
 手动验收：
 
-10. 示范片在 `wka render` → `wka final` 后，联系表看得到深色网格背景、Inter + Noto Sans SC 字体、单一橙色强调、至少一处对象级神奇移动和一处 hold 衔接；`wka qc` 全部通过。
+10. 示范片在 `wka render` → `wka final` 后，联系表看得到深色网格背景、Inter + Noto Sans SC 字体、配色规范规定的唯一强调色、至少一处对象级神奇移动和一处 hold 衔接；`wka qc` 全部通过。
 11. `wka list styles` 显示 `70  keynote  发布会 Keynote  信息叙事  remotion/`，不标“不可用”；README 进度 2 / 72。
 12. 现有测试和冒烟测试全部通过，水墨基准图无变化。
 

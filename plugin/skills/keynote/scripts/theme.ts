@@ -9,7 +9,7 @@ export const color = {
   fgSoft: "#B5B5BA",
   fgFaint: "#6E6E73",
   container: "#242426",
-  accent: "#D97757", // Claude orange, the single accent (spec blue #64A8FF replaced by request)
+  accent: "#D8B45C",
   glass: "rgba(36,36,38,0.72)",
   glassEdge: "rgba(255,255,255,0.12)",
   // light surfaces used by recreated app UI and screenshots

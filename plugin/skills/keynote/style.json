@@ -79,7 +79,7 @@
     "whitespace_min": 0.6,
     "paper": "#161616",
     "paper_tol": 24,
-    "accent": "#D97757",
+    "accent": "#D8B45C",
     "accent_tol": 60,
     "accent_max": 0.04,
     "diff_max": 20,

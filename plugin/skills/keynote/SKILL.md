@@ -1,6 +1,6 @@
 ---
 name: keynote
-description: 发布会 Keynote 风格动画（wukong-animation 第 70 变）：深色透视网格底、单一 Claude 橙强调色、Inter + 思源黑体大字排版、L01–L07 版式、代码重绘的产品界面、镜头推近与高亮框、对象级神奇移动。用户要产品发布、功能讲解、知识讲解、口播类信息片、科技感图文动画时使用；走 remotion 管线（React 组件写镜头）。
+description: 发布会 Keynote 风格动画（wukong-animation 第 70 变）：深色透视网格底，芥末黄为唯一强调色。使用 Inter + 思源黑体大字排版、L01–L07 版式、代码重绘的产品界面、镜头推近与高亮框、对象级神奇移动。适用于产品发布、功能讲解、知识讲解、口播类信息片和科技感图文动画，走 remotion 管线（React 组件写镜头）。
 ---
 
 # 发布会 Keynote · keynote
@@ -21,7 +21,7 @@ description: 发布会 Keynote 风格动画（wukong-animation 第 70 变）：�
 - 镜头文件：`shots/sNN.tsx`（`wka init --style keynote` 会生成 `s01.tsx`）
 - 字体：Inter / Noto Sans SC / JetBrains Mono（按需下载，OFL）
 - 音效：`sfx.json` 里 18 个 Mixkit 录音（`wka sfx` 按需下载，可商用、不可再分发，不进 git）
-- QA 阈值：深色底 ≥ 60%，橙色 ≤ 4%，相邻帧差 ≤ 20，硬切 ≤ 2
+- QA 阈值：深色底 ≥ 60%，强调色面积 ≤ 4%，相邻帧差 ≤ 20，硬切 ≤ 2
 
 ## 许可提醒
 

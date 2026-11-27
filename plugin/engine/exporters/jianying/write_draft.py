@@ -15,6 +15,8 @@ import pyJianYingDraft as draft
 from pyJianYingDraft import Timerange, TrackSpec, TrackType
 from pyJianYingDraft.exceptions import SegmentOverlap
 
+SUBTITLE_PANEL_Y = -788
+
 
 def unique_copy(src: str, dest_dir: str, name: str, taken: set[str]) -> str:
     """复制素材到 dest_dir，重名时加序号。"""
@@ -66,7 +68,9 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
         srt_path = os.path.join(draft_dir, "subtitles.srt")
         with open(srt_path, "w", encoding="utf-8", newline="\n") as file:
             file.write(subtitle["srt"])
-        script.import_srt(srt_path, track_name=subtitle["name"])
+        # 剪映面板的纵坐标是相对位移乘以画布高度。
+        clip_settings = draft.ClipSettings(transform_y=SUBTITLE_PANEL_Y / plan["height"])
+        script.import_srt(srt_path, track_name=subtitle["name"], clip_settings=clip_settings)
 
 
 def update_json(file: str, **fields: object) -> None:

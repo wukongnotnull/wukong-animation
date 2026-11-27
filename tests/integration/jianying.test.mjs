@@ -181,6 +181,10 @@ test('exports an editable 剪映 draft with one SRT track using the aligned spee
   const captions = byType(draft, 'text');
   assert.deepEqual(captions.map(track => track.name), ['字幕']);
   assert.deepEqual(captionText(draft, captions[0]), ['第一句。', '还有一句。', '第二段']);
+  for (const segment of captions[0].segments) {
+    assert.equal(segment.clip.transform.x, 0);
+    assert.equal(Math.round(segment.clip.transform.y * draft.canvas_config.height), -788);
+  }
   assert.deepEqual(captions[0].segments.map(s => s.target_timerange), [
     { start: 240_000, duration: 130_000 },
     { start: 410_000, duration: 270_000 },
@@ -212,6 +216,7 @@ test('a variant exports its own draft named after the title plus the aspect suff
   assert.deepEqual([draft.canvas_config.width, draft.canvas_config.height], [180, 320]);
   const [subtitles] = byType(draft, 'text');
   assert.deepEqual(subtitles.segments.map(s => s.target_timerange.start), [200_000, 1_300_000]);
+  assert.ok(subtitles.segments.every(s => Math.round(s.clip.transform.y * draft.canvas_config.height) === -788));
   assert.ok(fs.existsSync(path.join(drafts, 'jy-it-9x16', 'subtitles.srt')));
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });

@@ -148,3 +148,18 @@ test('drops a track whose file has no sound at all', () => {
 test('has no audio tracks when there is no audio', () => {
   assert.deepEqual(buildDraftPlan(timeline()).audioTracks, []);
 });
+
+test('keeps SRT timestamps within the frame timeline and strips blank lines from cue text', () => {
+  const plan = buildDraftPlan(timeline({
+    fps: 24,
+    duration: 47 / 24,
+    shots: [{ id: 's01', start: 0, duration: 47 / 24, file: '/c/s01.mp4' }],
+    tracks: [{ role: 'track', file: '/f/字幕', start: 0 }],
+    captions: [
+      { text: '片外', start: 2, end: 2.1 },
+      { text: '末句\r\n\r\n第二行', start: 1.8006, end: 1.9586 },
+    ],
+  }));
+  assert.deepEqual(plan.subtitle, { name: '字幕', srt: '1\n00:00:01,801 --> 00:00:01,958\n末句\n第二行\n' });
+  assert.equal(plan.audioTracks[0].name, '字幕 (2)');
+});

@@ -18,7 +18,8 @@ export async function runCli(argv, { log: write = console.log, error = console.e
     const parsed = parseArgs(argv), { cmd, pos, opt } = parsed;
     if (['audition', 'subtitles'].includes(cmd)) {
       if (pos[0] && inspectProduction(pos[0]).readonly) assertActiveProduction(pos[0]);
-      throw new Error('AI 人声和字幕制作已取消；请提供人声录音，在制作小样中完成声画编排。');
+      if (cmd === 'subtitles') throw new Error('剪映字幕随草稿自动导出，请使用 wka final <片目录> --formats jianying。');
+      throw new Error('AI 人声已取消，请提供人声录音，在制作小样中完成声画编排。');
     }
     const commands = commandsFor(commandContext(parsed, log));
     const command = Object.hasOwn(commands, cmd) ? commands[cmd] : null;

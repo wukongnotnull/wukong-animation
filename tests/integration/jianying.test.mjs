@@ -1,5 +1,6 @@
 import { confirmFixtureVoices } from '../helpers/production.mjs';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
+import { importVoiceTiming, voiceAlignmentStatus } from '../../plugin/engine/audio/voice-alignment.mjs';
 // 剪映草稿导出：需要 browser 管线依赖 + ffmpeg + python3 里的 pyJianYingDraft；缺任一项整组跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,6 +69,8 @@ const wkaWith = (env, drafts, ...args) =>
   });
 
 const byType = (draft, type) => draft.tracks.filter((t) => t.type === type);
+const captionText = (draft, track) => track.segments.map(({ material_id }) =>
+  JSON.parse(draft.materials.texts.find(material => material.id === material_id).content).text);
 
 test('writer rejects a genuinely short video instead of silently leaving a timeline gap', opts, () => {
   const dir = makeFilm(), drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-short-'));
@@ -75,7 +78,7 @@ test('writer rejects a genuinely short video instead of silently leaving a timel
     const media = path.join(dir, 'short.mp4');
     const made = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=s=320x180:r=30', '-t', '1', media]);
     assert.equal(made.status, 0, String(made.stderr));
-    const plan = { name: 'short', width: 320, height: 180, fps: 30, video: [{ name: 's01', file: media, start: 0, duration: 2e6 }], audioTracks: [], subtitleTracks: [] };
+    const plan = { name: 'short', width: 320, height: 180, fps: 30, video: [{ name: 's01', file: media, start: 0, duration: 2e6 }], audioTracks: [] };
     const file = path.join(dir, 'plan.json'); fs.writeFileSync(file, JSON.stringify(plan));
     const r = spawnSync('python3', [path.join(ROOT, 'plugin/engine/exporters/jianying/write_draft.py'), file, drafts], { encoding: 'utf8' });
     assert.notEqual(r.status, 0); assert.match(r.stderr, /s01.*素材.*不足/);
@@ -93,6 +96,8 @@ test('107-shot 30fps main and portrait exports have contiguous actual draft cuts
       film.size=size;film.title=`cuts-${size.join('x')}`;fs.writeFileSync(file,JSON.stringify(film));
       const r=wka(drafts,'final',dir,'--formats','jianying');assert.equal(r.status,0,r.stderr);
       const draft=JSON.parse(fs.readFileSync(path.join(drafts,film.title,'draft_info.json')));
+      assert.deepEqual(byType(draft, 'text'), []);
+      assert.equal(fs.existsSync(path.join(drafts, film.title, 'subtitles.srt')), false);
       const cuts=byType(draft,'video')[0].segments.map(s=>s.target_timerange);assert.equal(cuts.length,107);
       let frames=0;
       for(let i=0;i<cuts.length;i++){
@@ -129,9 +134,23 @@ test('纯草稿不拼全片，重复/CLI登记前中断不重导，用户编辑�
   }finally{fs.rmSync(dir,{recursive:true,force:true});fs.rmSync(drafts,{recursive:true,force:true});}
 });
 
-test('exports an editable 剪映 draft split by shot and audio source, with no caption tracks', opts, () => {
-  const dir = makeFilm();
+test('exports an editable 剪映 draft with one SRT track using the aligned speech timestamps', opts, (t) => {
+  const dir = makeFilm({
+    voices: [
+      { text: '第一句。还有一句。', at: 0.2, file: 'audio/vo1.wav' },
+      { text: '第二段', at: 1.3, file: 'audio/vo2.wav' },
+    ],
+  });
   const drafts = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-drafts-'));
+  t.after(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(drafts, { recursive: true, force: true });
+  });
+  const { source } = voiceAlignmentStatus(dir).voices.vo1;
+  importVoiceTiming(dir, { version: 1, voices: { vo1: { source, segments: [
+    { text: '第一句。', start: 0.04, end: 0.17 },
+    { text: '还有一句。', start: 0.21, end: 0.48 },
+  ] } } }, { confirmation: '测试夹具的句段位置' });
   const r = wka(drafts, 'final', dir, '--formats', 'jianying');
   assert.equal(r.status, 0, r.stderr);
 
@@ -159,15 +178,27 @@ test('exports an editable 剪映 draft split by shot and audio source, with no c
   assert.ok(gap[1].target_timerange.start > 1_500_000 && gap[1].target_timerange.start < 1_700_000, `second part starts at ${gap[1].target_timerange.start}`);
   assert.equal(draft.materials.audios.filter((m) => m.path.endsWith('gap.wav')).length, 1, 'both parts share one material');
 
-  assert.deepEqual(byType(draft, 'text'), []);assert.deepEqual(draft.materials.texts, []);
+  const captions = byType(draft, 'text');
+  assert.deepEqual(captions.map(track => track.name), ['字幕']);
+  assert.deepEqual(captionText(draft, captions[0]), ['第一句。', '还有一句。', '第二段']);
+  assert.deepEqual(captions[0].segments.map(s => s.target_timerange), [
+    { start: 240_000, duration: 130_000 },
+    { start: 410_000, duration: 270_000 },
+    { start: 1_300_000, duration: 400_000 },
+  ]);
+  assert.equal(fs.readFileSync(path.join(draftDir, 'subtitles.srt'), 'utf8'), [
+    '1\n00:00:00,240 --> 00:00:00,370\n第一句。\n',
+    '2\n00:00:00,410 --> 00:00:00,680\n还有一句。\n',
+    '3\n00:00:01,300 --> 00:00:01,700\n第二段\n',
+  ].join('\n'));
+  const receipt = JSON.parse(fs.readFileSync(path.join(draftDir, '.wka-complete.json')));
+  assert.ok(receipt.entries.some(entry => entry.path === 'subtitles.srt'));
 
   const paths = [...draft.materials.videos, ...draft.materials.audios].map((m) => m.path);
   for (const p of paths) assert.ok(p.startsWith(path.join(draftDir, 'materials') + path.sep), `outside draft: ${p}`);
   assert.ok(paths.some((p) => path.basename(p) === 's01.mp4'));
 
   assert.match(r.stdout, /响度/);
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.rmSync(drafts, { recursive: true, force: true });
 });
 
 test('a variant exports its own draft named after the title plus the aspect suffix', opts, () => {
@@ -179,6 +210,9 @@ test('a variant exports its own draft named after the title plus the aspect suff
   assert.equal(r.status, 0, r.stderr);
   const draft = JSON.parse(fs.readFileSync(path.join(drafts, 'jy-it-9x16', 'draft_info.json'), 'utf8'));
   assert.deepEqual([draft.canvas_config.width, draft.canvas_config.height], [180, 320]);
+  const [subtitles] = byType(draft, 'text');
+  assert.deepEqual(subtitles.segments.map(s => s.target_timerange.start), [200_000, 1_300_000]);
+  assert.ok(fs.existsSync(path.join(drafts, 'jy-it-9x16', 'subtitles.srt')));
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });
@@ -201,7 +235,7 @@ test('gives every exported draft its own id so 剪映 does not reuse a cached ti
   fs.rmSync(drafts, { recursive: true, force: true });
 });
 
-test('puts overlapping voices on second tracks without implicit captions', opts, () => {
+test('puts overlapping voices on separate audio tracks and combines their text only during the overlap', opts, () => {
   const dir = makeFilm({
     voices: [
       { text: '第一句', at: 0.2, file: 'audio/vo1.wav' },
@@ -215,7 +249,14 @@ test('puts overlapping voices on second tracks without implicit captions', opts,
   const voices = byType(draft, 'audio').filter((t) => t.name.startsWith('人声'));
   assert.deepEqual(voices.map((t) => [t.name, t.segments.map((s) => s.target_timerange.start)]), [['人声', [200_000]], ['人声 2', [500_000]]]);
   assert.ok(Math.abs(voices[0].segments[0].target_timerange.duration - 500_000) < 20_000, 'voice segment is as long as its audio');
-  assert.deepEqual(byType(draft, 'text'), []);
+  const captions = byType(draft, 'text');
+  assert.deepEqual(captions.map(track => track.name), ['字幕']);
+  assert.deepEqual(captionText(draft, captions[0]), ['第一句', '第一句\n第二句', '第二句']);
+  assert.deepEqual(captions[0].segments.map(s => s.target_timerange), [
+    { start: 200_000, duration: 300_000 },
+    { start: 500_000, duration: 200_000 },
+    { start: 700_000, duration: 200_000 },
+  ]);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });

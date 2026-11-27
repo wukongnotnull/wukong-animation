@@ -35,8 +35,6 @@ def add(script: draft.ScriptFile, segment: object, track: str | None, what: str)
 
 
 def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
-    if plan.get("subtitleTracks") or plan.get("subtitleStyle"):
-        raise ValueError("当前流程不支持字幕轨道")
     mdir = os.path.join(draft_dir, "materials")
     os.makedirs(mdir)
     taken = set()
@@ -62,6 +60,13 @@ def build(plan: dict, draft_dir: str, script: draft.ScriptFile) -> None:
                 continue
             segment = draft.AudioSegment(material, Timerange(s["start"], duration), source_timerange=Timerange(s["sourceStart"], duration), volume=s["volume"])
             add(script, segment, t["name"], f"音轨「{t['name']}」")
+
+    subtitle = plan.get("subtitle")
+    if subtitle:
+        srt_path = os.path.join(draft_dir, "subtitles.srt")
+        with open(srt_path, "w", encoding="utf-8", newline="\n") as file:
+            file.write(subtitle["srt"])
+        script.import_srt(srt_path, track_name=subtitle["name"])
 
 
 def update_json(file: str, **fields: object) -> None:

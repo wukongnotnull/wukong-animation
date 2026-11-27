@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { commitPaths } from '../../plugin/engine/core/project.mjs';
+import { rememberArtifacts } from '../../plugin/engine/core/operations.mjs';
 
 function repo(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wka-review-commit-'));
@@ -58,4 +59,22 @@ test('an already committed review uses the current commit instead of an empty on
   assert.equal(result.created, false);
   assert.equal(result.sha, head);
   assert.equal(git('rev-list', '--count', 'HEAD').stdout.trim(), count);
+});
+
+test('signoff leaves a verified untracked SRT in place and blocks it after a manual edit', t => {
+  const { dir, git } = repo(t);
+  fs.mkdirSync(path.join(dir, '成片'));
+  const srt = path.join(dir, '成片', '片名 #%-16x9.srt');
+  fs.writeFileSync(srt, '1\n00:00:00,100 --> 00:00:00,400\n台词\n');
+  rememberArtifacts(dir, { stage: 'encode:srt', aspect: '16:9', signature: 'fixture', value: srt, outputs: [srt] });
+  const ignore = path.join(dir, '.gitignore');
+  fs.appendFileSync(ignore, '/.wka/operations.json\n');
+  assert.equal(git('commit', '-qm', 'ignore operations', '--', '.gitignore').status, 0);
+
+  fs.writeFileSync(path.join(dir, 'story.md'), '第二版\n');
+  assert.equal(commitPaths(dir, { message: '待审版本', paths: ['story.md'] }).created, true);
+  assert.equal(git('ls-files', '--', '成片').stdout, '');
+  assert.ok(fs.existsSync(srt));
+  fs.appendFileSync(srt, '修改字幕\n');
+  assert.throws(() => commitPaths(dir, { message: '待审版本', paths: ['story.md'] }), /范围之外.*\.srt/);
 });

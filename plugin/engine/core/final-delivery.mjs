@@ -11,7 +11,8 @@ import { ENGINE_ROOT } from './paths.mjs';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { migrateProgress, assertActiveProduction, FLOW } from './state.mjs';
-import { outputsMatch } from './operations.mjs';
+import { outputsMatch, runStage } from './operations.mjs';
+import { hasSubtitleVoice } from './subtitle-srt.mjs';
 import { qcReview, readReviewNotes, isSoftFinding } from './review-evidence.mjs';
 import { qcConfig } from './qc-config.mjs';
 import { usedCueNames, pickCues } from './cues.mjs';
@@ -68,7 +69,7 @@ export function finalContract(dir,{aspect=null}={}) {
     if(!formats.length)formats.push('mp4');
     const add=(kind,format,flavor,suffix)=>{
       const slot=[a,kind,format,...(flavor?[flavor]:[])].join('/');
-      const ext=ctx.registry.exporters.get(format)?.ext;
+      const ext=kind==='subtitle'?'srt':ctx.registry.exporters.get(format)?.ext;
       if(kind==='video'&&!ext)errors.push(`未注册的导出格式：${format}`);
       const file=kind==='draft'||!ext?null:finalFile(dir,ctx.variant.exportName+suffix+'.'+ext);
       const projection={slot,name:ctx.variant.exportName,...(kind==='draft'?{title:ctx.variant.title}:{}),...(kind==='video'?{size:ctx.film.size,fps:ctx.film.fps}:{})};
@@ -76,6 +77,7 @@ export function finalContract(dir,{aspect=null}={}) {
       slots.push({slot,aspect:a,kind,format,flavor:flavor||null,path:file,stage,projection,contractDigest:digest(projection)});
     };
     for(const f of formats)add('video',f,'clean','');
+    if(hasSubtitleVoice(ctx.film.audio))add('subtitle','srt',null,'');
     if(decisions.delivery?.value==='video-and-draft')add('draft','jianying',null,'');
   }
   return {id:digest({flow:FLOW,slots:slots.map(s=>s.projection),decisions}),scope:aspect&&aspect!=='all'?aspect:'all',mainAspect:main.variant.aspect,decisions,slots,errors};
@@ -112,7 +114,8 @@ function executable(name) {
   return {name,path:null,sha256:null};
 }
 function generationTools(slot) {
-  const executables=[executable('ffmpeg'),...(slot.kind==='draft'?[executable('python3')]:[])],packages=[];
+  const commands=slot.kind==='subtitle'?['ffprobe']:slot.kind==='draft'?['ffmpeg','python3']:['ffmpeg'];
+  const executables=commands.map(executable),packages=[];
   if(slot.kind==='draft') {
     const result=spawnSync('python3',['-c','import json, importlib.util, importlib.metadata, pathlib; print(json.dumps({"version": importlib.metadata.version("pyJianYingDraft"), "root": str(pathlib.Path(importlib.util.find_spec("pyJianYingDraft").origin).parent)}))'],{encoding:'utf8'});
     try{const value=JSON.parse(result.stdout);packages.push({name:'pyJianYingDraft',version:value.version,source:codeSource(value.root)});}catch{packages.push({name:'pyJianYingDraft',version:null,source:null});}
@@ -127,7 +130,15 @@ export const finalFontUnknown=(...styles)=>styles.flatMap(s=>s?.report||s?.fontR
 function dependencies(dir,slot,fontFiles=[]) {
   const ctx=loadFilm(dir,{requireShots:false,aspect:slot.aspect}),groups={},unknown=[];
   const files=names=>names.map(f=>sourceFile(path.resolve(dir,f)));
-  {
+  if (slot.kind === 'subtitle') {
+    const voices = ctx.film.audio.voices.map(({ cue, file, at, text }) => ({ cue, file, at, text }));
+    groups.subtitles = {
+      alignment: json(path.join(dir, '.wka/voice-alignment.json'), null),
+      timeline: { fps: ctx.film.fps, durations: ctx.shots.map(s => s.duration), voices },
+      files: files(voices.map(v => v.file)),
+      implementation: engineFiles(['audio/voice-alignment.mjs', 'core/subtitle-srt.mjs', 'core/timing.mjs', 'core/final-delivery.mjs', 'cli/commands/final.mjs']),
+    };
+  } else {
     const scripts=[...ctx.shots.map(s=>s.path),...ctx.styleScripts,...ctx.filmScripts];
     groups.picture={files:files(scripts),assets:[sourceFile(path.join(ctx.style.dir,'assets'))].filter(x=>x.snapshot),config:{size:ctx.film.size,fps:ctx.film.fps,seed:ctx.film.seed,title:ctx.film.title,shots:ctx.shots.map(({id,duration})=>({id,duration})),cues:pickCues(ctx.film.cues||{},scripts),style:ctx.film.style}};
     const names=usedCueNames(scripts.filter(f=>fs.existsSync(f)).map(f=>fs.readFileSync(f,'utf8')));
@@ -149,7 +160,10 @@ function dependencies(dir,slot,fontFiles=[]) {
     groups.fonts={declared:ctx.style.fonts||[],files:files(fontFiles)};
     if(ctx.style.fonts?.length&&!fontFiles.length)unknown.push('实际画面字体来源缺失');
     groups.encoding={files:[codeSource(path.join(ENGINE_ROOT,`exporters/${slot.format}`)),...engineFiles(['core/ffmpeg.mjs','core/job.mjs','core/film-context.mjs'])],settings:ctx.film.export?.[slot.format]||null};
-    if(slot.kind==='draft')groups.rawTracks={files:files(refs)};
+    if(slot.kind==='draft'){
+      groups.rawTracks={files:files(refs)};
+      groups.encoding.files.push(...engineFiles(['core/subtitle-srt.mjs']));
+    }
   }
   for(const [name,value] of Object.entries(groups)) {
     const walk=v=>{if(!v||typeof v!=='object')return;if(v.error)unknown.push(`${name} 来源无法读取：${v.path}（${v.error}）`);for(const child of Object.values(v))if(typeof child==='object')walk(child);};walk(value);
@@ -166,6 +180,24 @@ export function captureFinalGeneration(dir,{slot,fontFiles=[],descriptor=null,in
   const tool=generationTools(target);
   if(tool.executables.some(e=>!e.sha256)||tool.packages.some(p=>!p.source?.snapshot))deps.unknown.push('实际生成工具/依赖身份缺失，待核实');
   return {id:crypto.randomUUID(),slot,descriptor:target,contractDigest:target.contractDigest,createdAt:new Date().toISOString(),dependencies:deps,tool};
+}
+
+export async function writeFinalSubtitle(dir, { aspect, srt, force, log }) {
+  const generation = captureFinalGeneration(dir, { slot: `${aspect}/subtitle/srt` });
+  const { path: file, stage } = generation.descriptor;
+  await runStage(dir, {
+    stage, aspect, signature: digest({ file, srt }), force, log,
+    run: () => {
+      atomicText(file, srt);
+      return { value: file, outputs: [file] };
+    },
+  });
+  try {
+    recordFinalArtifact(dir, { generation, path: file, stage, technical: { status: 'passed', checks: ['SRT 句段时间戳写入'], errors: [] } });
+  } catch (error) {
+    log(`  ! SRT 已生成，交付证据未存档，可用 delivery --final --record 重试：${error.message}`);
+  }
+  return file;
 }
 
 function snapshotHashes(value,into=new Map()) {
@@ -414,8 +446,8 @@ function acceptance(dir,item,artifact,data,history) {
 
 function evidencedCandidates(dir,data,items,host) {
   const stages=Object.values(json(path.join(dir,'.wka/operations.json'),{stages:{}}).stages||{});
-  const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
-  for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^encode:/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':'video'});
+  const known=[...new Set(data.artifacts.map(a=>a.slot))].map(slot=>latestArtifact(data,slot)).filter(a=>/\/(video|draft|subtitle)\//.test(a.slot)).map(a=>({path:a.path,aspect:a.aspect,kind:a.slot.split('/')[1]}));
+  for(const s of stages.filter(s=>s.status==='completed'&&!s.proxy&&(/^encode:/.test(s.stage)||s.stage==='draft-export')))for(const out of s.outputs||[])known.push({path:out.file,aspect:s.aspect,kind:s.stage==='draft-export'?'draft':s.stage==='encode:srt'?'subtitle':'video'});
   const seen=new Set(items.map(i=>i.path)),result=[];
   for(const item of known) {
     if(seen.has(item.path))continue;seen.add(item.path);
@@ -469,7 +501,7 @@ function atomicText(file,text) {
 }
 export function formatFinalDelivery(report) {
   const labels={accepted:'交付完成',partial:'部分完成',incomplete:'未完成','needs-verification':'待核实','awaiting-acceptance':'待验收'};
-  const name=i=>i.kind==='video'?(i.flavor==='burned'?'有字幕视频':'无字幕视频'):i.kind==='draft'?'剪映草稿':i.format==='zh'?'中文字幕':'英文字幕';
+  const name=i=>i.kind==='video'?(i.flavor==='burned'?'有字幕视频':'无字幕视频'):i.kind==='draft'?'剪映草稿':i.format==='srt'?'备用字幕（SRT）':i.format==='zh'?'中文字幕':'英文字幕';
   const lines=['# 最终交付清单','',`${labels[report.status]} · 可用 ${report.summary.ready}/${report.summary.total} · 已验收 ${report.summary.accepted}/${report.summary.total}`,report.scope==='all'?'范围：全部已确认画幅':`范围：仅 ${report.scope}，不代表整片`,''];
   for(const aspect of [...new Set(report.items.map(i=>i.aspect))]) {
     lines.push(`## ${aspect}`,'');

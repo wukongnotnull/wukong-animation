@@ -1,5 +1,6 @@
 // 把引擎的时间线换算成剪映草稿计划：时间用微秒整数，音量用线性倍数。纯函数，不碰文件。
 import path from 'node:path';
+import { buildSubtitleSrt } from '../../core/subtitle-srt.mjs';
 
 const US = 1e6;
 const VOICE_TRACK = '人声';
@@ -64,11 +65,11 @@ function audioSegments(t, end) {
     .filter((s) => s.start < end);
 }
 
-function audioTracks(tracks, duration) {
+function audioTracks(tracks, duration, reservedNames) {
   const end = us(duration);
   const placed = tracks.map((t) => ({ ...t, segments: audioSegments(t, end) })).filter((t) => t.segments.length);
   const voices = placed.filter((t) => t.role === 'voice');
-  const taken = new Set();
+  const taken = new Set(reservedNames);
   const out = [];
   // 重叠的人声同一条轨放不下：分到「人声 2」…
   lanes(voices.flatMap((t) => t.segments), (s) => s.maxDuration).forEach((segments, i) => out.push({ name: uniqueName(laneName(VOICE_TRACK, i), taken), segments }));
@@ -80,14 +81,17 @@ function audioTracks(tracks, duration) {
 
 export function buildDraftPlan(timeline) {
   const [width, height] = timeline.size;
-  if (timeline.subtitles || timeline.subtitleMeasurements || timeline.subtitleStyle) throw new Error('新制作流程不支持剪映字幕轨道');
+  if (timeline.subtitles || timeline.subtitleMeasurements || timeline.subtitleStyle) throw new Error('剪映草稿字幕使用已核对的台词定位，不接受旧版字幕配置');
+  const video = videoSegments(timeline);
+  const srt = buildSubtitleSrt(timeline.captions || [], timeline.duration);
+  const subtitle = srt ? { name: '字幕', srt } : null;
   return {
     name: timeline.title,
     width,
     height,
     fps: timeline.fps,
-    video: videoSegments(timeline),
-    audioTracks: audioTracks(timeline.tracks || [], timeline.duration),
-    subtitleTracks: [],
+    video,
+    audioTracks: audioTracks(timeline.tracks || [], timeline.duration, subtitle ? [subtitle.name] : []),
+    subtitle,
   };
 }

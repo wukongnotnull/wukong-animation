@@ -4,8 +4,10 @@ import { checkMainUnchanged } from '../../core/approval.mjs';
 import { listAspects } from '../../core/variants.mjs';
 import { readProgress, variantStale, staleVariants } from '../../core/state.mjs';
 import { readDecisions, decisionConflicts } from '../../core/delivery.mjs';
-import { finalFontFiles, finalFontUnknown } from '../../core/final-delivery.mjs';
+import { finalFontFiles, finalFontUnknown, writeFinalSubtitle } from '../../core/final-delivery.mjs';
+import { buildSubtitleSrt, hasSubtitleVoice } from '../../core/subtitle-srt.mjs';
 import { draftAudioDifference } from '../../core/review-evidence.mjs';
+import { voiceAlignmentStatus } from '../../audio/voice-alignment.mjs';
 import { fail } from '../context.mjs';
 import { reviewArtifacts } from '../review-artifacts.mjs';
 
@@ -36,16 +38,20 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
     const draftOnly=formats.every(f=>f==='jianying');
     // render 内先准备真实录音与混音，再制作画面；同一批只运行一次配乐脚本。
     const { video, job, segments, soundtrack } = await render(filmDir, {...o,segmentsOnly:draftOnly});
-    const { mix: audio, tracks, voices, loudness } = soundtrack;
+    const { mix: audio, tracks, loudness } = soundtrack;
     ctx=loadFilm(filmDir,{aspect:o.aspect});
     const visual = formats.filter(f => f !== 'jianying'), drafts = formats.filter(f => f === 'jianying');
+    const captions = !o.proxy && hasSubtitleVoice(ctx.film.audio) ? alignedCaptions(ctx.filmDir) : [];
+    const srt = visual.length && captions.length ? buildSubtitleSrt(captions, job.timeline.duration) : '';
+    if (visual.length && captions.length && !srt) throw new Error('成片时间线上没有可写入 SRT 的台词句段，请核对录音位置和句段时间');
     const outs = visual.length ? await encodeOutputs(filmDir, { video, audio, proxy: o.proxy, formats: visual, aspect: o.aspect, force:o.force, fontFiles:finalFontFiles(job.fonts), unknownReasons:finalFontUnknown(job.fonts), log }) : [];
+    if (srt) outs.push(await writeFinalSubtitle(ctx.filmDir, { aspect: ctx.variant.aspect, srt, force: o.force, log }));
     if (drafts.length) {
       const difference=draftAudioDifference(ctx,tracks,loudness??null);
       registerReview(filmDir,'draft-audio-difference',difference.files,o.aspect);
       log(`[${ctx.variant.aspect} 高清 · draft-export] 写入前说明：${difference.report.note}\n${difference.files[0]}`);
       // 时间线：给需要分镜 / 分轨信息的导出器（如剪映草稿）用
-      const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, voices };
+      const timeline = { title: ctx.variant.title, size: job.film.size, fps: job.film.fps, duration: job.timeline.duration, shots: segments, tracks, captions };
       outs.push(...(await encodeOutputs(filmDir, { video, audio, timeline, proxy: o.proxy, formats: drafts, aspect: o.aspect,force:o.force,fontFiles:finalFontFiles(job.fonts),unknownReasons:finalFontUnknown(job.fonts), log })));
     }
     log(`\n完成 ✓\n${outs.map((x) => `  ${x}`).join('\n')}`);
@@ -53,7 +59,7 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
   return {
     'final': async () => {
       if (!pos[0]) fail('用法：wka final <片目录> [--aspect 9:16|all]');
-      if (opt('confirm-subtitles')) fail('字幕能力已取消，不能导出或复核字幕。');
+      if (opt('confirm-subtitles')) fail('旧版 --confirm-subtitles 参数已停用。SRT 随成片或剪映草稿自动导出。');
       return cmdFinalAll(pos[0], {
         proxy: !!opt('proxy'),
         only: opt('only') ? String(opt('only')).split(',') : null,
@@ -64,4 +70,11 @@ export function finalCommands({ pos, opt, log, aspectOpt }) {
       });
     }
   };
+}
+
+function alignedCaptions(filmDir) {
+  const alignment = voiceAlignmentStatus(filmDir);
+  if (!alignment.ready) throw new Error('台词定位缺失、待确认或已过期，请先运行 align-voice 或确认人工时间点');
+  return Object.values(alignment.voices).flatMap(({ source, segments }) =>
+    segments.map(({ text, start, end }) => ({ text, start: source.at + start, end: source.at + end })));
 }

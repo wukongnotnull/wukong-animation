@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { assertActiveProduction, assertProjectCompatible, inspectProduction } from './state.mjs';
+import { readJson } from './evidence.mjs';
+import { FINAL_DIR, operationsFile } from './layout.mjs';
+import { outputsMatch } from './operations.mjs';
 
 const IGNORE_BLOCK = `# >>> wukong-animation >>>
 # 缓存、定稿快照、生成的音频，以及审阅副本和成片里的大媒体，都可以由源文件重新生成，不进版本库
@@ -185,7 +188,7 @@ export function dirtyReviewPaths(filmDir) {
   return changedPaths(filmDir).map(file => file.split(path.sep).join('/')).filter(file => file === '.wka/materials-origin.json' || EVIDENCE_PREFIXES.some(prefix => file.startsWith(prefix)));
 }
 
-function changedPaths(dir) {
+function changedPaths(dir, untrackedOutputs = new Set()) {
   const root = gitRoot(dir), prefix = path.relative(root, dir).split(path.sep).filter(Boolean).join('/');
   const r = spawnSync('git', ['status', '--porcelain=v1', '-z', '-uall'], { cwd: root, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`无法读取 Git 状态：${(r.stderr || '').trim()}`);
@@ -193,10 +196,28 @@ function changedPaths(dir) {
   const paths = [];
   for (let i = 0; i < records.length; i++) {
     const status = records[i].slice(0, 2);
-    paths.push(records[i].slice(3).trimStart());
-    if (status[0] === 'R' || status[0] === 'C') paths.push(records[++i]);
+    paths.push({ file: records[i].slice(3).trimStart(), status });
+    if (status[0] === 'R' || status[0] === 'C') paths.push({ file: records[++i], status });
   }
-  return paths.filter(Boolean).filter(file => !prefix || file === prefix || file.startsWith(prefix + '/')).map(file => prefix ? file.slice(prefix.length + 1) : file);
+  return paths.filter(({ file }) => file && (!prefix || file === prefix || file.startsWith(prefix + '/')))
+    .map(({ file, status }) => ({ file: prefix ? file.slice(prefix.length + 1) : file, status }))
+    .filter(({ file, status }) => status !== '??' || !untrackedOutputs.has(file))
+    .map(({ file }) => file);
+}
+
+function generatedSubtitlePaths(dir) {
+  const paths = new Set();
+  let stages;
+  try { stages = readJson(operationsFile(dir))?.stages || {}; }
+  catch { return paths; }
+  for (const stage of Object.values(stages)) {
+    if (stage?.stage !== 'encode:srt' || stage.proxy || stage.status !== 'completed' || !outputsMatch(stage.outputs)) continue;
+    for (const output of stage.outputs) {
+      const rel = path.relative(dir, fs.realpathSync(output.file)).split(path.sep).join('/');
+      if (rel.startsWith(FINAL_DIR + '/') && path.extname(rel) === '.srt') paths.add(rel);
+    }
+  }
+  return paths;
 }
 
 /** 只提交调用方点名的文件。范围外有改动时拒绝，不改动暂存区。 */
@@ -210,7 +231,8 @@ export function commitPaths(filmDir, { message, paths } = {}, { log = console.lo
   if (!git(filmDir, ['rev-parse', '--is-inside-work-tree']).ok) throw new Error('项目不是 git 仓库，先运行 wka init-project');
   if (!hasIdentity(filmDir)) throw new Error(IDENTITY_HINT);
   const root = gitRoot(filmDir), prefix = path.relative(root, filmDir).split(path.sep).filter(Boolean).join('/');
-  const dirty = changedPaths(filmDir);
+  // 老工程的忽略规则可能没有 SRT。已核验的未跟踪导出物留在工作区。
+  const dirty = changedPaths(filmDir, generatedSubtitlePaths(filmDir));
   const outside = dirty.filter(file => !allowed.includes(file.split(path.sep).join('/')));
   if (outside.length) throw new Error(`签批范围之外还有未提交改动：${outside.join('、')}`);
   const head = git(filmDir, ['rev-parse', 'HEAD']);

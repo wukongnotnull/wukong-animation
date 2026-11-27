@@ -28,8 +28,8 @@ test('人声规范区分录音内定位与全片编排，并保留冲突决策',
  assert.doesNotMatch(read('README.md'), /也可以用 AI 配音/);
 });
 
-test('剪映计划不把台词或录音自动转换为字幕',()=>{
+test('剪映计划需要经核对的句段，不能把整段录音文字当成字幕',()=>{
  const timeline={title:'片',size:[160,90],fps:10,duration:1,shots:[{id:'s01',file:'s01.mp4',start:0,duration:1}],tracks:[],voices:[{text:'只供对齐',at:0,duration:1}]};
- const plan=buildDraftPlan(timeline);assert.deepEqual(plan.subtitleTracks,[]);
+ const plan=buildDraftPlan(timeline);assert.equal(plan.subtitle,null);
  assert.throws(()=>buildDraftPlan({...timeline,subtitles:[{text:'旧字幕',start:0,end:1}]}),/字幕/);
 });

@@ -179,7 +179,7 @@
 
 ## 六、录音定位
 
-本地识别和人工时间点用于声画编排，不生成字幕。新片人声全部由用户提供；整段录音只混入一次，句段时间另存。旧片原有字幕文件可历史查看，不继续制作。
+本地识别和人工时间点用于声画编排，正式成片和剪映草稿也用这些时间点生成 SRT。新片人声全部由用户提供；整段录音只混入一次，句段时间另存。旧片原有字幕文件可历史查看。
 
 ## 七、成片与交付
 
@@ -190,7 +190,7 @@
 | 接触表（Contact Sheet） | 把每个镜头的代表帧拼成一张大图，一眼看完整片的构图和画风 | `wka animatic` / `wka still` 生成，风格帧和 QC 都用 |
 | 导出格式（Export Format） | 成片能输出的格式：视频（mp4）、动图（gif）、逐帧图片序列（png-seq）、剪映草稿（jianying） | `film.json` 的 `export.formats`；`wka final --formats` |
 | 编码（Encoding）/ H.264 | 把逐帧画面压缩成视频文件的格式和参数 | 终版用 libx264 crf 16，小样用 crf 23 更快 |
-| 剪映草稿（JianYing Draft） | 剪映专业版的工程文件：打开后时间线上是分好轨的视频和音频，可以接着剪 | 第 9 道工序，`wka final --formats jianying` 写进剪映草稿目录 |
+| 剪映草稿（JianYing Draft） | 剪映专业版的可编辑工程，含视频、音频分轨，有人声时附一条字幕轨和 SRT | 第 9 道工序，`wka final --formats jianying` 写进剪映草稿目录 |
 | 剪映草稿目录 | 剪映存草稿的文件夹，导出器直接把草稿写进去 | 不在默认位置时用环境变量 `WKA_JIANYING_DRAFTS` 指定；导出前要先完全退出剪映 |
 | 剪映字体对照表 | 〔本项目用语〕剪映不能用任意字体文件，导出时按表换成剪映字库里的对应字体（如马善政 → 古风小楷） | `engine/exporters/jianying/fonts.json` |
 | 开源授权字体（Open-source Fonts） | 可免费商用的开源字体（如 SIL OFL 授权），本项目只用这类字体 | 登记在 `engine/core/fonts.mjs` 的 `KNOWN_FONTS`，按需下载 |

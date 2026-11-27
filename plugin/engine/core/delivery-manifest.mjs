@@ -6,6 +6,7 @@ import { resolveVariant, suffixOf } from './variants.mjs';
 import { reviewFile, finalFile } from './layout.mjs';
 import { assertActiveProduction, LAST_STEP, PRODUCTION_ROLES } from './state.mjs';
 import { scopedPath } from './workbench-catalog.mjs';
+import { hasSubtitleVoice } from './subtitle-srt.mjs';
 
 const TEXT = {
   2: ['brief.md'],
@@ -23,12 +24,16 @@ function relative(dir, file) {
 function exists(dir, rel) {
   return fs.existsSync(path.join(dir, rel)) && fs.statSync(path.join(dir, rel)).isFile();
 }
+function finalOutputs(dir, variant, audio) {
+  const extensions = hasSubtitleVoice(audio) ? ['mp4', 'srt'] : ['mp4'];
+  return extensions.map(ext => relative(dir, finalFile(dir, `${variant.exportName}.${ext}`)));
+}
 function generated(dir, ctx, proxy) {
   const names = proxy
     ? ['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md']
     : ['QC报告.json', 'QC报告.md'];
   const files = names.map(name => relative(dir, reviewFile(dir, ctx.variant.review(name))));
-  if (!proxy) files.push(relative(dir, finalFile(dir, `${ctx.variant.exportName}.mp4`)));
+  if (!proxy) files.push(...finalOutputs(dir, ctx.variant, ctx.film.audio));
   return files.filter(file => exists(dir, file));
 }
 function sourceFiles(dir, film) {
@@ -72,7 +77,7 @@ export function buildManifest(dir, step) {
       for (const aspect of Object.keys(ctx.film.variants || {})) {
         const variant = resolveVariant(ctx, aspect);
         media.push(...['小样.mp4', 'QC报告-proxy.json', 'QC报告-proxy.md'].map(name => relative(dir, reviewFile(dir, variant.review(name)))));
-        media.push(relative(dir, finalFile(dir, `${variant.exportName}.mp4`)));
+        media.push(...finalOutputs(dir, variant, ctx.film.audio));
       }
       media = media.filter(file => exists(dir, file));
     }

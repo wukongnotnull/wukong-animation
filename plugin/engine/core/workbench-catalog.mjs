@@ -100,6 +100,7 @@ export function workbenchCatalog(dir, registrations = []) {
   }
   for (const file of walk(dir, FINAL_DIR)) if (/\.(mp4|webm|gif)$/.test(file) && !/subtitles/.test(file)) add(file, mainSuffix && file.endsWith(`-${mainSuffix}${path.extname(file)}`) ? 7 : /-\d+x\d+/.test(file) ? 8 : 7, { required: false });
   for (const operation of Object.values(stages).filter(s => s.status === 'completed')) {
+    if (operation.stage === 'encode:srt') continue;
     for (const output of operation.outputs || []) {
       if (!output.file || /字幕|subtitles/.test(output.file)) continue;
       const rel = path.relative(dir, path.resolve(dir, output.file));
@@ -115,8 +116,10 @@ export function workbenchCatalog(dir, registrations = []) {
         const artifact = (ledger.artifacts || []).filter(a => a.slot === slot.slot).at(-1);
         const operation = Object.values(stages).find(s => s.stage === slot.stage && s.aspect === slot.aspect && !s.proxy && s.status === 'completed');
         const file = artifact?.path || operation?.outputs?.[0]?.file || slot.path;
+        const label = slot.kind === 'subtitle' ? '备用字幕（SRT）' : slot.kind === 'draft' ? '剪映草稿' : slot.aspect === contract.mainAspect ? '成片视频' :
+          Number(slot.aspect.split(':')[0]) > Number(slot.aspect.split(':')[1]) ? '横屏成片' : Number(slot.aspect.split(':')[0]) < Number(slot.aspect.split(':')[1]) ? '竖屏成片' : '画幅成片';
         if (file) add(file, slot.kind === 'draft' ? 9 : slot.aspect === contract.mainAspect ? 7 : 8,
-          { label: slot.kind === 'draft' ? '剪映草稿' : slot.aspect === contract.mainAspect ? '成片视频' : Number(slot.aspect.split(':')[0]) > Number(slot.aspect.split(':')[1]) ? '横屏成片' : Number(slot.aspect.split(':')[0]) < Number(slot.aspect.split(':')[1]) ? '竖屏成片' : '画幅成片', required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
+          { label, required: true, external: slot.kind === 'draft', kind: slot.kind === 'draft' ? 'directory' : workbenchKind(file), aspect: slot.aspect, technical: artifact?.technical || null });
       }
       warnings.push(...contract.errors);
     } catch (error) { warnings.push(`最终交付要求待核实：${error.message}`); }

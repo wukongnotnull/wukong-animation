@@ -1,6 +1,8 @@
 import { confirmFixtureVoices } from '../helpers/production.mjs';
 import { initializeProduction } from '../../plugin/engine/core/state.mjs';
 import { importVoiceTiming, voiceAlignmentStatus } from '../../plugin/engine/audio/voice-alignment.mjs';
+import { finalDeliveryReport } from '../../plugin/engine/core/final-delivery.mjs';
+import { workbenchCatalog } from '../../plugin/engine/core/workbench-catalog.mjs';
 // 剪映草稿导出：需要 browser 管线依赖 + ffmpeg + python3 里的 pyJianYingDraft；缺任一项整组跳过。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -197,6 +199,21 @@ test('exports an editable 剪映 draft with one SRT track using the aligned spee
   ].join('\n'));
   const receipt = JSON.parse(fs.readFileSync(path.join(draftDir, '.wka-complete.json')));
   assert.ok(receipt.entries.some(entry => entry.path === 'subtitles.srt'));
+  const finalSrt = path.join(dir, '成片', 'jy-it-16x9.srt');
+  assert.equal(fs.existsSync(finalSrt), false, '纯草稿导出不在成片目录写 SRT');
+  const proxy = wka(drafts, 'final', dir, '--formats', 'mp4', '--proxy');
+  assert.equal(proxy.status, 0, proxy.stderr);
+  assert.equal(fs.existsSync(finalSrt), false, '预览不在成片目录写 SRT');
+  const final = wka(drafts, 'final', dir, '--formats', 'mp4');
+  assert.equal(final.status, 0, final.stderr);
+  assert.ok(final.stdout.includes(finalSrt));
+  assert.deepEqual(fs.readFileSync(finalSrt), fs.readFileSync(path.join(draftDir, 'subtitles.srt')));
+  const report = finalDeliveryReport(dir);
+  const subtitle = report.items.find(item => item.kind === 'subtitle');
+  assert.deepEqual([subtitle.path, subtitle.availability, subtitle.freshness, subtitle.technical], [finalSrt, 'present', 'current', 'passed']);
+  assert.ok(report.reviewSets[7].bindings.some(binding => binding.path === finalSrt));
+  const item = workbenchCatalog(dir).items.find(item => item.path === finalSrt);
+  assert.deepEqual([item.step, item.kind, item.label], [7, 'text', '备用字幕（SRT）']);
 
   const paths = [...draft.materials.videos, ...draft.materials.audios].map((m) => m.path);
   for (const p of paths) assert.ok(p.startsWith(path.join(draftDir, 'materials') + path.sep), `outside draft: ${p}`);
@@ -218,6 +235,11 @@ test('a variant exports its own draft named after the title plus the aspect suff
   assert.deepEqual(subtitles.segments.map(s => s.target_timerange.start), [200_000, 1_300_000]);
   assert.ok(subtitles.segments.every(s => Math.round(s.clip.transform.y * draft.canvas_config.height) === -788));
   assert.ok(fs.existsSync(path.join(drafts, 'jy-it-9x16', 'subtitles.srt')));
+  const final = wka(drafts, 'final', dir, '--aspect', '9:16', '--formats', 'mp4');
+  assert.equal(final.status, 0, final.stderr);
+  const finalSrt = path.join(dir, '成片', 'jy-it-9x16.srt');
+  assert.deepEqual(fs.readFileSync(finalSrt), fs.readFileSync(path.join(drafts, 'jy-it-9x16', 'subtitles.srt')));
+  assert.equal(fs.existsSync(path.join(dir, '成片', 'jy-it-16x9.srt')), false);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(drafts, { recursive: true, force: true });
 });

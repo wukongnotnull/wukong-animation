@@ -41,6 +41,7 @@ test('A4/A5/A11 real video and draft export bind existing signoff nodes and reta
   const call=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',env:{...process.env,WKA_NO_FONT_DOWNLOAD:'1',WUKONG_ANIMATION_HOME:home,WKA_JIANYING_DRAFTS:drafts,WKA_JIANYING_PROCESS:'wka-nonexistent-test-process'}});
   const ok=result=>assert.equal(result.status,0,result.stdout+result.stderr);
   ok(call('final',dir));
+  assert.equal(fs.readdirSync(path.join(dir,'成片')).some(file=>file.endsWith('.srt')),false);
   assert.ok(fs.existsSync(path.join(dir,'.wka/final-delivery.json')),'真实导出应登记证据');
   let result=call('delivery',dir,'--final','--json'),report=JSON.parse(result.stdout);
   assert.equal(result.status,2);assert.equal(report.status,'partial');assert.ok(report.items[0].link);
